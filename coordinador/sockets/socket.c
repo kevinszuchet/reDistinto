@@ -9,6 +9,8 @@
 
 
 int main(){
+
+	//CODIGO PARA SOCKET COMO SERVIDOR DEL PLANIFICADOR, A TRAVEZ DEL PUERTO 8080
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
 	direccionServidor.sin_addr.s_addr = INADDR_ANY;
@@ -85,7 +87,7 @@ int main(){
 	free(buffer);
 	close(cliente);
 	close(servidor);
-
+	//CODIGO PARA SOCKET COMO SERVIDOR DEL PLANIFICADOR, A TRAVEZ DEL PUERTO 8080
 	return 0;
 }
 
