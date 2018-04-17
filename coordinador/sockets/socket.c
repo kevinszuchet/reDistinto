@@ -8,6 +8,8 @@
 #include "socket.h"
 
 int main(){
+
+	//CODIGO PARA SOCKET COMO SERVIDOR DEL PLANIFICADOR, A TRAVEZ DEL PUERTO 8080
 	struct sockaddr_in direccionServidor;
 		direccionServidor.sin_family = AF_INET;
 		direccionServidor.sin_addr.s_addr = INADDR_ANY;
@@ -85,5 +87,12 @@ int main(){
 		close(cliente);
 		close(servidor);
 
-		return 0;
+
+		
+
+	free(buffer);
+	close(cliente);
+	close(servidor);
+	//CODIGO PARA SOCKET COMO SERVIDOR DEL PLANIFICADOR, A TRAVEZ DEL PUERTO 8080
+	return 0;
 }

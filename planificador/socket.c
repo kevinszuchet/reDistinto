@@ -1,6 +1,8 @@
 #include "socket.h"
 
 int main(void) {
+
+	//CODIGO PARA SOCKET COMO CLIENTE DEL COORDINADOR, A TRAVEZ DEL PUERTO 8080
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family  = AF_INET;
 	direccionServidor.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -18,6 +20,7 @@ int main(void) {
 
 		send(cliente, mensaje, strlen(mensaje), 0);
 	}
+	//CODIGO PARA SOCKET COMO CLIENTE DEL COORDINADOR, A TRAVEZ DEL PUERTO 8080
 
 	return 0;
 }
