@@ -3,6 +3,7 @@
 	<name>coordinador</name>
 	<comment></comment>
 	<projects>
+		<project>our-commons</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

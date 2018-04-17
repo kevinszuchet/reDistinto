@@ -1,12 +1,17 @@
-#include "socket.h"
+/*
+ * client.c
+ *
+ *  Created on: 17 abr. 2018
+ *      Author: utnso
+ */
 
-int main(void) {
+#include "client.h"
 
-	//CODIGO PARA SOCKET COMO CLIENTE DEL COORDINADOR, A TRAVEZ DEL PUERTO 8080
+int handshakeWithServer(char* serverIP, int serverPort, int handshakeValue, const char* serverName) {
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family  = AF_INET;
-	serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
-	serverAddress.sin_port = htons(8080);
+	serverAddress.sin_addr.s_addr = inet_addr(serverIP);
+	serverAddress.sin_port = htons(serverPort);
 
 	int serverSocket = 0;
 
@@ -18,29 +23,24 @@ int main(void) {
 
 	if (connect(serverSocket, (void*) &serverAddress, sizeof(serverAddress)) != 0) {
 		perror("No se pudo conectar");
+		close(serverSocket);
 		return 1;
 	}
 
-	printf("Pude conectarme al coordinador\n");
+	printf("I could connect to %s\n", serverName);
 
-	/*while (1) {
-		char mensaje[1000];
-		scanf("%s", mensaje);
-
-		send(cliente, mensaje, strlen(mensaje), 0);
-	}*/
-
-	//Recibo el mensaje del coordinador
 	int response = 0;
 	if(recv(serverSocket, &response, sizeof(int), 0) <= 0){
 		perror("Problema con recv");
+		close(serverSocket);
 		return 1;
 	}
 
-	if(response == 10){
-		printf("Hanshake con el coordinador OK\n");
+	if(response == handshakeValue){
+		printf("Hanshake with %s OK\n", serverName);
 	}else{
-		printf("No es el coordinador, ya que llego el numero: %d\n", response);
+		printf("It's not the server %s, since the response was: %d\n", serverName, response);
+		close(serverSocket);
 		return 1;
 	}
 
@@ -50,7 +50,7 @@ int main(void) {
 		close(serverSocket);
 		return 1;
 	}
-	//CODIGO PARA SOCKET COMO CLIENTE DEL COORDINADOR, A TRAVEZ DEL PUERTO 8080
 
 	return 0;
 }
+

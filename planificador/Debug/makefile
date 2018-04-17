@@ -8,6 +8,7 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include src/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -24,11 +25,14 @@ endif
 # All Target
 all: planificador
 
+dependents:
+	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) all
+
 # Tool invocations
-planificador: $(OBJS) $(USER_OBJS)
+planificador: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "planificador" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug" -o "planificador" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -38,5 +42,6 @@ clean:
 	-@echo ' '
 
 .PHONY: all clean dependents
+/home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so:
 
 -include ../makefile.targets
