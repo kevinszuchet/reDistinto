@@ -1,4 +1,8 @@
-# Ignore all
+#Se exluye el makefile, ya que al no tener extension no se subiria
+!makefile
+
+#
+Ignore all
 *
 
 # Unignore all with extensions
