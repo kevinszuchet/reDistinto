@@ -5,4 +5,9 @@
  *      Author: utnso
  */
 
+#include <../our-commons/sockets/server.h>
 
+
+int main(){
+	return 0;
+}
