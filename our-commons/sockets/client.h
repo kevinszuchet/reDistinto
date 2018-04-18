@@ -8,13 +8,10 @@
 #ifndef CLIENT_H_
 #define CLIENT_H_
 
-	#include <stdlib.h>
-	#include <stdio.h>
-	#include <arpa/inet.h>
-	#include <sys/socket.h>
-	#include <errno.h>
-	#include <unistd.h>
+	#include "sockets.h"
+	#include <string.h>
 
-	int handshakeWithServer(char* serverIP, int serverPort, int handshakeValue, const char* serverName);
+	int connectToServer(char* serverIP, int serverPort, const char* serverName, const char* clientName);
+	int handshakeWithServer(int serverSocket, int handshakeValue, const char* serverName, const char* clientName);
 
 #endif /* CLIENT_H_ */
