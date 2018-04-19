@@ -43,13 +43,13 @@ int main(void) {
 	/*
 	 * Handshake between esi and coordinador
 	 * */
-	int coordinadorSocket = connectToServer("127.0.0.1", 8083, PLANIFICADOR, ESI);
+	int coordinadorSocket = connectToServer("127.0.0.1", 8083, COORDINADOR, ESI);
 	if (planificadorSocket < 0){
 		//reintentar conexion?
 		return -1;
 	}
 
-	int handshakeWithCoordinador = handshakeWithServer(coordinadorSocket, 13, PLANIFICADOR, ESI);
+	int handshakeWithCoordinador = handshakeWithServer(coordinadorSocket, 13, COORDINADOR, ESI);
 	if(handshakeWithCoordinador < 0){
 		//que pasa si falla el handshake?
 		return -1;
