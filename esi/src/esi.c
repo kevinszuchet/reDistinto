@@ -5,8 +5,22 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <unistd.h>
+#include <commons/string.h>
+#include <commons/config.h>
+
+#define  CFG_FILE "esi.cfg"
+
 
 int main(void) {
+	char* ipCoordinador;
+	char* ipPlanificador;
+	int puertoCoordinador;
+	int puertoPlanificador;
+	t_config* config;
+	config = config_create(CFG_FILE);
+	config_set_value(config, "ipCoordinador","127.0.0.1");
+
+
 	//CODIGO PARA SOCKET COMO CLIENTE DEL COORDINADOR, A TRAVEZ DEL PUERTO 8081
 	struct sockaddr_in serverAddress;
 		serverAddress.sin_family  = AF_INET;
