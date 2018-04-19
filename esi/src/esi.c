@@ -10,17 +10,18 @@
 #include <commons/string.h>
 #include <commons/config.h>
 
-#define  CFG_FILE "esi.cfg"
+#define  CFG_FILE "../esi.cfg"
 
 
 int main(void) {
-	/*char* ipCoordinador;
+	char* ipCoordinador;
 	char* ipPlanificador;
 	int puertoCoordinador;
 	int puertoPlanificador;
 	t_config* config;
 	config = config_create(CFG_FILE);
-	config_set_value(config, "ipCoordinador","127.0.0.1");*/
+	//aca deberia guardarse la ip
+	config_get_string_value(config, "IP_COORDINADOR");
 
 	/*
 	 * Handshake between esi and planificador
