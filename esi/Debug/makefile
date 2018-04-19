@@ -25,11 +25,14 @@ endif
 # All Target
 all: esi
 
+dependents:
+	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) all
+
 # Tool invocations
-esi: $(OBJS) $(USER_OBJS)
+esi: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "esi" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug" -o "esi" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -39,5 +42,6 @@ clean:
 	-@echo ' '
 
 .PHONY: all clean dependents
+/home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so:
 
 -include ../makefile.targets

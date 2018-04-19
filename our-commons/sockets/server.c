@@ -78,7 +78,9 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 	}
 
 	int response = 0;
-	if(recv(clientSocket, &response, sizeof(int), 0) <= 0){
+	int result_recv = 0;
+	if((result_recv = recv(clientSocket, &response, sizeof(int), 0)) <= 0){
+		printf("errno: %d, recv: %d", errno, result_recv);
 		printf("recv failed on %s, while trying to connect with client %s: %s\n", serverName, clientName, strerror(errno));
 		close(clientSocket);
 		return -1;
@@ -87,7 +89,7 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 	if(response == clientHandshakeValue + 1){
 		printf("%s could handshake with %s!\n", serverName, clientName);
 	}else{
-		printf("%s couldn't handshake with client %s, since the response was: %d != %d\n", serverName, clientName, response, clientHandshakeValue);
+		printf("%s couldn't handshake with client %s, since the response was %d != %d\n", serverName, clientName, response, clientHandshakeValue);
 		close(clientSocket);
 		return -1;
 	}

@@ -39,7 +39,7 @@ int handshakeWithServer(int serverSocket, int handshakeValue, const char* server
 	if(response == handshakeValue){
 		printf("%s could handshake with %s!\n", clientName, serverName);
 	}else{
-		printf("%s couldn't handshake with server %s, since the response was: %d != %d\n", clientName, serverName, response, handshakeValue);
+		printf("%s couldn't handshake with server %s, since the response was %d != %d\n", clientName, serverName, response, handshakeValue);
 		return -1;
 	}
 
