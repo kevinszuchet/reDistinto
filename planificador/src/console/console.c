@@ -6,6 +6,7 @@
  */
 
 #include "console.h"
+#include "src/planificador.h"
 
 void openConsole() {
 	char *line;
@@ -29,6 +30,7 @@ void openConsole() {
 }
 
 void execute(char *command) {
+	printf("%s", command);
 	switchs(command) {
 		icases("pause")
 		icases("continue")

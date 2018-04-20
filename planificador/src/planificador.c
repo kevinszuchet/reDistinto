@@ -9,6 +9,7 @@
 #include <../our-commons/sockets/server.h>
 #include <../our-commons/modules/names.h>
 #include "console/console.h"
+#include <commons/string.h>
 
 int main(void) {
 	/*
