@@ -52,3 +52,23 @@ int handshakeWithServer(int serverSocket, int handshakeValue, const char* server
 	return 0;
 }
 
+int welcomeServer(const char* serverIp, int serverPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)()){
+	int serverSocket = connectToServer(serverIp, serverPort, serverName, clientName);
+	if (serverSocket < 0){
+		//reintentar conexion?
+		return -1;
+	}
+
+	int handshakeResult = handshakeWithServer(serverSocket, handshakeValue, serverName, clientName);
+	if(handshakeResult < 0){
+		//que pasa si falla el handshake?
+		return -1;
+	}
+
+	printf("A punto de ejecutar welcomeProcedure en el cliente\n");
+
+	welcomeProcedure();
+
+	return 0;
+}
+

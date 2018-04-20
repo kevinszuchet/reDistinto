@@ -6,6 +6,7 @@
  */
 
 #include "server.h"
+#include "client.h"
 
 int openConnection(int listenerPort, const char* serverName, const char* clientName){
 	struct sockaddr_in serverAddress;
@@ -92,6 +93,124 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 		printf("%s couldn't handshake with client %s, since the response was %d != %d\n", serverName, clientName, response, clientHandshakeValue);
 		close(clientSocket);
 		return -1;
+	}
+
+	return 0;
+}
+
+int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)()){
+	int serverToClientSocket = 0;
+	if((serverToClientSocket = openConnection(listenerPort, serverName, clientName)) < 0){
+		//evalauar si se va a reintentar la conexion o que... idem luego del if de abajo
+		close(serverToClientSocket);
+		return -1;
+	}
+
+	int clientSocket = 0;
+
+	if((clientSocket = acceptClient(serverToClientSocket, serverName, clientName)) < 0){
+		close(clientSocket);
+		return -1;
+	}
+
+	int planificadorHandshakeResult = handshakeWithClient(clientSocket, handshakeValue, serverName, clientName);
+	if(planificadorHandshakeResult < 0){
+		//que pasa si no se puede hacer handshake?
+		return -1;
+	}
+
+	welcomeProcedure();
+
+	close(clientSocket);
+	close(serverToClientSocket);
+
+	return 0;
+}
+
+int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char* serverName, const char* clientName){
+	int serverSocket, new_socket, client_socket[30], max_clients = 30 , i, sd;
+	int clientSocket, max_sd;
+
+	//set of socket descriptors
+	fd_set readfds;
+
+	//initialise all client_socket[] to 0 so not checked
+	for (i = 0; i < max_clients; i++)
+	{
+		client_socket[i] = 0;
+	}
+
+	serverSocket = openConnection(listenerPort, serverName, clientName);
+	if(serverSocket < 0){
+		//no se pudo conectar!
+		return -1;
+	}
+
+	while(1)
+	{
+		//clear the socket set
+		FD_ZERO(&readfds);
+
+		//add master socket to set
+		FD_SET(serverSocket, &readfds);
+		max_sd = listenerPort;
+
+		//add child sockets to set
+		for ( i = 0 ; i < max_clients ; i++)
+		{
+			//socket descriptor
+			sd = client_socket[i];
+
+			//if valid socket descriptor then add to read list
+			if(sd > 0)
+				FD_SET( sd , &readfds);
+
+			//highest file descriptor number, need it for the select function
+			if(sd > max_sd)
+				max_sd = sd;
+		}
+
+		//wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
+		int selectResult = 0;
+		selectResult = select( max_sd + 1 , &readfds , NULL , NULL , NULL);
+
+		if ((selectResult < 0) && (errno!=EINTR))
+		{
+			printf("select error");
+		}
+
+		//If something happened on the master socket, then its an incoming connection
+		if (FD_ISSET(serverSocket, &readfds))
+		{
+			clientSocket = acceptClient(serverSocket, serverName, clientName);
+			//TODO: revisar el handshakeProcedure, no es un int. Ademas,
+			//como distinguimos un handshake distinto para cada cliente?
+			//handshakeWithClient(clientSocket, handshakeProcedure, serverName, clientName);
+
+			//add new socket to array of sockets
+			for (i = 0; i < max_clients; i++)
+			{
+				//if position is empty
+				if(client_socket[i] == 0)
+				{
+					client_socket[i] = clientSocket;
+					printf("Adding to list of sockets as %d\n" , i);
+
+					break;
+				}
+			}
+		}
+
+		//else its some IO operation on some other socket :)
+		for (i = 0; i < max_clients; i++)
+		{
+			sd = client_socket[i];
+
+			if (FD_ISSET(sd, &readfds))
+			{
+				//alguno de los sockets escuchados tuvo I/O
+			}
+		}
 	}
 
 	return 0;
