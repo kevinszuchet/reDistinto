@@ -8,6 +8,7 @@
 #include <../our-commons/sockets/client.h>
 #include <../our-commons/sockets/server.h>
 #include <../our-commons/modules/names.h>
+#include "console/console.h"
 
 int main(void) {
 	/*
@@ -53,6 +54,12 @@ int main(void) {
 	/*
 	 * END Handshake between planificador and esi
 	 * */
+
+	/*
+	 * Planificador console
+	 * */
+
+	openConsole();
 
 	close(esiSocket);
 	close(planificadorToEsiSocket);
