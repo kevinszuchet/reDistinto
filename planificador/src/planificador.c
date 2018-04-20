@@ -5,13 +5,7 @@
  *      Author: utnso
  */
 
-#include <../our-commons/sockets/client.h>
-#include <../our-commons/sockets/server.h>
-#include <../our-commons/modules/names.h>
-#include "console/console.h"
-#include <commons/string.h>
-
-int welcomeCoordinador();
+#include "planificador.h"
 
 int main(void) {
 

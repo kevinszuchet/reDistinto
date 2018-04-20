@@ -16,6 +16,7 @@
 	#include <ctype.h>
 	#include <commons/string.h>
 	#include "switchs.h"
+	#include "src/planificador.h"
 
 	void openConsole();
 	void execute(char *);

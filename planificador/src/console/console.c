@@ -6,7 +6,6 @@
  */
 
 #include "console.h"
-#include "src/planificador.h"
 
 void openConsole() {
 	char *line;
