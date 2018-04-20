@@ -12,6 +12,6 @@
 	#include <string.h>
 
 	int connectToServer(char* serverIP, int serverPort, const char* serverName, const char* clientName);
-	int handshakeWithServer(int serverSocket, int handshakeValue, const char* serverName, const char* clientName);
+	int welcomeServer(const char* serverIp, int serverPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)());
 
 #endif /* CLIENT_H_ */

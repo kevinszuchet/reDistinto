@@ -2,7 +2,7 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-USER_OBJS :=
+# Add inputs and outputs from these tool invocations to the build variables 
 
-LIBS := -lour-commons -lreadline
+# Each subdirectory must supply rules for building sources it contributes
 
