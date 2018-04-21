@@ -5,16 +5,16 @@
  *      Author: utnso
  */
 
-#include <../our-commons/sockets/client.h>
-#include <../our-commons/sockets/server.h>
-#include <../our-commons/modules/names.h>
+#include "../../our-commons/sockets/client.h"
+#include "../../our-commons/sockets/server.h"
+#include "../../our-commons/modules/names.h"
 #include "console/console.h"
 
 int welcomeCoordinador();
 
 int main(void) {
 
-	int welcomeCoordinador = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
+	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
 
 	/*
 	 * Planificador console
