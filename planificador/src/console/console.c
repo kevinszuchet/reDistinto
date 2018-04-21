@@ -29,6 +29,7 @@ void openConsole() {
 }
 
 void execute(char *command) {
+	printf("%s", command);
 	switchs(command) {
 		icases("pause")
 		icases("continue")

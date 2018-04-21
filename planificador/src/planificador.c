@@ -12,6 +12,8 @@
 
 int welcomeCoordinador();
 
+#include "planificador.h"
+
 int main(void) {
 
 	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
