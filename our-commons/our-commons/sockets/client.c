@@ -45,7 +45,7 @@ int handshakeWithServer(int serverSocket, int handshakeValue, const char* server
 
 	int clientHandshakeValue = response + 1;
 	if (send(serverSocket, &clientHandshakeValue, sizeof(int), 0) < 0){
-		perror("Algo no anda bien con el send %d\n");
+		printf("Something was wrong with send: %s\n", strerror(errno));
 		return -1;
 	}
 
@@ -65,10 +65,16 @@ int welcomeServer(const char* serverIp, int serverPort, const char* serverName, 
 		return -1;
 	}
 
-	printf("A punto de ejecutar welcomeProcedure en el cliente\n");
-
 	welcomeProcedure();
 
+	return 0;
+}
+
+int sendMyIdToServer(int serverSocket, int clientId, const char* clientName){
+	if (send(serverSocket, &clientId, sizeof(int), 0) < 0){
+		printf("Something was wrong with send from %s: %s\n", clientName, strerror(errno));
+		return -1;
+	}
 	return 0;
 }
 

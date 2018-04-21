@@ -5,11 +5,10 @@
  *      Author: utnso
  */
 
+#include "planificador.h"
 #include "console/console.h"
 
 int welcomeCoordinador();
-
-#include "planificador.h"
 
 int main(void) {
 
@@ -18,6 +17,7 @@ int main(void) {
 	/*
 	 * Planificador console
 	 * */
+	//crear el hilo!
 	openConsole();
 	/*
 	 *  Planificador console
@@ -34,11 +34,11 @@ int welcomeEsi(){
 
 int welcomeCoordinador(){
 	printf("Probando recepcion en el coordinador\n");
-	int welcomePlanificador = welcomeClient(8082, COORDINADOR, ESI, 12, &welcomeEsi);
+	/*int welcomePlanificador = welcomeClient(8082, COORDINADOR, ESI, 12, &welcomeEsi);
 	if(welcomePlanificador < 0){
 		//TODO: que pasa en este caso?
 		return -1;
-	}
+	}*/
 
 	return 0;
 }

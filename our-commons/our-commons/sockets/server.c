@@ -65,6 +65,26 @@ int acceptClient(int serverSocket, const char* serverName, const char* clientNam
 	return clientSocket;
 }
 
+int acceptUnknownClient(int serverSocket, const char* serverName){
+
+	if(serverSocket < 0){
+		printf("The socket (%d) where %s is listening is not a valid one\n", serverSocket, serverName);
+		return -1;
+	}
+
+	struct sockaddr_in clientAddress;
+	unsigned int len = sizeof(clientAddress);
+	int clientSocket = accept(serverSocket, (void*) &clientAddress, &len);
+	if (clientSocket == -1){
+		printf("%s couldn't accept a new connection: %s\n", serverName, strerror(errno));
+		return -1;
+	}
+
+	printf("%s could accept a new connection and it's set in socket: %d\n", serverName, clientSocket);
+
+	return clientSocket;
+}
+
 int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* serverName, const char* clientName){
 
 	if(clientSocket < 0){
@@ -79,9 +99,8 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 	}
 
 	int response = 0;
-	int result_recv = 0;
-	if((result_recv = recv(clientSocket, &response, sizeof(int), 0)) <= 0){
-		printf("errno: %d, recv: %d", errno, result_recv);
+	int resultRecv = recv(clientSocket, &response, sizeof(int), 0);
+	if(resultRecv <= 0){
 		printf("recv failed on %s, while trying to connect with client %s: %s\n", serverName, clientName, strerror(errno));
 		close(clientSocket);
 		return -1;
@@ -98,7 +117,7 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 	return 0;
 }
 
-int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)()){
+int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)(int coordinadorSocket)){
 	int serverToClientSocket = 0;
 	if((serverToClientSocket = openConnection(listenerPort, serverName, clientName)) < 0){
 		//evalauar si se va a reintentar la conexion o que... idem luego del if de abajo
@@ -119,12 +138,26 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 		return -1;
 	}
 
-	welcomeProcedure();
+	welcomeProcedure(serverToClientSocket);
 
 	close(clientSocket);
 	close(serverToClientSocket);
 
 	return 0;
+}
+
+int recieveClientId(int clientSocket, int id, const char* serverName){
+	printf("Estoy esperando recibir algo de clientSocket\n");
+	int resultRecv = recv(clientSocket, &id, sizeof(int), 0);
+	if(resultRecv <= 0){
+		printf("%s couldn't receive client id, from client socket %d: %s\n", serverName, clientSocket, strerror(errno));
+		close(clientSocket);
+		return -1;
+	}
+
+	printf("Recibi el id del cliente!");
+
+	return id;
 }
 
 int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char* serverName, const char* clientName){

@@ -13,5 +13,6 @@
 
 	int connectToServer(char* serverIP, int serverPort, const char* serverName, const char* clientName);
 	int welcomeServer(const char* serverIp, int serverPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)());
+	int sendMyIdToServer(int serverSocket, int clientId, const char* clientName);
 
 #endif /* CLIENT_H_ */
