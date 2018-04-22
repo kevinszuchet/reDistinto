@@ -15,7 +15,6 @@
 	#include <readline/history.h>
 	#include <ctype.h>
 	#include <commons/string.h>
-	#include "../planificador.h"
 
 	void openConsole();
 	void execute(char *);
