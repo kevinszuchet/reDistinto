@@ -5,33 +5,16 @@
  *      Author: utnso
  */
 
-#include <our-commons/sockets/client.h>
-#include <our-commons/modules/names.h>
-#include <commons/string.h>
-#include <commons/config.h>
+#include "instancia.h"
 
-#define  CFG_FILE "../instancia.cfg"
-
-void getConfig(char** ipCoordinador,int* portCoordinador,char** algorithm,char**path,char** name,int* dump){
-
-	t_config* config;
-	config = config_create(CFG_FILE);
-	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
-	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
-	*algorithm = config_get_string_value(config, "ALGORITHM");
-	*path = config_get_string_value(config, "PATH");
-	*name = config_get_string_value(config, "NAME");
-	*dump = config_get_int_value(config, "DUMP");
-}
-
-int main(){
+int main(void) {
 	char* ipCoordinador;
 	int portCoordinador;
-	char* algorithm;
-	char* path;
-	char* name;
+	char* algorithm, * path, * name;
 	int dump;
-	getConfig(&ipCoordinador,&portCoordinador,&algorithm,&path,&name,&dump);
+
+	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dump);
+
 	printf("IP coord = %s\n", ipCoordinador);
 	printf("Puerto = %d\n", portCoordinador);
 	printf("Algoritmo = %s\n", algorithm);
@@ -48,4 +31,16 @@ int main(){
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA);
 
 	return 0;
+}
+
+void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump) {
+
+	t_config* config;
+	config = config_create(CFG_FILE);
+	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
+	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
+	*algorithm = config_get_string_value(config, "ALGORITHM");
+	*path = config_get_string_value(config, "PATH");
+	*name = config_get_string_value(config, "NAME");
+	*dump = config_get_int_value(config, "DUMP");
 }
