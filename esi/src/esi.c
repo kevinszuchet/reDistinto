@@ -5,22 +5,7 @@
  *      Author: utnso
  */
 
-#include <our-commons/sockets/client.h>
-#include <our-commons/modules/names.h>
-#include <commons/string.h>
-#include <commons/config.h>
-
-#define  CFG_FILE "../esi.cfg"
-
-void getConfig(char** ipCoordinador,char** ipPlanificador, int* portCoordinador,int* portPlanificador){
-
-	t_config* config;
-	config = config_create(CFG_FILE);
-	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
-	*ipPlanificador = config_get_string_value(config, "IP_PLANIFICADOR");
-	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
-	*portPlanificador = config_get_int_value(config, "PORT_PLANIFICADOR");
-}
+#include "esi.h"
 
 int main(void) {
 	char* ipCoordinador;
@@ -28,13 +13,12 @@ int main(void) {
 	int portCoordinador;
 	int portPlanificador;
 
-	getConfig(&ipCoordinador,&ipPlanificador,&portCoordinador,&portPlanificador);
+	getConfig(&ipCoordinador, &ipPlanificador, &portCoordinador, &portPlanificador);
 
 	printf("IP Coordinador = %s\n", ipCoordinador);
 	printf("IP Planificador = %s\n", ipPlanificador);
 	printf("Port Coordinador = %d\n", portCoordinador);
 	printf("Port Planificador= %d\n", portPlanificador);
-
 
 	/*
 	 * Handshake between esi and planificador
@@ -73,4 +57,14 @@ int main(void) {
 	 * */
 
 	return 0;
+}
+
+void getConfig(char** ipCoordinador,char** ipPlanificador, int* portCoordinador,int* portPlanificador) {
+
+	t_config* config;
+	config = config_create(CFG_FILE);
+	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
+	*ipPlanificador = config_get_string_value(config, "IP_PLANIFICADOR");
+	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
+	*portPlanificador = config_get_int_value(config, "PORT_PLANIFICADOR");
 }
