@@ -15,7 +15,6 @@
 	#include <readline/history.h>
 	#include <ctype.h>
 	#include <commons/string.h>
-	#include "switchs.h"
 	#include "../planificador.h"
 
 	void openConsole();
