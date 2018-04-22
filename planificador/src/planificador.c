@@ -15,8 +15,15 @@ int main(void) {
 	char* ipCoordinador;
 	int portCoordinador;
 	char** blockedKeys;
-
 	getConfig(&listeningPort, &algorithm, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
+	printf("Puerto de escucha = %d\n", listeningPort);
+	printf("Algoritmo = %s\n", algorithm);
+	printf("Estimacion = %d\n", initialEstimation);
+	printf("Ip Coordinador= %s\n", ipCoordinador);
+	printf("Port Coordinador = %d\n", portCoordinador);
+	printf("Claves bloqueadas= %s\n", blockedKeys[0]);
+
+
 
 	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
 	if (welcomeResponse < 0){
@@ -34,7 +41,7 @@ int main(void) {
 	return 0;
 }
 
-void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, int* ipCoordinador, int* portCoordinador, char*** blockedKeys){
+void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys){
 
 	t_config* config;
 	config = config_create(CFG_FILE);
@@ -43,7 +50,7 @@ void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, int
 	*initialEstimation = config_get_int_value(config, "ESTIMATION");
 	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
-	*blockedKeys = config_get_string_value(config, "BLOCKED_KEYS");
+	*blockedKeys = config_get_array_value(config, "BLOCKED_KEYS");
 }
 
 int welcomeEsi(){

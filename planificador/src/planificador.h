@@ -17,7 +17,7 @@
 	#include "console/console.h"
 
 	#define  CFG_FILE "../planificador.cfg"
-	void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, int* ipCoordinador, int* portCoordinador, char*** blockedKeys);
+	void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
 	int welcomeEsi();
 	int welcomeCoordinador();
