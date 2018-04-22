@@ -32,19 +32,19 @@ void execute(char *command) {
 
 	if(!strcmp(command, "pause")){
 
-	} else if(strcmp(command, "continue")){
+	} else if(!strcmp(command, "continue")){
 
-	} else if(strcmp(command, "block")){
+	} else if(!strcmp(command, "block")){
 
-	} else if(strcmp(command, "unblock")){
+	} else if(!strcmp(command, "unblock")){
 
-	} else if(strcmp(command, "list")){
+	} else if(!strcmp(command, "list")){
 
-	} else if(strcmp(command, "kill")){
+	} else if(!strcmp(command, "kill")){
 
-	} else if(strcmp(command, "status")){
+	} else if(!strcmp(command, "status")){
 
-	} else if(strcmp(command, "deadlock")){
+	} else if(!strcmp(command, "deadlock")){
 
 	} else {
 		printf("%s: command not found.", command);
