@@ -47,8 +47,7 @@ void execute(char *command) {
 	} else if(!strcmp(command, "deadlock")){
 
 	} else {
-		printf("%s: command not found.", command);
+		printf("%s: command not found\n", command);
 	}
-
 }
 
