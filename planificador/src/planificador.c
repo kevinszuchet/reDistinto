@@ -13,7 +13,9 @@ int welcomeCoordinador();
 int main(void) {
 
 	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
-
+	if (welcomeResponse < 0){
+		//reintentar?
+	}
 	/*
 	 * Planificador console
 	 * */

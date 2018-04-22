@@ -6,7 +6,6 @@
  */
 
 #include "server.h"
-#include "client.h"
 
 int openConnection(int listenerPort, const char* serverName, const char* clientName){
 	struct sockaddr_in serverAddress;
@@ -146,8 +145,8 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 	return 0;
 }
 
-int recieveClientId(int clientSocket, int id, const char* serverName){
-	printf("Estoy esperando recibir algo de clientSocket\n");
+int recieveClientId(int clientSocket,  const char* serverName){
+	int id = 0;
 	int resultRecv = recv(clientSocket, &id, sizeof(int), 0);
 	if(resultRecv <= 0){
 		printf("%s couldn't receive client id, from client socket %d: %s\n", serverName, clientSocket, strerror(errno));
@@ -155,13 +154,11 @@ int recieveClientId(int clientSocket, int id, const char* serverName){
 		return -1;
 	}
 
-	printf("Recibi el id del cliente!");
-
 	return id;
 }
 
 int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char* serverName, const char* clientName){
-	int serverSocket, new_socket, client_socket[30], max_clients = 30 , i, sd;
+	int serverSocket, client_socket[30], max_clients = 30 , i, sd;
 	int clientSocket, max_sd;
 
 	//set of socket descriptors

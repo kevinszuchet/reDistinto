@@ -5,8 +5,8 @@
  *      Author: utnso
  */
 
-#include <../our-commons/sockets/client.h>
-#include <../our-commons/modules/names.h>
+#include <our-commons/sockets/client.h>
+#include <our-commons/modules/names.h>
 #include <commons/string.h>
 #include <commons/config.h>
 

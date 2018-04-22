@@ -16,6 +16,6 @@
 	int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* serverName, const char* clientName);
 	int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)(int coordinadorSocket));
 	int acceptUnknownClient(int serverSocket, const char* serverName);
-	int recieveClientId(int clientSocket, int id, const char* serverName);
+	int recieveClientId(int clientSocket, const char* serverName);
 
 #endif /* SERVER_H_ */

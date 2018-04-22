@@ -24,29 +24,13 @@ void getConfig(int* listeningPort,char** algorithm, int* cantEntry,int* entrySiz
 }
 
 int main(){
-	/*
-	 * Handshake between instancia and coordinador
-	 * */
 	int coordinadorSocket = connectToServer("127.0.0.1", 8080, COORDINADOR, INSTANCIA);
 	if (coordinadorSocket < 0){
 		//reintentar conexion?
 		return -1;
 	}
 
-	printf("Voy a enviar mi id al coordinador\n");
-
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA);
-
-	printf("La instancia sigue con lo suyo...\n");
-
-	/*int handshakeWithCoordinador = handshakeWithServer(coordinadorSocket, 11, COORDINADOR, INSTANCIA);
-	if(handshakeWithCoordinador < 0){
-		//que pasa si falla el handshake?
-		return -1;
-	}*/
-	/*
-	 * Handshake between instancia and coordinador
-	 * */
 
 	return 0;
 }
