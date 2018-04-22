@@ -13,6 +13,7 @@
 	#include <our-commons/modules/names.h>
 	#include "console/console.h"
 	#include <commons/string.h>
+	#include <commons/config.h>
 
 	int welcomeCoordinador();
 

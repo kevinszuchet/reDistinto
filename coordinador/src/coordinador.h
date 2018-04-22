@@ -10,7 +10,6 @@
 
 	#include <our-commons/sockets/server.h>
 	#include <our-commons/modules/names.h>
-	#include <commons/string.h>
 	#include <commons/config.h>
 
 #endif /* SRC_COORDINADOR_H_ */
