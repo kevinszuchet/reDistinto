@@ -14,7 +14,8 @@
 	#include "console/console.h"
 	#include <commons/string.h>
 	#include <commons/config.h>
-	#include<commons/collections/dictionary.h>
+	#include <commons/collections/dictionary.h>
+	#include <commons/collections/queue.h>
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define USERBLOCKED -1

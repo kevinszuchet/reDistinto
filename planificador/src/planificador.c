@@ -7,7 +7,7 @@
 
 #include "planificador.h"
 
-t_dictionary* blockedKeysDic;
+t_list* blockedEsiDic;
 
 int listeningPort;
 char* algorithm;
@@ -21,8 +21,8 @@ int main(void) {
 	getConfig(&listeningPort, &algorithm, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
 
-	blockedKeysDic = dictionary_create();
-	addConfigurationBlockedKeys(blockedKeys);
+	blockedEsiDic = dictionary_create();
+	addConfigurationBlockedKeys(blockedEsiDic);
 
 
 	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
@@ -42,8 +42,9 @@ int main(void) {
 }
 void addConfigurationBlockedKeys(char** blockedKeys){
 	int i = 0;
+	t_queue* newBlockedKey = queue_create();
 	while(blockedKeys[i]){
-		dictionary_put(blockedKeysDic,blockedKeys[i],(void*)USERBLOCKED);
+		dictionary_put(blockedEsiDic,(void*)blockedKeys[i],newBlockedKey);
 		i++;
 	}
 }
