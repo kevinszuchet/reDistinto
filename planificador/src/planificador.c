@@ -7,23 +7,12 @@
 
 #include "planificador.h"
 
-t_dictionary* blockedKeysDic;
-
-int listeningPort;
-char* algorithm;
-int initialEstimation;
-char* ipCoordinador;
-int portCoordinador;
-char** blockedKeys;
-
 int main(void) {
-
+	pthread_t threadConsole;
 	getConfig(&listeningPort, &algorithm, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
-
 
 	blockedKeysDic = dictionary_create();
 	addConfigurationBlockedKeys(blockedKeys);
-
 
 	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
 	if (welcomeResponse < 0){
@@ -32,10 +21,10 @@ int main(void) {
 	/*
 	 * Planificador console
 	 * */
-	//crear el hilo!
-	openConsole();
+	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
+	pthread_join(threadConsole, NULL);
 	/*
-	 *  Planificador console
+	 *  End Planificador console
 	 * */
 
 	return 0;
