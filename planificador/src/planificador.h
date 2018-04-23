@@ -15,7 +15,11 @@
 	#include <commons/string.h>
 	#include <commons/config.h>
 	#include <commons/collections/dictionary.h>
+<<<<<<< HEAD
 	#include <pthread.h>
+=======
+	#include <commons/collections/queue.h>
+>>>>>>> dab17bdb35f211cc108bf330bf3f1c789388d459
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define USERBLOCKED -1
