@@ -7,22 +7,22 @@
 
 #include "planificador.h"
 
+t_dictionary* blockedKeysDic;
+
+int listeningPort;
+char* algorithm;
+int initialEstimation;
+char* ipCoordinador;
+int portCoordinador;
+char** blockedKeys;
+
 int main(void) {
 
-	int listeningPort;
-	char* algorithm;
-	int initialEstimation;
-	char* ipCoordinador;
-	int portCoordinador;
-	char** blockedKeys;
 	getConfig(&listeningPort, &algorithm, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
-	printf("Puerto de escucha = %d\n", listeningPort);
-	printf("Algoritmo = %s\n", algorithm);
-	printf("Estimacion = %d\n", initialEstimation);
-	printf("Ip Coordinador= %s\n", ipCoordinador);
-	printf("Port Coordinador = %d\n", portCoordinador);
-	printf("Claves bloqueadas= %s\n", blockedKeys[0]);
 
+
+	blockedKeysDic = dictionary_create();
+	addConfigurationBlockedKeys(blockedKeys);
 
 
 	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
@@ -39,6 +39,13 @@ int main(void) {
 	 * */
 
 	return 0;
+}
+void addConfigurationBlockedKeys(char** blockedKeys){
+	int i = 0;
+	while(blockedKeys[i]){
+		dictionary_put(blockedKeysDic,blockedKeys[i],(void*)USERBLOCKED);
+		i++;
+	}
 }
 
 void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys){

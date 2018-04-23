@@ -14,13 +14,13 @@ void openConsole() {
 	while(1) {
 		line = readline("> ");
 		string_to_lower(line);
-		parameters =
 		parameters = string_split(line," ");
+		//Borrar estos printf cuando todo funcione
 		printf("Parameter quantity = %d",parameterQuantity(parameters));
-		//Borrar este printf cuando todo funcione
 		for(int i = 0;i<parameterQuantity(parameters);i++){
 			printf("Parametro %d = %s\n",i+1,parameters[i]);
 		}
+		//
 		if(line) {
 			add_history(line);
 		}
