@@ -17,7 +17,21 @@
 	#include <commons/string.h>
 	#include "../planificador.h"
 
+	#define PAUSAR 1
+	#define CONTINUAR 2
+	#define BLOQUEAR 3
+	#define DESBLOQUEAR 4
+	#define LISTAR 5
+	#define KILL 6
+	#define STATUS 7
+	#define DEADLOCK 8
+	#define INVALID_COMMAND 9
+
+
 	void openConsole();
-	void execute(char *);
+	void execute(char **);
+	int getCommandNumber(char* );
+	int validCommand(char** );
+	int parameterQuantity(char**);
 
 #endif /* CONSOLA_H_ */
