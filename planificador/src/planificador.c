@@ -22,8 +22,9 @@ char** blockedKeys;
 
 int main(void) {
 
-	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
+	pthread_t threadConsole;
 
+	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
 	blockedEsiDic = dictionary_create();
 	addConfigurationBlockedKeys(blockedKeys);
@@ -38,8 +39,8 @@ int main(void) {
 	/*
 	 * Planificador console
 	 * */
-	//crear el hilo!
-	openConsole();
+	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
+	pthread_join(threadConsole, NULL);
 	/*
 	 *  Planificador console
 	 * */
