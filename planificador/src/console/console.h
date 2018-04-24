@@ -27,11 +27,11 @@
 	#define DEADLOCK 8
 	#define INVALID_COMMAND 9
 
-
 	void openConsole();
 	void execute(char **);
 	int getCommandNumber(char* );
 	int validCommand(char** );
 	int parameterQuantity(char**);
+	int parameterQuantityIsValid(int, int);
 
 #endif /* CONSOLA_H_ */
