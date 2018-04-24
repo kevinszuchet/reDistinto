@@ -50,7 +50,7 @@ void addConfigurationBlockedKeys(char** blockedKeys){
 	}
 }
 
-void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys){
+void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys){
 
 	t_config* config;
 	config = config_create(CFG_FILE);
