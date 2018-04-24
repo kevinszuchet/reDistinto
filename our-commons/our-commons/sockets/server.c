@@ -44,26 +44,6 @@ int openConnection(int listenerPort, const char* serverName, const char* clientN
 	return serverSocket;
 }
 
-int acceptClient(int serverSocket, const char* serverName, const char* clientName){
-
-	if(serverSocket < 0){
-		printf("The socket (%d) where %s is listening to %s is not a valid one\n", serverSocket, serverName, clientName);
-		return -1;
-	}
-
-	struct sockaddr_in clientAddress;
-	unsigned int len = sizeof(clientAddress);
-	int clientSocket = accept(serverSocket, (void*) &clientAddress, &len);
-	if (clientSocket == -1){
-		printf("%s couldn't accept the connection from %s: %s\n", serverName, clientName, strerror(errno));
-		return -1;
-	}
-
-	printf("%s could accept the connection from %s and it's set in socket: %d\n", serverName, clientName, clientSocket);
-
-	return clientSocket;
-}
-
 int acceptUnknownClient(int serverSocket, const char* serverName){
 
 	if(serverSocket < 0){
@@ -105,7 +85,7 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 		return -1;
 	}
 
-	if(response == clientHandshakeValue + 1){
+	if(response == clientHandshakeValue){
 		printf("%s could handshake with %s!\n", serverName, clientName);
 	}else{
 		printf("%s couldn't handshake with client %s, since the response was %d != %d\n", serverName, clientName, response, clientHandshakeValue);
@@ -126,7 +106,7 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 
 	int clientSocket = 0;
 
-	if((clientSocket = acceptClient(serverToClientSocket, serverName, clientName)) < 0){
+	if((clientSocket = acceptUnknownClient(serverToClientSocket, serverName)) < 0){
 		close(clientSocket);
 		return -1;
 	}
@@ -212,7 +192,7 @@ int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char*
 		//If something happened on the master socket, then its an incoming connection
 		if (FD_ISSET(serverSocket, &readfds))
 		{
-			clientSocket = acceptClient(serverSocket, serverName, clientName);
+			clientSocket = acceptUnknownClient(serverSocket, serverName);
 			//TODO: revisar el handshakeProcedure, no es un int. Ademas,
 			//como distinguimos un handshake distinto para cada cliente?
 			//handshakeWithClient(clientSocket, handshakeProcedure, serverName, clientName);

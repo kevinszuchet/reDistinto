@@ -43,7 +43,7 @@ int handshakeWithServer(int serverSocket, int handshakeValue, const char* server
 		return -1;
 	}
 
-	int clientHandshakeValue = response + 1;
+	int clientHandshakeValue = response;
 	if (send(serverSocket, &clientHandshakeValue, sizeof(int), 0) < 0){
 		printf("Something was wrong with send: %s\n", strerror(errno));
 		return -1;

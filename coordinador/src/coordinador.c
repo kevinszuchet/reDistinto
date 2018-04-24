@@ -6,6 +6,7 @@
  */
 
 #include "coordinador.h"
+#include <pthread.h>
 
 int main(void) {
 
@@ -38,19 +39,44 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 	*delay = config_get_int_value(config, "DELAY");
 }
 
-int clientHandler(int clientSocket){
-	int id = recieveClientId(clientSocket, COORDINADOR);
+int welcomeInstancia(){
+	printf("Se levanto el hilo de una instancia\n");
+	return 0;
+}
+
+int welcomeEsi(){
+	printf("Se levanto el hilo de un esi\n");
+	return 0;
+}
+
+void* pthreadInitialize(void* clientSocket){
+	int castedClientSocket = *((int*) clientSocket);
+	printf("pthreadInitialize ClientSocket %d\n", castedClientSocket);
+	int id = recieveClientId(castedClientSocket, COORDINADOR);
 	if (id < 0){
 		//reintentar recv?
-		return -1;
 	}
 
 	if (id == 11){
-		printf("Recibi una instancia\n");
+		welcomeInstancia();
 	}else if(id == 12){
-		printf("Recibi un esi\n");
+		welcomeEsi();
 	}else{
 		printf("Recibi un desconocido!\n");
+	}
+}
+
+int clientHandler(int clientSocket){
+	pthread_t clientThread;
+	printf("clientHandler ClientSocket %d\n", clientSocket);
+	if(pthread_create(&clientThread, NULL, &pthreadInitialize, &clientSocket)){
+		printf("Error creating thread\n");
+		return -1;
+	}
+
+	if(pthread_detach(clientThread) != 0){
+		printf("Couldn't detach thread\n");
+		return -1;
 	}
 
 	return 0;
@@ -60,6 +86,8 @@ int welcomePlanificador(int coordinadorSocket){
 	printf("Recibi al planificador. Empiezo a escuchar nuevas llegadas de instancia/esi\n");
 
 	while(1){
+		printf("Voy a bloquear mediante accept\n");
+		//chequear que no esta bloqueando en el caso de que la instancia se vuelva a conectar!
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR);
 		//validar el retorno
 		clientHandler(clientSocket);

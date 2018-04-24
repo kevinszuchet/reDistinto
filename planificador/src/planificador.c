@@ -90,7 +90,7 @@ int welcomeEsi(){
 }
 
 int welcomeCoordinador(){
-	printf("Probando recepcion en el coordinador\n");
+	printf("Probando recepcion en el planificador\n");
 	/*int welcomePlanificador = welcomeClient(8082, COORDINADOR, ESI, 12, &welcomeEsi);
 	if(welcomePlanificador < 0){
 		//TODO: que pasa en este caso?
