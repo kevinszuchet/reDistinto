@@ -20,7 +20,7 @@
 	#define  CFG_FILE "../planificador.cfg"
 	#define USERBLOCKED -1
 
-	void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
+	void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
 	int welcomeEsi();
 	int welcomeCoordinador();

@@ -11,6 +11,7 @@ t_dictionary* blockedEsiDic;
 
 int listeningPort;
 char* algorithm;
+int alphaEstimation;
 int initialEstimation;
 char* ipCoordinador;
 int portCoordinador;
@@ -18,7 +19,7 @@ char** blockedKeys;
 
 int main(void) {
 
-	getConfig(&listeningPort, &algorithm, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
+	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
 
 	blockedEsiDic = dictionary_create();
@@ -55,6 +56,7 @@ void getConfig(int* listeningPort, char** algorithm, int* initialEstimation, cha
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
 	*algorithm = config_get_string_value(config, "ALGORITHM");
+	*alphaEstimation = config_get_int_value(config, "ALPHA_ESTIMATION");
 	*initialEstimation = config_get_int_value(config, "ESTIMATION");
 	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
