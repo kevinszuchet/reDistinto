@@ -23,14 +23,14 @@ void openConsole() {
 			printf("Parametro %d = %s\n", i+1, parameters[i]);
 		}
 
-		if(line) {
+		/*if(line) {
 			add_history(line);
-		}
+		}*/
 
-		if(!strncmp(line, "exit", 4)) {
+		/*if(!strncmp(line, "exit", 4)) {
 			free(line);
 			break;
-		}
+		}*/
 
 		if(validCommand(parameters)) {
 			execute(parameters);
@@ -60,6 +60,8 @@ int validCommand(char** parameters) {
 	int commandNumber = getCommandNumber(command);
 	int cantExtraParameters = parameterQuantity(parameters) - 1;
 
+	char* key;
+	int id;
 	switch(commandNumber) {
 		case PAUSAR:
 			return parameterQuantityIsValid(cantExtraParameters, 0);
@@ -68,7 +70,14 @@ int validCommand(char** parameters) {
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 		case BLOQUEAR:
-			return parameterQuantityIsValid(cantExtraParameters, 2);
+			if(parameterQuantityIsValid(cantExtraParameters, 2)){
+				strcpy(key,parameters[1]);
+				id = atoi(parameters[2]); //Falta validar que sea un numero
+				if(validateBloquear(key,id)){
+					return 1;
+				}
+			}
+			return 0;
 		break;
 		case DESBLOQUEAR:
 			return parameterQuantityIsValid(cantExtraParameters, 1);
@@ -91,6 +100,48 @@ int validCommand(char** parameters) {
 			return 0;
 		break;
 	}
+}
+
+int validateBloquear(char* key,int id){
+	if(keyExists(key)&&(isReady(id)||isRunning(id))){
+		return 1;
+	}
+	return 0;
+}
+
+int keyExists(char* key){
+	//Debo preguntarle al coordinador si alguna instancia guarda esa clave
+	//Mientras tanto pregunto si existe en mi listado de claves bloqueadas
+	if(dictionary_has_key(blockedEsiDic,key)){
+		printf("key %s exists\n",key);
+		return 1;
+
+	}
+	printf("key %s doesn't exists\n",key);
+	return 0;
+
+}
+int isReady(int idEsi){
+	if(list_is_empty(readyEsis)){
+		printf("Ready list is empty\n");
+		return 0;
+	}
+	for(int i = 0;i<list_size(readyEsis);i++){
+		if(((Esi*)list_get(readyEsis,i))->id==idEsi){
+			printf("Esi %d is  ready\n",idEsi);
+			return 1;
+		}
+	}
+	printf("Esi %d is not ready\n",idEsi);
+	return 0;
+}
+int isRunning(int idEsi){
+	if(runningEsi!=NULL && runningEsi->id==idEsi){
+		printf("Esi %d is running\n",idEsi);
+		return 1;
+	}
+	printf("Esi %d is not running\n",idEsi);
+	return 0;
 }
 
 int getCommandNumber(char* command) {

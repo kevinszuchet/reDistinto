@@ -8,14 +8,21 @@
 #ifndef SRC_TAD_ESI_TAD_ESI_H_
 #define SRC_TAD_ESI_TAD_ESI_H_
 
+#include<stdlib.h>
+
 typedef struct Esi{
 	int id;
 	double lastBurst;
-	int waitingTime = 0;
+	int waitingTime;
+	int socketConection;
 }Esi;
 
 void addWaitingTime(Esi*);
 
+void addWaitingTimeToAll(Esi**);
 
+Esi *createEsi(int id,double initialBurst,int socketConection);
+
+int id(Esi* esi);
 
 #endif /* SRC_TAD_ESI_TAD_ESI_H_ */

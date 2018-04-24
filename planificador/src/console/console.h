@@ -33,5 +33,9 @@
 	int validCommand(char** );
 	int parameterQuantity(char**);
 	int parameterQuantityIsValid(int, int);
+	int validateBloquear(char* key,int id);
+	int keyExists(char* key);
+	int isReady(int idEsi);
+	int isRunning(int idEsi);
 
 #endif /* CONSOLA_H_ */

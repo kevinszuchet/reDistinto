@@ -8,6 +8,8 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include src/tad_esi/subdir.mk
+-include src/planif_algorithm/subdir.mk
 -include src/console/subdir.mk
 -include src/subdir.mk
 -include subdir.mk

@@ -7,7 +7,8 @@
 
 #include "planificador.h"
 
-t_dictionary* blockedEsiDic;
+
+
 
 int listeningPort;
 char* algorithm;
@@ -17,6 +18,8 @@ char* ipCoordinador;
 int portCoordinador;
 char** blockedKeys;
 
+
+
 int main(void) {
 
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
@@ -24,8 +27,10 @@ int main(void) {
 
 	blockedEsiDic = dictionary_create();
 	addConfigurationBlockedKeys(blockedKeys);
-
-
+	readyEsis = list_create();
+	finishedEsis = list_create();
+	printf("Genero los esi para testear\n");
+	generateTestEsi();
 	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
 	if (welcomeResponse < 0){
 		//reintentar?
@@ -41,6 +46,20 @@ int main(void) {
 
 	return 0;
 }
+
+void generateTestEsi(){
+	Esi* esi1 = createEsi(1,initialEstimation,1);
+	Esi* esi2 = createEsi(2,initialEstimation,2);
+	Esi* esi3 = createEsi(3,initialEstimation,3);
+	list_add(readyEsis,(void*)esi1);
+	printf("Agregue el esi con id=%d\n",esi1->id);
+	list_add(readyEsis,(void*)esi2);
+	printf("Agregue el esi con id=%d\n",esi2->id);
+	runningEsi = esi3;
+
+
+}
+
 void addConfigurationBlockedKeys(char** blockedKeys){
 	int i = 0;
 	t_queue* newBlockedKey = queue_create();

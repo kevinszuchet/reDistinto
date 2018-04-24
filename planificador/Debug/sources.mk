@@ -14,5 +14,7 @@ C_DEPS :=
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 src/console \
+src/planif_algorithm \
 src \
+src/tad_esi \
 
