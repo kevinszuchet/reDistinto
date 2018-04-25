@@ -7,6 +7,7 @@
 
 #include "planificador.h"
 
+<<<<<<< HEAD
 
 
 
@@ -14,6 +15,8 @@ t_dictionary* blockedEsiDic;
 t_list* readyEsis;
 t_list* finishedEsis;
 Esi* runningEsi;
+=======
+>>>>>>> e8458a6c6caf6b17f22d8c8ad70fba153b758e65
 int listeningPort;
 char* algorithm;
 int alphaEstimation;
@@ -22,7 +25,7 @@ char* ipCoordinador;
 int portCoordinador;
 char** blockedKeys;
 
-
+int welcomeNewClients();
 
 int main(void) {
 
@@ -36,10 +39,11 @@ int main(void) {
 	finishedEsis = list_create();
 	printf("Genero los esi para testear\n");
 	generateTestEsi();
-	int welcomeResponse = welcomeServer("127.0.0.1", 8080, COORDINADOR, PLANIFICADOR, 10, &welcomeCoordinador);
+	int welcomeResponse = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients);
 	if (welcomeResponse < 0){
 		//reintentar?
 	}
+
 	/*
 	 * Planificador console
 	 * */
@@ -71,8 +75,6 @@ void generateTestEsi(){
 	list_add(readyEsis,(void*)esi2);
 	printf("Agregue el esi con id=%d\n",esi2->id);
 	runningEsi = esi3;
-
-
 }
 
 void addConfigurationBlockedKeys(char** blockedKeys){
@@ -98,18 +100,31 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 }
 
 int welcomeEsi(){
-	for(;;);
+	printf("I received an esi\n");
 
 	return 0;
 }
 
-int welcomeCoordinador(){
-	printf("Probando recepcion en el planificador\n");
-	/*int welcomePlanificador = welcomeClient(8082, COORDINADOR, ESI, 12, &welcomeEsi);
-	if(welcomePlanificador < 0){
+int clientHandler(int* clientSocket){
+	int clientId = *((int*) clientSocket);
+
+	if (clientId == 13){
+		welcomeEsi();
+	}else{
+		printf("I received a strange\n");
+	}
+
+	return 0;
+}
+
+int welcomeNewClients(){
+	/*int welcomeEsiResult = welcomeClient(8082, COORDINADOR, ESI, 12, &welcomeEsi);
+	if(welcomeEsiResult < 0){
 		//TODO: que pasa en este caso?
 		return -1;
 	}*/
+
+	handleConcurrence(listeningPort, &clientHandler, PLANIFICADOR);
 
 	return 0;
 }

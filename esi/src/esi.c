@@ -15,46 +15,42 @@ int main(void) {
 
 	getConfig(&ipCoordinador, &ipPlanificador, &portCoordinador, &portPlanificador);
 
-	printf("IP Coordinador = %s\n", ipCoordinador);
-	printf("IP Planificador = %s\n", ipPlanificador);
-	printf("Port Coordinador = %d\n", portCoordinador);
-	printf("Port Planificador= %d\n", portPlanificador);
-
 	/*
 	 * Handshake between esi and planificador
 	 * */
-	int planificadorSocket = connectToServer("127.0.0.1", 8082, PLANIFICADOR, ESI);
+	/*int planificadorSocket = connectToServer("127.0.0.1", 8082, PLANIFICADOR, ESI);
 	if (planificadorSocket < 0){
 		//reintentar conexion?
 		return -1;
 	}
 
-	int handshakeWithPlanificador = handshakeWithServer(planificadorSocket, 12, PLANIFICADOR, ESI);
+	int handshakeWithPlanificador = sendMyIdToServer(planificadorSocket, 13, ESI);
 	if(handshakeWithPlanificador < 0){
 		//que pasa si falla el handshake?
 		return -1;
-	}
-	/*
-	 * Handshake between esi and planificador
-	 * */
+	}*/
 
-	/*
-	 * Handshake between esi and coordinador
-	 * */
-	int coordinadorSocket = connectToServer("127.0.0.1", 8083, COORDINADOR,ESI);
+	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI);
 	if (planificadorSocket < 0){
 		//reintentar conexion?
 		return -1;
 	}
 
-	int handshakeWithCoordinador = handshakeWithServer(coordinadorSocket, 13,COORDINADOR, ESI);
-	if(handshakeWithCoordinador < 0){
-		//que pasa si falla el handshake?
+	sendMyIdToServer(planificadorSocket, 13, ESI);
+
+	/*
+	 * Handshake between esi and planificador
+	 * */
+
+
+
+	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI);
+	if (coordinadorSocket < 0){
+		//reintentar conexion?
 		return -1;
 	}
-	/*
-	 * Handshake between esi and coordinador
-	 * */
+
+	sendMyIdToServer(coordinadorSocket, 12, ESI);
 
 	return 0;
 }

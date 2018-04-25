@@ -42,6 +42,6 @@
 
 
 	int welcomeEsi();
-	int welcomeCoordinador();
+	int welcomeNewClients();
 	void addConfigurationBlockedKeys(char**);
 #endif /* SRC_PLANIFICADOR_H_ */

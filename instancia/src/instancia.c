@@ -22,7 +22,7 @@ int main(void) {
 	printf("Name= %s\n", name);
 	printf("Dump= %d\n", dump);
 
-	int coordinadorSocket = connectToServer("127.0.0.1", 8080, COORDINADOR, INSTANCIA);
+	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA);
 	if (coordinadorSocket < 0){
 		//reintentar conexion?
 		return -1;
