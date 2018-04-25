@@ -7,6 +7,7 @@
 
 #include "coordinador.h"
 #include <pthread.h>
+#include <unistd.h>
 
 int main(void) {
 
