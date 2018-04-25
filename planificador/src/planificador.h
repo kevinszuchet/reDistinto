@@ -31,6 +31,7 @@
 	Esi* runningEsi;
 	int listeningPort;
 	char* algorithm;
+	int alphaEstimation;
 	int initialEstimation;
 	char* ipCoordinador;
 	int portCoordinador;

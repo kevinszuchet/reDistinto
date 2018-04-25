@@ -7,6 +7,16 @@
 
 #include "planificador.h"
 
+<<<<<<< HEAD
+
+
+
+t_dictionary* blockedEsiDic;
+t_list* readyEsis;
+t_list* finishedEsis;
+Esi* runningEsi;
+=======
+>>>>>>> e8458a6c6caf6b17f22d8c8ad70fba153b758e65
 int listeningPort;
 char* algorithm;
 int alphaEstimation;
@@ -33,6 +43,16 @@ int main(void) {
 	}
 
 	return 0;
+}
+
+void executeEsi(int esiID){
+	//Obtengo el socket del ESI con ID = esiID
+
+	//Le mando un mensaje al socket
+
+	//Lanzo un hilo para esperar la respuesta del ESI
+
+	//Puedo obtener que se ejecuto correctamente, que se ejecuto correctamente Y FINALIZO o un FALLO en la operacion
 }
 
 void generateTestEsi(){
