@@ -7,7 +7,7 @@
 
 #include "planificador.h"
 
-<<<<<<< HEAD
+
 
 
 
@@ -15,8 +15,7 @@ t_dictionary* blockedEsiDic;
 t_list* readyEsis;
 t_list* finishedEsis;
 Esi* runningEsi;
-=======
->>>>>>> e8458a6c6caf6b17f22d8c8ad70fba153b758e65
+
 int listeningPort;
 char* algorithm;
 int alphaEstimation;
