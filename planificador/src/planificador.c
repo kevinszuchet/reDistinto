@@ -26,9 +26,6 @@ char** blockedKeys;
 int welcomeNewClients();
 
 int main(void) {
-
-	pthread_t threadConsole;
-
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
 	blockedEsiDic = dictionary_create();
@@ -37,11 +34,13 @@ int main(void) {
 	finishedEsis = list_create();
 	printf("Genero los esi para testear\n");
 	generateTestEsi();
+
 	int welcomeResponse = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients);
 	if (welcomeResponse < 0){
 		//reintentar?
 	}
 
+<<<<<<< HEAD
 	/*
 	 * Planificador console
 	 * */
@@ -51,6 +50,8 @@ int main(void) {
 	 *  Planificador console
 	 * */
 
+=======
+>>>>>>> 0f50983d22990f052de645316a55ea78ed6f9bd4
 	return 0;
 }
 
@@ -100,6 +101,12 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 int welcomeEsi(){
 	printf("I received an esi\n");
 
+	//TODO: probar la concurrencia. no estaria sabiendo manejarla...
+	//eso es correcto?
+	printf("Voy a esperar\n");
+	sleep(10);
+	printf("Termine de esperar\n");
+
 	return 0;
 }
 
@@ -116,11 +123,15 @@ int clientHandler(int* clientSocket){
 }
 
 int welcomeNewClients(){
-	/*int welcomeEsiResult = welcomeClient(8082, COORDINADOR, ESI, 12, &welcomeEsi);
-	if(welcomeEsiResult < 0){
-		//TODO: que pasa en este caso?
-		return -1;
-	}*/
+	/*
+	 * Planificador console
+	 * */
+	pthread_t threadConsole;
+	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
+	//pthread_join(threadConsole, NULL);
+	/*
+	 *  Planificador console
+	 * */
 
 	handleConcurrence(listeningPort, &clientHandler, PLANIFICADOR);
 
