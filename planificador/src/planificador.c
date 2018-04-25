@@ -7,7 +7,7 @@
 
 #include "planificador.h"
 
-
+<<<<<<< HEAD
 
 
 
@@ -15,6 +15,8 @@ t_dictionary* blockedEsiDic;
 t_list* readyEsis;
 t_list* finishedEsis;
 Esi* runningEsi;
+=======
+>>>>>>> e8458a6c6caf6b17f22d8c8ad70fba153b758e65
 int listeningPort;
 char* algorithm;
 int alphaEstimation;
@@ -39,18 +41,6 @@ int main(void) {
 	if (welcomeResponse < 0){
 		//reintentar?
 	}
-
-
-	/*
-	 * Planificador console
-	 * */
-	/*pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
-	pthread_join(threadConsole, NULL);*/ //Comento la consola hasta que funcionen la conexion con esis
-	/*
-	 *  Planificador console
-	 * */
-
-
 
 	return 0;
 }
