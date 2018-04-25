@@ -4,11 +4,12 @@
 
 -include ../makefile.init
 
-RM := rm -rf
+RM := rm
 
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include src/subdir.mk
+-include Debug/src/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -23,22 +24,22 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: coordinador
+all: esi
 
 dependents:
 	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) clean all
 
 # Tool invocations
-coordinador: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so
+esi: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug" -o "coordinador" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug" -o "esi" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) coordinador
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) esi
 	-@echo ' '
 
 .PHONY: all clean dependents

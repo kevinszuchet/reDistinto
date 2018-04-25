@@ -23,7 +23,7 @@ int main(void) {
 	printf("Entry size= %d\n", entrySize);
 	printf("delay= %d\n", delay);
 
-	int coordinadorSocket = welcomeClient(8080, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador);
+	int coordinadorSocket = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador);
 
 	return 0;
 }
@@ -40,36 +40,33 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 }
 
 int welcomeInstancia(){
-	printf("Se levanto el hilo de una instancia\n");
+	printf("An instancia thread was created\n");
 	return 0;
 }
 
 int welcomeEsi(){
-	printf("Se levanto el hilo de un esi\n");
+	printf("An esi thread was created\n");
 	return 0;
 }
 
 void* pthreadInitialize(void* clientSocket){
 	int castedClientSocket = *((int*) clientSocket);
-	printf("pthreadInitialize ClientSocket %d\n", castedClientSocket);
 	int id = recieveClientId(castedClientSocket, COORDINADOR);
-	if (id < 0){
-		//reintentar recv?
-	}
 
 	if (id == 11){
 		welcomeInstancia();
 	}else if(id == 12){
 		welcomeEsi();
 	}else{
-		printf("Recibi un desconocido!\n");
+		printf("I received a strange\n");
 	}
 }
 
 int clientHandler(int clientSocket){
 	pthread_t clientThread;
-	printf("clientHandler ClientSocket %d\n", clientSocket);
-	if(pthread_create(&clientThread, NULL, &pthreadInitialize, &clientSocket)){
+	int* clientSocketPointer = malloc(sizeof(int));
+	*clientSocketPointer = clientSocket;
+	if(pthread_create(&clientThread, NULL, &pthreadInitialize, clientSocketPointer)){
 		printf("Error creating thread\n");
 		return -1;
 	}
@@ -83,10 +80,8 @@ int clientHandler(int clientSocket){
 }
 
 int welcomePlanificador(int coordinadorSocket){
-	printf("Recibi al planificador. Empiezo a escuchar nuevas llegadas de instancia/esi\n");
-
+	printf("%s recieved %s, so it'll now start listening esi/instancia connections\n", COORDINADOR, PLANIFICADOR);
 	while(1){
-		printf("Voy a bloquear mediante accept\n");
 		//chequear que no esta bloqueando en el caso de que la instancia se vuelva a conectar!
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR);
 		//validar el retorno

@@ -137,7 +137,7 @@ int recieveClientId(int clientSocket,  const char* serverName){
 	return id;
 }
 
-int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char* serverName, const char* clientName){
+int handleConcurrence(int listenerPort, int (*handleClient)(int* clientId), const char* serverName){
 	int serverSocket, client_socket[30], max_clients = 30 , i, sd;
 	int clientSocket, max_sd;
 
@@ -150,7 +150,8 @@ int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char*
 		client_socket[i] = 0;
 	}
 
-	serverSocket = openConnection(listenerPort, serverName, clientName);
+	//revisar el hardcodeo
+	serverSocket = openConnection(listenerPort, serverName, "UNKNOWN_CLIENT");
 	if(serverSocket < 0){
 		//no se pudo conectar!
 		return -1;
@@ -166,36 +167,35 @@ int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char*
 		max_sd = listenerPort;
 
 		//add child sockets to set
-		for ( i = 0 ; i < max_clients ; i++)
+		for (i = 0 ; i < max_clients ; i++)
 		{
 			//socket descriptor
 			sd = client_socket[i];
 
 			//if valid socket descriptor then add to read list
-			if(sd > 0)
-				FD_SET( sd , &readfds);
+			if(sd > 0){
+				FD_SET(sd, &readfds);
+			}
 
 			//highest file descriptor number, need it for the select function
-			if(sd > max_sd)
+			if(sd > max_sd){
 				max_sd = sd;
+			}
 		}
 
-		//wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
+		//wait for an activity on one of the sockets. Timeout is NULL, so wait indefinitely
 		int selectResult = 0;
-		selectResult = select( max_sd + 1 , &readfds , NULL , NULL , NULL);
+		selectResult = select(max_sd + 1, &readfds ,NULL ,NULL ,NULL);
 
 		if ((selectResult < 0) && (errno!=EINTR))
 		{
-			printf("select error");
+			printf("Select error in server %s\n", serverName);
 		}
 
 		//If something happened on the master socket, then its an incoming connection
 		if (FD_ISSET(serverSocket, &readfds))
 		{
 			clientSocket = acceptUnknownClient(serverSocket, serverName);
-			//TODO: revisar el handshakeProcedure, no es un int. Ademas,
-			//como distinguimos un handshake distinto para cada cliente?
-			//handshakeWithClient(clientSocket, handshakeProcedure, serverName, clientName);
 
 			//add new socket to array of sockets
 			for (i = 0; i < max_clients; i++)
@@ -204,14 +204,12 @@ int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char*
 				if(client_socket[i] == 0)
 				{
 					client_socket[i] = clientSocket;
-					printf("Adding to list of sockets as %d\n" , i);
-
 					break;
 				}
 			}
 		}
 
-		//else its some IO operation on some other socket :)
+		//else its some IO operation on some other socket
 		for (i = 0; i < max_clients; i++)
 		{
 			sd = client_socket[i];
@@ -219,6 +217,14 @@ int handleConcurrence(int listenerPort, int (*handshakeProcedure)(), const char*
 			if (FD_ISSET(sd, &readfds))
 			{
 				//alguno de los sockets escuchados tuvo I/O
+				int clientId = recieveClientId(clientSocket, serverName);
+				int* clientSocketPointer = malloc(sizeof(int));
+				*clientSocketPointer = clientId;
+				handleClient(clientSocketPointer);
+
+				//Close the socket and mark as 0 in list for reuse
+				close( sd );
+				client_socket[i] = 0;
 			}
 		}
 	}
