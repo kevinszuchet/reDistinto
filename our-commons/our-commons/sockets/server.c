@@ -138,7 +138,7 @@ int recieveClientId(int clientSocket,  const char* serverName){
 }
 
 int handleConcurrence(int listenerPort, int (*handleClient)(int* clientId), const char* serverName){
-	int serverSocket, client_socket[30], max_clients = 30 , i, sd;
+	int serverSocket, client_socket[30], max_clients = 30 , i, actualClientSocket;
 	int clientSocket, max_sd;
 
 	//set of socket descriptors
@@ -164,28 +164,28 @@ int handleConcurrence(int listenerPort, int (*handleClient)(int* clientId), cons
 
 		//add master socket to set
 		FD_SET(serverSocket, &readfds);
-		max_sd = listenerPort;
+		max_sd = serverSocket;
 
 		//add child sockets to set
 		for (i = 0 ; i < max_clients ; i++)
 		{
 			//socket descriptor
-			sd = client_socket[i];
+			actualClientSocket = client_socket[i];
 
 			//if valid socket descriptor then add to read list
-			if(sd > 0){
-				FD_SET(sd, &readfds);
+			if(actualClientSocket > 0){
+				FD_SET(actualClientSocket, &readfds);
 			}
 
 			//highest file descriptor number, need it for the select function
-			if(sd > max_sd){
-				max_sd = sd;
+			if(actualClientSocket > max_sd){
+				max_sd = actualClientSocket;
 			}
 		}
 
 		//wait for an activity on one of the sockets. Timeout is NULL, so wait indefinitely
 		int selectResult = 0;
-		selectResult = select(max_sd + 1, &readfds ,NULL ,NULL ,NULL);
+		selectResult = select(max_sd + 1, &readfds, NULL, NULL, NULL);
 
 		if ((selectResult < 0) && (errno!=EINTR))
 		{
@@ -212,18 +212,18 @@ int handleConcurrence(int listenerPort, int (*handleClient)(int* clientId), cons
 		//else its some IO operation on some other socket
 		for (i = 0; i < max_clients; i++)
 		{
-			sd = client_socket[i];
+			actualClientSocket = client_socket[i];
 
-			if (FD_ISSET(sd, &readfds))
+			if (FD_ISSET(actualClientSocket, &readfds))
 			{
 				//alguno de los sockets escuchados tuvo I/O
-				int clientId = recieveClientId(clientSocket, serverName);
+				int clientId = recieveClientId(actualClientSocket, serverName);
 				int* clientSocketPointer = malloc(sizeof(int));
 				*clientSocketPointer = clientId;
 				handleClient(clientSocketPointer);
 
 				//Close the socket and mark as 0 in list for reuse
-				close( sd );
+				close(actualClientSocket);
 				client_socket[i] = 0;
 			}
 		}

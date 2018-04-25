@@ -110,10 +110,10 @@ int welcomeEsi(){
 	return 0;
 }
 
-int clientHandler(int* clientSocket){
-	int clientId = *((int*) clientSocket);
+int clientHandler(int* clientId){
+	int parsedClientId = *((int*) clientId);
 
-	if (clientId == 13){
+	if (parsedClientId == 13){
 		welcomeEsi();
 	}else{
 		printf("I received a strange\n");
