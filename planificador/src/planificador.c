@@ -40,7 +40,7 @@ int main(void) {
 		//reintentar?
 	}
 
-<<<<<<< HEAD
+
 	/*
 	 * Planificador console
 	 * */
@@ -50,8 +50,8 @@ int main(void) {
 	 *  Planificador console
 	 * */
 
-=======
->>>>>>> 0f50983d22990f052de645316a55ea78ed6f9bd4
+
+
 	return 0;
 }
 
