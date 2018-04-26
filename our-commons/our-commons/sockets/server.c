@@ -137,7 +137,7 @@ int recieveClientId(int clientSocket,  const char* serverName){
 	return id;
 }
 
-int handleConcurrence(int listenerPort, int (*handleClient)(int* clientId), const char* serverName){
+int handleConcurrence(int listenerPort, int (*handleClient)(int* clientId, int* clientSocket), const char* serverName){
 	int serverSocket, client_socket[30], max_clients = 30 , i, actualClientSocket;
 	int clientSocket, max_sd;
 
@@ -220,10 +220,11 @@ int handleConcurrence(int listenerPort, int (*handleClient)(int* clientId), cons
 				int clientId = recieveClientId(actualClientSocket, serverName);
 				int* clientSocketPointer = malloc(sizeof(int));
 				*clientSocketPointer = clientId;
-				handleClient(clientSocketPointer);
+				int* clientSocket = malloc(sizeof(int));
+				*clientSocket = actualClientSocket;
+				handleClient(clientSocketPointer, clientSocket);
 
-				//Close the socket and mark as 0 in list for reuse
-				close(actualClientSocket);
+				//Mark as 0 in list for reuse
 				client_socket[i] = 0;
 			}
 		}

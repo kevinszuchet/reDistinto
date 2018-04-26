@@ -98,30 +98,29 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 	*blockedKeys = config_get_array_value(config, "BLOCKED_KEYS");
 }
 
-int welcomeEsi(){
+int welcomeEsi(int clientSocket){
 	printf("I received an esi\n");
 
+	close(clientSocket);
 	return 0;
 }
 
-int clientHandler(int* clientId){
+int clientHandler(int* clientId, int* clientSocket){
 	int parsedClientId = *((int*) clientId);
+	int parsedClientSocket = *((int*) clientSocket);
 
 	if (parsedClientId == 13){
-		welcomeEsi();
+		welcomeEsi(parsedClientSocket);
 	}else{
 		printf("I received a strange\n");
 	}
 
+	free(clientId);
+	free(clientSocket);
 	return 0;
 }
 
 int welcomeNewClients(){
-	/*int welcomeEsiResult = welcomeClient(8082, COORDINADOR, ESI, 12, &welcomeEsi);
-	if(welcomeEsiResult < 0){
-		//TODO: que pasa en este caso?
-		return -1;
-	}*/
 
 	handleConcurrence(listeningPort, &clientHandler, PLANIFICADOR);
 
