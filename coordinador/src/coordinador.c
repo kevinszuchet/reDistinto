@@ -39,13 +39,17 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 	*delay = config_get_int_value(config, "DELAY");
 }
 
-int welcomeInstancia(){
+int welcomeInstancia(int instanciaSocket){
 	printf("An instancia thread was created\n");
+
+	close(instanciaSocket);
 	return 0;
 }
 
-int welcomeEsi(){
+int welcomeEsi(int esiSocket){
 	printf("An esi thread was created\n");
+
+	close(esiSocket);
 	return 0;
 }
 
@@ -54,12 +58,14 @@ void* pthreadInitialize(void* clientSocket){
 	int id = recieveClientId(castedClientSocket, COORDINADOR);
 
 	if (id == 11){
-		welcomeInstancia();
+		welcomeInstancia(castedClientSocket);
 	}else if(id == 12){
-		welcomeEsi();
+		welcomeEsi(castedClientSocket);
 	}else{
 		printf("I received a strange\n");
 	}
+
+	free(clientSocket);
 }
 
 int clientHandler(int clientSocket){

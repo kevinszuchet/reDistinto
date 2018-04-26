@@ -26,7 +26,7 @@ endif
 all: coordinador
 
 dependents:
-	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) clean all
+	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) all
 
 # Tool invocations
 coordinador: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so
