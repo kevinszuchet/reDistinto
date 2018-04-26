@@ -7,7 +7,20 @@
 
 #include "esi.h"
 
-int main(void) {
+int main(int argc, char* argv[]) {
+
+	FILE* scriptFile;
+
+	if (argc != 2) {
+		printf("ESI cannot execute: you must enter a script file to read\n");
+		return -1;
+	}
+
+	if ((scriptFile = fopen(argv[1], "r")) == NULL) {
+		printf("ESI cannot execute: the script file cannot be opened\n");
+		return -1;
+	}
+
 	char* ipCoordinador;
 	char* ipPlanificador;
 	int portCoordinador;
@@ -18,17 +31,6 @@ int main(void) {
 	/*
 	 * Handshake between esi and planificador
 	 * */
-	/*int planificadorSocket = connectToServer("127.0.0.1", 8082, PLANIFICADOR, ESI);
-	if (planificadorSocket < 0){
-		//reintentar conexion?
-		return -1;
-	}
-
-	int handshakeWithPlanificador = sendMyIdToServer(planificadorSocket, 13, ESI);
-	if(handshakeWithPlanificador < 0){
-		//que pasa si falla el handshake?
-		return -1;
-	}*/
 
 	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI);
 	if (planificadorSocket < 0){
@@ -39,10 +41,8 @@ int main(void) {
 	sendMyIdToServer(planificadorSocket, 13, ESI);
 
 	/*
-	 * Handshake between esi and planificador
+	 * Handshake between esi and coordinador
 	 * */
-
-
 
 	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI);
 	if (coordinadorSocket < 0){
@@ -55,7 +55,10 @@ int main(void) {
 	return 0;
 }
 
-void getConfig(char** ipCoordinador,char** ipPlanificador, int* portCoordinador,int* portPlanificador) {
+/*
+ * Configuration
+ * */
+void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador, int* portPlanificador) {
 
 	t_config* config;
 	config = config_create(CFG_FILE);
