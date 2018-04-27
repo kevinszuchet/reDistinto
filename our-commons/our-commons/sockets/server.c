@@ -138,17 +138,10 @@ int recieveClientId(int clientSocket,  const char* serverName){
 }
 
 int handleConcurrence(int listenerPort, int (*handleClient)(int clientId, int clientSocket), const char* serverName){
-	int serverSocket, client_socket[30], max_clients = 30 , i, actualClientSocket;
-	int clientSocket, max_sd;
-
-	//set of socket descriptors
+	fd_set master;
 	fd_set readfds;
-
-	//initialise all client_socket[] to 0 so not checked
-	for (i = 0; i < max_clients; i++)
-	{
-		client_socket[i] = 0;
-	}
+	int fdmax, i;
+	int clientId = 0, resultRecv = 0, serverSocket = 0, clientSocket = 0;
 
 	//revisar el hardcodeo
 	serverSocket = openConnection(listenerPort, serverName, "UNKNOWN_CLIENT");
@@ -157,75 +150,53 @@ int handleConcurrence(int listenerPort, int (*handleClient)(int clientId, int cl
 		return -1;
 	}
 
-	while(1)
-	{
-		//clear the socket set
-		FD_ZERO(&readfds);
+	FD_ZERO(&master);    // clear the master and temp sets
+	FD_ZERO(&readfds);
 
-		//add master socket to set
-		FD_SET(serverSocket, &readfds);
-		max_sd = serverSocket;
+	// add the listener to the master set
+	FD_SET(serverSocket, &master);
 
-		//add child sockets to set
-		for (i = 0 ; i < max_clients ; i++)
-		{
-			//socket descriptor
-			actualClientSocket = client_socket[i];
+	fdmax = serverSocket;
 
-			//if valid socket descriptor then add to read list
-			if(actualClientSocket > 0){
-				FD_SET(actualClientSocket, &readfds);
-			}
-
-			//highest file descriptor number, need it for the select function
-			if(actualClientSocket > max_sd){
-				max_sd = actualClientSocket;
-			}
+	while(1){
+		readfds = master; // copy it
+		if (select(fdmax+1, &readfds, NULL, NULL, NULL) == -1) {
+			perror("select");
 		}
 
-		//wait for an activity on one of the sockets. Timeout is NULL, so wait indefinitely
-		int selectResult = 0;
-		selectResult = select(max_sd + 1, &readfds, NULL, NULL, NULL);
+		// run through the existing connections looking for data to read
+		for(i = 0; i <= fdmax; i++){
+			if (FD_ISSET(i, &readfds)){ // we got one!!
+				if (i == serverSocket){
 
-		if ((selectResult < 0) && (errno!=EINTR))
-		{
-			printf("Select error in server %s\n", serverName);
-		}
+					clientSocket = acceptUnknownClient(serverSocket, serverName);
 
-		//If something happened on the master socket, then its an incoming connection
-		if (FD_ISSET(serverSocket, &readfds))
-		{
-			clientSocket = acceptUnknownClient(serverSocket, serverName);
+					if (clientSocket == -1){
+						perror("accept");
+					}else{
+						FD_SET(clientSocket, &master); // add to master set
+						if (clientSocket > fdmax){    // keep track of the max
+							fdmax = clientSocket;
+						}
+					}
+				}else{
+					clientSocket = i;
+					// handle data from a client
+					resultRecv = recv(clientSocket, &clientId, sizeof(int), 0);
+					if(resultRecv <= 0){
+						if(resultRecv == 0){
+							printf("The client disconnected from server %s\n", serverName);
+						}else{
+							printf("Error in recv from %s select: %s\n", serverName, strerror(errno));
+							exit(-1);
+						}
 
-			//add new socket to array of sockets
-			for (i = 0; i < max_clients; i++)
-			{
-				//if position is empty
-				if(client_socket[i] == 0)
-				{
-					client_socket[i] = clientSocket;
-					break;
+						close(clientSocket);
+						FD_CLR(clientSocket, &master);
+					}else{
+						handleClient(clientId, clientSocket);
+					}
 				}
-			}
-		}
-
-		//else its some IO operation on some other socket
-		for (i = 0; i < max_clients; i++)
-		{
-			actualClientSocket = client_socket[i];
-
-			if (FD_ISSET(actualClientSocket, &readfds))
-			{
-				//alguno de los sockets escuchados tuvo I/O
-				int clientId = recieveClientId(actualClientSocket, serverName);
-				/*int* clientSocketPointer = malloc(sizeof(int));
-				*clientSocketPointer = clientId;
-				int* clientSocket = malloc(sizeof(int));
-				*clientSocket = actualClientSocket;*/
-				handleClient(clientId, actualClientSocket);
-
-				//Mark as 0 in list for reuse
-				client_socket[i] = 0;
 			}
 		}
 	}

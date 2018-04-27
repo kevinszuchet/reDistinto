@@ -52,6 +52,9 @@ int main(int argc, char* argv[]) {
 
 	sendMyIdToServer(coordinadorSocket, 12, ESI);
 
+	//permite probar concurrencia
+	sleep(5);
+
 	return 0;
 }
 
