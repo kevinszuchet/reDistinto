@@ -23,12 +23,11 @@ int initialEstimation;
 char* ipCoordinador;
 int portCoordinador;
 char** blockedKeys;
+pthread_t threadConsole;
 
 int welcomeNewClients();
 
 int main(void) {
-
-	pthread_t threadConsole;
 
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
@@ -42,15 +41,6 @@ int main(void) {
 	if (welcomeResponse < 0){
 		//reintentar?
 	}
-
-	/*
-	 * Planificador console
-	 * */
-	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
-	pthread_join(threadConsole, NULL);
-	/*
-	 *  Planificador console
-	 * */
 
 	return 0;
 }
@@ -101,26 +91,29 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 int welcomeEsi(int clientSocket){
 	printf("I received an esi\n");
 
-	close(clientSocket);
 	return 0;
 }
 
-int clientHandler(int* clientId, int* clientSocket){
-	int parsedClientId = *((int*) clientId);
-	int parsedClientSocket = *((int*) clientSocket);
+int clientHandler(int clientId, int clientSocket){
 
-	if (parsedClientId == 13){
-		welcomeEsi(parsedClientSocket);
+	if (clientId == 13){
+		welcomeEsi(clientSocket);
 	}else{
 		printf("I received a strange\n");
 	}
 
-	free(clientId);
-	free(clientSocket);
 	return 0;
 }
 
 int welcomeNewClients(){
+
+	/*
+	 * Planificador console
+	 * */
+	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
+	/*
+	 *  Planificador console
+	 * */
 
 	handleConcurrence(listeningPort, &clientHandler, PLANIFICADOR);
 

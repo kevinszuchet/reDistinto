@@ -42,14 +42,12 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 int welcomeInstancia(int instanciaSocket){
 	printf("An instancia thread was created\n");
 
-	close(instanciaSocket);
 	return 0;
 }
 
 int welcomeEsi(int esiSocket){
 	printf("An esi thread was created\n");
 
-	close(esiSocket);
 	return 0;
 }
 
@@ -88,7 +86,6 @@ int clientHandler(int clientSocket){
 int welcomePlanificador(int coordinadorSocket){
 	printf("%s recieved %s, so it'll now start listening esi/instancia connections\n", COORDINADOR, PLANIFICADOR);
 	while(1){
-		//chequear que no esta bloqueando en el caso de que la instancia se vuelva a conectar!
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR);
 		//validar el retorno
 		clientHandler(clientSocket);

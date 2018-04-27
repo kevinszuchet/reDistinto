@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
 
 	FILE* scriptFile;
 
-	if (argc != 2) {
+	/*if (argc != 2) {
 		printf("ESI cannot execute: you must enter a script file to read\n");
 		return -1;
 	}
@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
 	if ((scriptFile = fopen(argv[1], "r")) == NULL) {
 		printf("ESI cannot execute: the script file cannot be opened\n");
 		return -1;
-	}
+	}*/
 
 	char* ipCoordinador;
 	char* ipPlanificador;
