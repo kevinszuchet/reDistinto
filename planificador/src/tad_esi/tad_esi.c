@@ -19,12 +19,13 @@ void addWaitingTimeToAll(Esi** esiList){
 	}
 }
 
-Esi *createEsi(int id,double initialBurst,int socketConection){
+Esi *createEsi(int id,double initialEstimation,int socketConection){
 	Esi* newEsi = malloc(sizeof(Esi));
 	newEsi->id = id;
-	newEsi->lastBurst = initialBurst;
+	newEsi->lastBurst = 0;
 	newEsi->socketConection = socketConection;
 	newEsi->waitingTime = 0;
+	newEsi->lastEstimation = initialEstimation;
 	return newEsi;
 }
 

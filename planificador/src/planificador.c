@@ -56,6 +56,23 @@ void executeEsi(int esiID){
 	//Puedo obtener que se ejecuto correctamente, que se ejecuto correctamente Y FINALIZO o un FALLO en la operacion
 }
 
+void testAlgorithm(){
+	printf("Ready esis size = %d\n",list_size(readyEsis));
+	if(list_size(readyEsis)>=3){
+		printf("Run algorithm\n");
+		Esi* proxEsi = proximoEsi(algorithm,alphaEstimation,readyEsis);
+		proxEsi->lastBurst = 5;
+		printf("Selected ESI to run has id %d\n",proxEsi->id);
+		printf("Run algorithm 2\n");
+		proxEsi = proximoEsi(algorithm,alphaEstimation,readyEsis);
+		proxEsi->lastBurst = 3;
+		printf("Selected ESI to run has id %d\n",proxEsi->id);
+		printf("Run algorithm 3\n");
+		proxEsi = proximoEsi(algorithm,alphaEstimation,readyEsis);
+		printf("Selected ESI to run has id %d\n",proxEsi->id);
+	}
+}
+
 void blockKey(char* keyToBlock, int esiBlocked){
 	t_queue* esiQueue = queue_create();
 	if(dictionary_has_key(blockedEsiDic,keyToBlock)){
@@ -70,6 +87,8 @@ void blockKey(char* keyToBlock, int esiBlocked){
 		printf("Blocked esi %d in resource %s \n",esiBlocked,keyToBlock);
 	}
 }
+
+
 
 Esi* generateEsiStruct(int esiSocket){
 
@@ -109,6 +128,9 @@ int welcomeEsi(int clientSocket){
 	printf("I received an esi\n");
 	Esi* newEsi = generateEsiStruct(clientSocket);
 	addEsiToReady(newEsi);
+
+	testAlgorithm();
+
 	return 0;
 }
 
@@ -134,6 +156,8 @@ int welcomeNewClients(){
 	 * */
 
 	handleConcurrence(listeningPort, &clientHandler, PLANIFICADOR);
+
+
 
 	return 0;
 }

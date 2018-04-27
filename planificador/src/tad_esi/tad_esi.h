@@ -15,6 +15,7 @@ typedef struct Esi{
 	double lastBurst;
 	int waitingTime;
 	int socketConection;
+	int lastEstimation;
 }Esi;
 
 void addWaitingTime(Esi*);
