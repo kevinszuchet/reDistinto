@@ -7,7 +7,8 @@
 
 #include "planif_algorithm.h"
 
-typedef bool (*Comparator)(void*,void*);
+
+typedef bool (*Comparator)(void*,void*); //Used this to not repeat code (high order function)
 
 int alpha;
 
@@ -31,7 +32,7 @@ double getEstimation(Esi* esi){
 	return estimation;
 }
 
-Esi* proximoEsi(char* algorithm,int alphaReceived, t_list* esiList){
+Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList){
 	printf("Starting...\n");
 	alpha = alphaReceived;
 	Comparator comparatorToUse;

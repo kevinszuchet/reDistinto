@@ -25,7 +25,7 @@ int portCoordinador;
 char** blockedKeys;
 pthread_t threadConsole;
 
-int actualID = 1;
+int actualID = 1; //ID number for ESIs, when a new one is created, this number aumments by 1
 
 int welcomeNewClients();
 
@@ -47,8 +47,9 @@ int main(void) {
 }
 
 void executeEsi(int esiID){
-	//Obtengo el socket del ESI con ID = esiID
-
+	//Obtengo el socket del ESI
+	Esi* nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+	int socketEsi = nextEsi->id;
 	//Le mando un mensaje al socket
 
 	//Lanzo un hilo para esperar la respuesta del ESI
@@ -56,19 +57,19 @@ void executeEsi(int esiID){
 	//Puedo obtener que se ejecuto correctamente, que se ejecuto correctamente Y FINALIZO o un FALLO en la operacion
 }
 
-void testAlgorithm(){
+void testAlgorithm(){ //Use this to test SJF
 	printf("Ready esis size = %d\n",list_size(readyEsis));
 	if(list_size(readyEsis)>=3){
 		printf("Run algorithm\n");
-		Esi* proxEsi = proximoEsi(algorithm,alphaEstimation,readyEsis);
+		Esi* proxEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 		proxEsi->lastBurst = 5;
 		printf("Selected ESI to run has id %d\n",proxEsi->id);
 		printf("Run algorithm 2\n");
-		proxEsi = proximoEsi(algorithm,alphaEstimation,readyEsis);
+		proxEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 		proxEsi->lastBurst = 3;
 		printf("Selected ESI to run has id %d\n",proxEsi->id);
 		printf("Run algorithm 3\n");
-		proxEsi = proximoEsi(algorithm,alphaEstimation,readyEsis);
+		proxEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 		printf("Selected ESI to run has id %d\n",proxEsi->id);
 	}
 }

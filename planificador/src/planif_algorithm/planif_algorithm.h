@@ -13,7 +13,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-Esi* proximoEsi(char* algorithm,int alphaReceived, t_list* esiList);
+
+Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList);
 double getEstimation(Esi* esi);
 
 #endif /* SRC_PLANIF_ALGORITHM_PLANIF_ALGORITHM_H_ */
