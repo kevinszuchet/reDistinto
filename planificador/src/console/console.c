@@ -45,6 +45,41 @@ void execute(char** parameters) {
 	int commandNumber = getCommandNumber(command);
 	// Borrar cuando todo funcione
 	printf("Execute command number: %d\n", commandNumber);
+	char* key;
+	int esiID;
+	switch(commandNumber) {
+		case PAUSAR:
+
+		break;
+		case CONTINUAR:
+
+		break;
+		case BLOQUEAR:
+		    key = parameters[1];
+		    esiID = atoi(parameters[2]);
+			blockKey(key,esiID);
+			printf("ESI %d was blocked in %s resource:\n", esiID,key);
+		break;
+		case DESBLOQUEAR:
+
+		break;
+		case LISTAR:
+
+		break;
+		case KILL:
+
+		break;
+		case STATUS:
+
+		break;
+		case DEADLOCK:
+
+		break;
+
+		default:
+			printf("%s: command not found\n", command);
+		break;
+	}
 }
 
 int parameterQuantity(char** parameters){
@@ -56,6 +91,10 @@ int parameterQuantity(char** parameters){
 }
 
 int validCommand(char** parameters) {
+	if(parameterQuantity(parameters)==0){
+		printf("No command was written\n");
+		return 0;
+	}
 	char* command = parameters[0];
 	int commandNumber = getCommandNumber(command);
 	int cantExtraParameters = parameterQuantity(parameters) - 1;

@@ -22,7 +22,7 @@
 	#include "planif_algorithm/planif_algorithm.h" //Necessary to delegate planification algorithm stuff
 
 	#define  CFG_FILE "../planificador.cfg"
-	#define USERBLOCKED -1
+	#define CONFIG_BLOCKED 0
 
 
 	t_dictionary* blockedEsiDic;
@@ -40,6 +40,7 @@
 	void generateTestEsi();
 	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation,int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
+	void blockKey(char* keyToBlock, int esiBlocked);
 
 	int welcomeEsi();
 	int welcomeNewClients();

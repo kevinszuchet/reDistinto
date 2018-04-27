@@ -9,7 +9,7 @@
 
 
 
-
+int pauseState = 1; //1 is running, 0 is paussed
 
 t_dictionary* blockedEsiDic;
 t_list* readyEsis;
@@ -25,6 +25,8 @@ int portCoordinador;
 char** blockedKeys;
 pthread_t threadConsole;
 
+int actualID = 1;
+
 int welcomeNewClients();
 
 int main(void) {
@@ -35,8 +37,7 @@ int main(void) {
 	addConfigurationBlockedKeys(blockedKeys);
 	readyEsis = list_create();
 	finishedEsis = list_create();
-	printf("Genero los esi para testear\n");
-	generateTestEsi();
+
 	int welcomeResponse = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients);
 	if (welcomeResponse < 0){
 		//reintentar?
@@ -55,22 +56,38 @@ void executeEsi(int esiID){
 	//Puedo obtener que se ejecuto correctamente, que se ejecuto correctamente Y FINALIZO o un FALLO en la operacion
 }
 
-void generateTestEsi(){
-	Esi* esi1 = createEsi(1,initialEstimation,1);
-	Esi* esi2 = createEsi(2,initialEstimation,2);
-	Esi* esi3 = createEsi(3,initialEstimation,3);
-	list_add(readyEsis,(void*)esi1);
-	printf("Agregue el esi con id=%d\n",esi1->id);
-	list_add(readyEsis,(void*)esi2);
-	printf("Agregue el esi con id=%d\n",esi2->id);
-	runningEsi = esi3;
+void blockKey(char* keyToBlock, int esiBlocked){
+	t_queue* esiQueue = queue_create();
+	if(dictionary_has_key(blockedEsiDic,keyToBlock)){
+		esiQueue = dictionary_get(blockedEsiDic,keyToBlock);
+		dictionary_remove(blockedEsiDic,keyToBlock);
+		queue_push(esiQueue,(void*)esiBlocked);
+		dictionary_put(blockedEsiDic,keyToBlock,esiQueue);
+		printf("Blocked esi %d in resource %s that already was taken \n",esiBlocked,keyToBlock);
+	}else{
+		queue_push(esiQueue,(void*)esiBlocked);
+		dictionary_put(blockedEsiDic,keyToBlock,esiQueue);
+		printf("Blocked esi %d in resource %s \n",esiBlocked,keyToBlock);
+	}
+}
+
+Esi* generateEsiStruct(int esiSocket){
+
+	Esi* newEsi = createEsi(actualID,initialEstimation,esiSocket);
+	actualID++;
+	return newEsi;
+}
+
+void addEsiToReady(Esi* esi){
+	list_add(readyEsis,(void*)esi);
+	printf("Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
 }
 
 void addConfigurationBlockedKeys(char** blockedKeys){
 	int i = 0;
-	t_queue* newBlockedKey = queue_create();
+
 	while(blockedKeys[i]){
-		dictionary_put(blockedEsiDic,blockedKeys[i],(void*)newBlockedKey);
+		blockKey(blockedKeys[i],CONFIG_BLOCKED);
 		i++;
 	}
 }
@@ -90,7 +107,8 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 
 int welcomeEsi(int clientSocket){
 	printf("I received an esi\n");
-
+	Esi* newEsi = generateEsiStruct(clientSocket);
+	addEsiToReady(newEsi);
 	return 0;
 }
 
