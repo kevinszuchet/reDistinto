@@ -137,7 +137,7 @@ int welcomeEsi(int clientSocket){
 
 int clientHandler(int clientId, int clientSocket){
 
-	if (clientId == 13){
+	if (clientId == 12){
 		welcomeEsi(clientSocket);
 	}else{
 		printf("I received a strange\n");

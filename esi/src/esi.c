@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 
-	sendMyIdToServer(planificadorSocket, 13, ESI);
+	sendMyIdToServer(planificadorSocket, 12, ESI);
 
 	/*
 	 * Handshake between esi and coordinador
