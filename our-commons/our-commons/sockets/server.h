@@ -16,6 +16,5 @@
 	int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)(int coordinadorSocket));
 	int acceptUnknownClient(int serverSocket, const char* serverName);
 	int recieveClientId(int clientSocket, const char* serverName);
-	int handleConcurrence(int listenerPort, int (*handleClient)(int clientId, int clientSocket), const char* serverName);
 
 #endif /* SERVER_H_ */

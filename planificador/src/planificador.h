@@ -45,4 +45,5 @@
 	int welcomeEsi();
 	int welcomeNewClients();
 	void addConfigurationBlockedKeys(char**);
+	int handleConcurrence(int listenerPort);
 #endif /* SRC_PLANIFICADOR_H_ */

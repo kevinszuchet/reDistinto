@@ -156,9 +156,76 @@ int welcomeNewClients(){
 	 *  Planificador console
 	 * */
 
-	handleConcurrence(listeningPort, &clientHandler, PLANIFICADOR);
+	handleConcurrence(listeningPort);
 
 
+
+	return 0;
+}
+
+int handleConcurrence(int listenerPort){
+	fd_set master;
+	fd_set readfds;
+	int fdmax, i;
+	int clientId = 0, resultRecv = 0, serverSocket = 0, clientSocket = 0;
+
+	//revisar el hardcodeo
+	serverSocket = openConnection(listenerPort, PLANIFICADOR, "UNKNOWN_CLIENT");
+	if(serverSocket < 0){
+		//no se pudo conectar!
+		return -1;
+	}
+
+	FD_ZERO(&master);    // clear the master and temp sets
+	FD_ZERO(&readfds);
+
+	// add the listener to the master set
+	FD_SET(serverSocket, &master);
+
+	fdmax = serverSocket;
+
+	while(1){
+		readfds = master; // copy it
+		if (select(fdmax+1, &readfds, NULL, NULL, NULL) == -1) {
+			perror("select");
+		}
+
+		// run through the existing connections looking for data to read
+		for(i = 0; i <= fdmax; i++){
+			if (FD_ISSET(i, &readfds)){ // we got one!!
+				if (i == serverSocket){
+
+					clientSocket = acceptUnknownClient(serverSocket, PLANIFICADOR);
+
+					if (clientSocket == -1){
+						perror("accept");
+					}else{
+						FD_SET(clientSocket, &master); // add to master set
+						if (clientSocket > fdmax){    // keep track of the max
+							fdmax = clientSocket;
+						}
+					}
+				}else{
+					clientSocket = i;
+					// handle data from a client
+					resultRecv = recv(clientSocket, &clientId, sizeof(int), 0);
+					if(resultRecv <= 0){
+						if(resultRecv == 0){
+							printf("The client disconnected from server %s\n", PLANIFICADOR);
+						}else{
+							printf("Error in recv from %s select: %s\n", PLANIFICADOR, strerror(errno));
+							exit(-1);
+						}
+
+						close(clientSocket);
+						FD_CLR(clientSocket, &master);
+					}else{
+						clientHandler(clientId, clientSocket);
+					}
+				}
+			}
+		}
+	}
 
 	return 0;
 }
