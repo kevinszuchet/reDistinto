@@ -8,6 +8,10 @@
 #include "coordinador.h"
 #include <pthread.h>
 
+void setDistributionAlgorithm(char* algorithm);
+Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
+t_list* instancias;
+
 int main(void) {
 
 	int listeningPort;
@@ -23,7 +27,11 @@ int main(void) {
 	printf("Entry size= %d\n", entrySize);
 	printf("delay= %d\n", delay);
 
+	//setDistributionAlgorithm(algorithm);
+
 	int coordinadorSocket = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador);
+
+	instancias = list_create();
 
 	return 0;
 }
@@ -38,6 +46,63 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 	*entrySize = config_get_int_value(config, "ENTRY_SIZE");
 	*delay = config_get_int_value(config, "DELAY");
 }
+
+/*Instancia* equitativeLoad(char* keyToBeBlocked){
+	return ;
+}
+
+Instancia* leastSpaceUsed(char* keyToBeBlocked){
+	return ;
+}
+
+Instancia* keyExplicit(char* keyToBeBlocked){
+	return ;
+}
+
+void setDistributionAlgorithm(char* algorithm){
+	if(strcmp(algorithm, "EL") == 0){
+		distributionAlgorithm = &equitativeLoad;
+	}else if(strcmp(algorithm, "LSU") == 0){
+		distributionAlgorithm = &leastSpaceUsed;
+	}else if(strcmp(algorithm, "KE") == 0){
+		distributionAlgorithm = &keyExplicit;
+	}else{
+		printf("Couldn't determine the distribution algorithm\n");
+		//que pasa en este caso?
+	}
+}
+
+Instancia* chooseInstancia(keyToBeBlocked){
+	return *distributionAlgorithm(keyToBeBlocked);
+}
+
+int processEsi(EsiRequest esiRequest){
+	keyToBeBlocked = getKeyFromRequest(esiRequest);
+	choosenInstancia = chooseInstancia(keyToBeBlocked);
+	if (choosenInstancia < 0){
+		informPlanificador(esiRequest->id, esiRequest->operation->key);
+		return -1;
+	}
+
+	sendRequest(choosenInstancia, esiRequest->socketConnection);
+
+	response = waitForInstanciaResponse(choosenInstancia);
+	if(response < 0){
+		informPlanificador();
+		return -1;
+	}
+
+	logResponse(responseToString(response));
+	sendResponse(esi, response);
+
+	return 0;
+}
+
+int recieveEsiToProcess(int esiSocket){
+	EsiRequest* esiRequest;
+	recv(esiSocket, esiRequest, sizeof(EsiRequest), 0);
+	processEsi(esiRequest);
+}*/
 
 int welcomeInstancia(int instanciaSocket){
 	printf("An instancia thread was created\n");
