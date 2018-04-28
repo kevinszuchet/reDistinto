@@ -7,6 +7,8 @@
 
 #include "tad_esi.h"
 
+t_log* logger;
+
 void addWaitingTime(Esi* esi){
 	esi->waitingTime++;
 }

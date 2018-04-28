@@ -8,6 +8,7 @@
 #ifndef SRC_PLANIFICADOR_H_
 #define SRC_PLANIFICADOR_H_
 
+
 	#include <our-commons/sockets/client.h>
 	#include <our-commons/sockets/server.h>
 	#include <our-commons/modules/names.h>
@@ -20,6 +21,7 @@
 	#include <pthread.h>
 	#include "tad_esi/tad_esi.h" //Necessary to control ESIs
 	#include "planif_algorithm/planif_algorithm.h" //Necessary to delegate planification algorithm stuff
+	#include <commons/log.h>
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define CONFIG_BLOCKED 0

@@ -7,6 +7,8 @@
 
 #include "console.h"
 
+t_log* logger;
+
 void openConsole() {
 	char* line;
 	char** parameters;

@@ -7,7 +7,7 @@
 
 #include "server.h"
 
-int openConnection(int listenerPort, const char* serverName, const char* clientName){
+int openConnection(int listenerPort, const char* serverName, const char* clientName, t_log* logger){
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_addr.s_addr = INADDR_ANY;
@@ -15,39 +15,39 @@ int openConnection(int listenerPort, const char* serverName, const char* clientN
 
 	int serverSocket = 0;
 	if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-		printf("%s couldn't create socket for client %s: %s\n", serverName, clientName, strerror(errno));
+		log_error(logger, "%s couldn't create socket for client %s: %s\n", serverName, clientName, strerror(errno));
 		return -1;
 	}
 
 	int activated = 1;
 	if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &activated, sizeof(activated)) == -1){
-		printf("%s had an error in setsockopt: %s\n", serverName, strerror(errno));
+		log_error(logger, "%s had an error in setsockopt: %s\n", serverName, strerror(errno));
 		close(serverSocket);
 		return -1;
 	}
 
 	if (bind(serverSocket, (void*) &serverAddress, sizeof(serverAddress)) != 0) {
-		printf("%s couldn't bind the port %d: %s\n", serverName, listenerPort, strerror(errno));
+		log_error(logger, "%s couldn't bind the port %d: %s\n", serverName, listenerPort, strerror(errno));
 		close(serverSocket);
 		return -1;
 	}
 
 	if(listen(serverSocket, 100) == -1){
-		printf("%s couldn't start to listen in port %d: %s\n", serverName, listenerPort, strerror(errno));
+		log_error(logger,"%s couldn't start to listen in port %d: %s\n", serverName, listenerPort, strerror(errno));
 		close(serverSocket);
 		return -1;
 	}
 
-	printf("%s could create the socket %d to listen to %s.\n", serverName, serverSocket, clientName);
-	printf("Listening...\n");
+	log_info(logger, "%s could create the socket %d to listen to %s.\n", serverName, serverSocket, clientName);
+	log_info(logger, "listening...");
 
 	return serverSocket;
 }
 
-int acceptUnknownClient(int serverSocket, const char* serverName){
+int acceptUnknownClient(int serverSocket, const char* serverName, t_log* logger){
 
 	if(serverSocket < 0){
-		printf("The socket (%d) where %s is listening is not a valid one\n", serverSocket, serverName);
+		log_error(logger, "The socket (%d) where %s is listening is not a valid one\n", serverSocket, serverName);
 		return -1;
 	}
 
@@ -55,24 +55,24 @@ int acceptUnknownClient(int serverSocket, const char* serverName){
 	unsigned int len = sizeof(clientAddress);
 	int clientSocket = accept(serverSocket, (void*) &clientAddress, &len);
 	if (clientSocket == -1){
-		printf("%s couldn't accept a new connection: %s\n", serverName, strerror(errno));
+		log_error(logger, "%s couldn't accept a new connection: %s\n", serverName, strerror(errno));
 		return -1;
 	}
 
-	printf("%s could accept a new connection and it's set in socket: %d\n", serverName, clientSocket);
+		log_info(logger, "%s could accept a new connection and it's set in socket: %d\n", serverName, clientSocket);
 
 	return clientSocket;
 }
 
-int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* serverName, const char* clientName){
+int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* serverName, const char* clientName, t_log* logger){
 
 	if(clientSocket < 0){
-		printf("The socket (%d) where %s is trying to connect to %s is not a valid one\n", clientSocket, serverName, clientName);
+		log_error(logger, "The socket (%d) where %s is trying to connect to %s is not a valid one\n", clientSocket, serverName, clientName);
 		return -1;
 	}
 
 	if (send(clientSocket, &clientHandshakeValue, sizeof(int), 0) < 0){
-		printf("%s couldn't send a message to %s: %s\n", serverName, clientName, strerror(errno));
+		log_error(logger, "The socket (%d) where %s is trying to connect to %s is not a valid one\n", clientSocket, serverName, clientName);
 		close(clientSocket);
 		return -1;
 	}
@@ -80,15 +80,15 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 	int response = 0;
 	int resultRecv = recv(clientSocket, &response, sizeof(int), 0);
 	if(resultRecv <= 0){
-		printf("recv failed on %s, while trying to connect with client %s: %s\n", serverName, clientName, strerror(errno));
+		log_error(logger, "recv failed on %s, while trying to connect with client %s: %s\n", serverName, clientName, strerror(errno));
 		close(clientSocket);
 		return -1;
 	}
 
 	if(response == clientHandshakeValue){
-		printf("%s could handshake with %s!\n", serverName, clientName);
+		log_info(logger, "%s could handshake with %s!\n", serverName, clientName);
 	}else{
-		printf("%s couldn't handshake with client %s, since the response was %d != %d\n", serverName, clientName, response, clientHandshakeValue);
+		log_error(logger, "%s couldn't handshake with client %s, since the response was %d != %d\n", serverName, clientName, response, clientHandshakeValue);
 		close(clientSocket);
 		return -1;
 	}
@@ -96,9 +96,11 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 	return 0;
 }
 
-int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)(int coordinadorSocket)){
+int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue,
+	int (*welcomeProcedure)(int coordinadorSocket), t_log* logger){
+
 	int serverToClientSocket = 0;
-	if((serverToClientSocket = openConnection(listenerPort, serverName, clientName)) < 0){
+	if((serverToClientSocket = openConnection(listenerPort, serverName, clientName, logger)) < 0){
 		//evalauar si se va a reintentar la conexion o que... idem luego del if de abajo
 		close(serverToClientSocket);
 		return -1;
@@ -106,12 +108,12 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 
 	int clientSocket = 0;
 
-	if((clientSocket = acceptUnknownClient(serverToClientSocket, serverName)) < 0){
+	if((clientSocket = acceptUnknownClient(serverToClientSocket, serverName, logger)) < 0){
 		close(clientSocket);
 		return -1;
 	}
 
-	int planificadorHandshakeResult = handshakeWithClient(clientSocket, handshakeValue, serverName, clientName);
+	int planificadorHandshakeResult = handshakeWithClient(clientSocket, handshakeValue, serverName, clientName, logger);
 	if(planificadorHandshakeResult < 0){
 		//que pasa si no se puede hacer handshake?
 		return -1;
@@ -125,11 +127,11 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 	return 0;
 }
 
-int recieveClientId(int clientSocket,  const char* serverName){
+int recieveClientId(int clientSocket,  const char* serverName, t_log* logger){
 	int id = 0;
 	int resultRecv = recv(clientSocket, &id, sizeof(int), 0);
 	if(resultRecv <= 0){
-		printf("%s couldn't receive client id, from client socket %d: %s\n", serverName, clientSocket, strerror(errno));
+		log_error(logger, "%s couldn't receive client id, from client socket %d: %s\n", serverName, clientSocket, strerror(errno));
 		close(clientSocket);
 		return -1;
 	}

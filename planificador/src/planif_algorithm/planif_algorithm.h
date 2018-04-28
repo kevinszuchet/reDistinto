@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <commons/log.h>
 
 Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList);
 double getEstimation(Esi* esi);

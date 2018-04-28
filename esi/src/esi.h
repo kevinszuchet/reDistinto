@@ -12,7 +12,7 @@
 	#include <our-commons/modules/names.h>
 	#include <commons/string.h>
 	#include <commons/config.h>
-
+	#include <commons/log.h>
 	#define  CFG_FILE "../esi.cfg"
 	void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador, int* portPlanificador);
 

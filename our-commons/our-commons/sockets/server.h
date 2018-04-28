@@ -10,11 +10,12 @@
 
 	#include "sockets.h"
 	#include <string.h>
+	#include <commons/log.h>
 
-	int openConnection(int listenerPort, const char* serverName, const char* clientName);
-	int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* serverName, const char* clientName);
-	int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)(int coordinadorSocket));
-	int acceptUnknownClient(int serverSocket, const char* serverName);
-	int recieveClientId(int clientSocket, const char* serverName);
+	int openConnection(int listenerPort, const char* serverName, const char* clientName, t_log* logger);
+	int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* serverName, const char* clientNamem, t_log* logger);
+	int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue, int (*welcomeProcedure)(int coordinadorSocket), t_log* logger);
+	int acceptUnknownClient(int serverSocket, const char* serverName, t_log* logger);
+	int recieveClientId(int clientSocket, const char* serverName, t_log* logger);
 
 #endif /* SERVER_H_ */

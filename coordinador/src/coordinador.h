@@ -12,6 +12,7 @@
 	#include <our-commons/modules/names.h>
 	#include <commons/config.h>
 	#include <commons/collections/list.h>
+	#include <commons/log.h>
 
 	#define  CFG_FILE "../coordinador.cfg"
 

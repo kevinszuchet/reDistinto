@@ -7,7 +7,7 @@
 
 #include "planificador.h"
 
-
+t_log* logger;
 
 int pauseState = 1; //1 is running, 0 is paussed
 
@@ -25,12 +25,12 @@ int portCoordinador;
 char** blockedKeys;
 pthread_t threadConsole;
 
-int actualID = 1; //ID number for ESIs, when a new one is created, this number aumments by 1
+int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
 int welcomeNewClients();
 
 int main(void) {
-
+	logger = log_create("planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
 	blockedEsiDic = dictionary_create();
@@ -38,7 +38,7 @@ int main(void) {
 	readyEsis = list_create();
 	finishedEsis = list_create();
 
-	int welcomeResponse = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients);
+	int welcomeResponse = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
 	if (welcomeResponse < 0){
 		//reintentar?
 	}
@@ -58,19 +58,19 @@ void executeEsi(int esiID){
 }
 
 void testAlgorithm(){ //Use this to test SJF
-	printf("Ready esis size = %d\n",list_size(readyEsis));
+	log_info(logger, "Ready esis size = %d\n",list_size(readyEsis));
 	if(list_size(readyEsis)>=3){
-		printf("Run algorithm\n");
+		log_info(logger, "Run algorithm\n");
 		Esi* proxEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 		proxEsi->lastBurst = 5;
-		printf("Selected ESI to run has id %d\n",proxEsi->id);
-		printf("Run algorithm 2\n");
+		log_info(logger, "Selected ESI to run has id %d\n",proxEsi->id);
+		log_info(logger, "Run algorithm 2\n");
 		proxEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 		proxEsi->lastBurst = 3;
-		printf("Selected ESI to run has id %d\n",proxEsi->id);
-		printf("Run algorithm 3\n");
+		log_info(logger, "Selected ESI to run has id %d\n",proxEsi->id);
+		log_info(logger, "Run algorithm 3\n");
 		proxEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
-		printf("Selected ESI to run has id %d\n",proxEsi->id);
+		log_info("Selected ESI to run has id %d\n",proxEsi->id);
 	}
 }
 
@@ -81,11 +81,11 @@ void blockKey(char* keyToBlock, int esiBlocked){
 		dictionary_remove(blockedEsiDic,keyToBlock);
 		queue_push(esiQueue,(void*)esiBlocked);
 		dictionary_put(blockedEsiDic,keyToBlock,esiQueue);
-		printf("Blocked esi %d in resource %s that already was taken \n",esiBlocked,keyToBlock);
+		log_info(logger, "Blocked esi %d in resource %s that already was taken \n",esiBlocked,keyToBlock);
 	}else{
 		queue_push(esiQueue,(void*)esiBlocked);
 		dictionary_put(blockedEsiDic,keyToBlock,esiQueue);
-		printf("Blocked esi %d in resource %s \n",esiBlocked,keyToBlock);
+		log_info(logger, "Blocked esi %d in resource %s \n",esiBlocked,keyToBlock);
 	}
 }
 
@@ -100,7 +100,7 @@ Esi* generateEsiStruct(int esiSocket){
 
 void addEsiToReady(Esi* esi){
 	list_add(readyEsis,(void*)esi);
-	printf("Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
+	log_info(logger, "Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
 }
 
 void addConfigurationBlockedKeys(char** blockedKeys){
@@ -126,7 +126,7 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 }
 
 int welcomeEsi(int clientSocket){
-	printf("I received an esi\n");
+	log_info(logger, "I received an esi\n");
 	Esi* newEsi = generateEsiStruct(clientSocket);
 	addEsiToReady(newEsi);
 
@@ -140,7 +140,7 @@ int clientHandler(int clientId, int clientSocket){
 	if (clientId == 12){
 		welcomeEsi(clientSocket);
 	}else{
-		printf("I received a strange\n");
+		log_info(logger, "I received a strange\n");
 	}
 
 	return 0;
@@ -170,7 +170,7 @@ int handleConcurrence(int listenerPort){
 	int clientId = 0, resultRecv = 0, serverSocket = 0, clientSocket = 0;
 
 	//revisar el hardcodeo
-	serverSocket = openConnection(listenerPort, PLANIFICADOR, "UNKNOWN_CLIENT");
+	serverSocket = openConnection(listenerPort, PLANIFICADOR, "UNKNOWN_CLIENT", logger);
 	if(serverSocket < 0){
 		//no se pudo conectar!
 		return -1;
@@ -195,7 +195,7 @@ int handleConcurrence(int listenerPort){
 			if (FD_ISSET(i, &readfds)){ // we got one!!
 				if (i == serverSocket){
 
-					clientSocket = acceptUnknownClient(serverSocket, PLANIFICADOR);
+					clientSocket = acceptUnknownClient(serverSocket, PLANIFICADOR, logger);
 
 					if (clientSocket == -1){
 						perror("accept");
@@ -211,9 +211,9 @@ int handleConcurrence(int listenerPort){
 					resultRecv = recv(clientSocket, &clientId, sizeof(int), 0);
 					if(resultRecv <= 0){
 						if(resultRecv == 0){
-							printf("The client disconnected from server %s\n", PLANIFICADOR);
+							log_error(logger, "The client disconnected from server %s\n", PLANIFICADOR);
 						}else{
-							printf("Error in recv from %s select: %s\n", PLANIFICADOR, strerror(errno));
+							log_error(logger, "Error in recv from %s select: %s\n", PLANIFICADOR, strerror(errno));
 							exit(-1);
 						}
 

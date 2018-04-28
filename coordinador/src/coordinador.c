@@ -8,12 +8,14 @@
 #include "coordinador.h"
 #include <pthread.h>
 
+t_log* logger;
+
 void setDistributionAlgorithm(char* algorithm);
 Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
 t_list* instancias;
 
 int main(void) {
-
+	logger = log_create("coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
 	int listeningPort;
 	char* algorithm;
 	int cantEntry;
@@ -29,7 +31,7 @@ int main(void) {
 
 	//setDistributionAlgorithm(algorithm);
 
-	int coordinadorSocket = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador);
+	int coordinadorSocket = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
 
 	instancias = list_create();
 
@@ -105,27 +107,25 @@ int recieveEsiToProcess(int esiSocket){
 }*/
 
 int welcomeInstancia(int instanciaSocket){
-	printf("An instancia thread was created\n");
-
+	log_info(logger, "An instancia thread was created\n");
 	return 0;
 }
 
 int welcomeEsi(int esiSocket){
-	printf("An esi thread was created\n");
-
+	log_info(logger,"An esi thread was created\n");
 	return 0;
 }
 
 void* pthreadInitialize(void* clientSocket){
 	int castedClientSocket = *((int*) clientSocket);
-	int id = recieveClientId(castedClientSocket, COORDINADOR);
+	int id = recieveClientId(castedClientSocket, COORDINADOR, logger);
 
 	if (id == 11){
 		welcomeInstancia(castedClientSocket);
 	}else if(id == 12){
 		welcomeEsi(castedClientSocket);
 	}else{
-		printf("I received a strange\n");
+		log_info(logger,"I received a strange\n");
 	}
 
 	free(clientSocket);
@@ -136,12 +136,12 @@ int clientHandler(int clientSocket){
 	int* clientSocketPointer = malloc(sizeof(int));
 	*clientSocketPointer = clientSocket;
 	if(pthread_create(&clientThread, NULL, &pthreadInitialize, clientSocketPointer)){
-		printf("Error creating thread\n");
+		log_error(logger, "Error creating thread\n");
 		return -1;
 	}
 
 	if(pthread_detach(clientThread) != 0){
-		printf("Couldn't detach thread\n");
+		log_error(logger,"Couldn't detach thread\n");
 		return -1;
 	}
 
@@ -149,9 +149,9 @@ int clientHandler(int clientSocket){
 }
 
 int welcomePlanificador(int coordinadorSocket){
-	printf("%s recieved %s, so it'll now start listening esi/instancia connections\n", COORDINADOR, PLANIFICADOR);
+	log_info(logger, "%s recieved %s, so it'll now start listening esi/instancia connections\n", COORDINADOR, PLANIFICADOR);
 	while(1){
-		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR);
+		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);
 		//validar el retorno
 		clientHandler(clientSocket);
 	}

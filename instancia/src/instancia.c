@@ -7,7 +7,10 @@
 
 #include "instancia.h"
 
+t_log* logger;
+
 int main(void) {
+	logger = log_create("instancia.log", "tpSO", true, LOG_LEVEL_INFO);
 	char* ipCoordinador;
 	int portCoordinador;
 	char* algorithm, * path, * name;
@@ -22,13 +25,13 @@ int main(void) {
 	printf("Name= %s\n", name);
 	printf("Dump= %d\n", dump);
 
-	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA);
+	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA, logger);
 	if (coordinadorSocket < 0){
 		//reintentar conexion?
 		return -1;
 	}
 
-	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA);
+	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
 
 	return 0;
 }

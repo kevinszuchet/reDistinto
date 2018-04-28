@@ -7,8 +7,11 @@
 
 #include "esi.h"
 
+t_log* logger;
+
 int main(int argc, char* argv[]) {
 
+	logger = log_create("esi.log", "tpSO", true, LOG_LEVEL_INFO);
 	FILE* scriptFile;
 
 	/*if (argc != 2) {
@@ -32,25 +35,25 @@ int main(int argc, char* argv[]) {
 	 * Handshake between esi and planificador
 	 * */
 
-	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI);
+	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI, logger);
 	if (planificadorSocket < 0){
 		//reintentar conexion?
 		return -1;
 	}
 
-	sendMyIdToServer(planificadorSocket, 12, ESI);
+	sendMyIdToServer(planificadorSocket, 12, ESI, logger);
 
 	/*
 	 * Handshake between esi and coordinador
 	 * */
 
-	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI);
+	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI, logger);
 	if (coordinadorSocket < 0){
 		//reintentar conexion?
 		return -1;
 	}
 
-	sendMyIdToServer(coordinadorSocket, 12, ESI);
+	sendMyIdToServer(coordinadorSocket, 12, ESI, logger);
 
 	//permite probar concurrencia
 	sleep(20);

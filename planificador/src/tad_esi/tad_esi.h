@@ -9,6 +9,7 @@
 #define SRC_TAD_ESI_TAD_ESI_H_
 
 #include<stdlib.h>
+#include <commons/log.h>
 
 typedef struct Esi{
 	int id;

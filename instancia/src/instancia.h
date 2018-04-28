@@ -12,7 +12,7 @@
 	#include <our-commons/modules/names.h>
 	#include <commons/string.h>
 	#include <commons/config.h>
-
+	#include <commons/log.h>
 	#define  CFG_FILE "../instancia.cfg"
 
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
