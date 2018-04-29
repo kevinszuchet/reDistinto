@@ -30,7 +30,7 @@ int actualID = 1; //ID number for ESIs, when a new one is created, this number i
 int welcomeNewClients();
 
 int main(void) {
-	logger = log_create("planificador.log", "tpSO", true, LOG_LEVEL_INFO);
+	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
 	blockedEsiDic = dictionary_create();

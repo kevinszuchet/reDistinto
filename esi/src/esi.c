@@ -11,7 +11,8 @@ t_log* logger;
 
 int main(int argc, char* argv[]) {
 
-	logger = log_create("esi.log", "tpSO", true, LOG_LEVEL_INFO);
+	logger = log_create("../esi.log", "tpSO", true, LOG_LEVEL_INFO);
+	FILE* scriptFile;
 
 	FILE * scriptFile;
 	char * line = NULL;
