@@ -52,9 +52,10 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="messages|our-commons" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry excluding="messages" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons"/>
+						<entry excluding="tads|messages|our-commons" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="tads|messages" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons/messages"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons/tads"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -110,9 +111,10 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="messages|our-commons" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry excluding="messages" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons"/>
+						<entry excluding="tads|messages|our-commons" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="tads|messages" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons/messages"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="our-commons/tads"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

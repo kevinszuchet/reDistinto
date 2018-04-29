@@ -39,7 +39,6 @@ int main(void) {
 }
 
 void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay){
-
 	t_config* config;
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
@@ -50,7 +49,7 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 }
 
 /*Instancia* equitativeLoad(char* keyToBeBlocked){
-	return ;
+	return instancia;
 }
 
 Instancia* leastSpaceUsed(char* keyToBeBlocked){
@@ -70,49 +69,149 @@ void setDistributionAlgorithm(char* algorithm){
 		distributionAlgorithm = &keyExplicit;
 	}else{
 		printf("Couldn't determine the distribution algorithm\n");
-		//que pasa en este caso?
+		//loggear el error
+		//matar al coordinador
 	}
-}
-
-Instancia* chooseInstancia(keyToBeBlocked){
-	return *distributionAlgorithm(keyToBeBlocked);
-}
-
-int processEsi(EsiRequest esiRequest){
-	keyToBeBlocked = getKeyFromRequest(esiRequest);
-	choosenInstancia = chooseInstancia(keyToBeBlocked);
-	if (choosenInstancia < 0){
-		informPlanificador(esiRequest->id, esiRequest->operation->key);
-		return -1;
-	}
-
-	sendRequest(choosenInstancia, esiRequest->socketConnection);
-
-	response = waitForInstanciaResponse(choosenInstancia);
-	if(response < 0){
-		informPlanificador();
-		return -1;
-	}
-
-	logResponse(responseToString(response));
-	sendResponse(esi, response);
-
-	return 0;
-}
-
-int recieveEsiToProcess(int esiSocket){
-	EsiRequest* esiRequest;
-	recv(esiSocket, esiRequest, sizeof(EsiRequest), 0);
-	processEsi(esiRequest);
 }*/
 
-int welcomeInstancia(int instanciaSocket){
-	log_info(logger, "An instancia thread was created\n");
+Instancia* chooseInstancia(char* keyToBeBlocked){
+	Instancia* instancia = NULL;
+	instancia = (*distributionAlgorithm)(keyToBeBlocked);
+	return instancia;
+}
+
+int waitForInstanciaResponse(Instancia* choosenInstancia){
+	int response = 0;
+	if (recv(choosenInstancia->socket, &response, sizeof(int), 0) <= 0){
+		return -1;
+	}
+	return response;
+}
+
+void informPlanificador(char* key){
+
+}
+
+void sendResponseToEsi(int esiSocket, int response){
+
+}
+
+int validateAvailableKeyWithPlanificador(char* key){
 	return 0;
 }
 
-int welcomeEsi(int esiSocket){
+//TODO estaria bueno manejarnos con otro tad de esi que conozca todos los componentes recibidos...
+//esto es: los dos tamanios y los dos valores, para evitar pasar tantos parametros
+int sendRequest(Instancia* choosenInstancia, char* key, char* value){
+	return 0;
+}
+
+void logOperation(char* stringToLog){
+
+}
+
+int doSet(int esiSocket, char* stringToLog){
+
+	//TODO estos 2 recv se pueden pasar a otra funcion para no repetir!
+	int keySize = 0;
+	if(recv(esiSocket, &keySize, sizeof(int), 0) <= 0){
+
+	}
+
+	char* key = malloc(keySize);
+	if (recv(esiSocket, &key, keySize, 0) <= 0){
+
+	}
+
+	Instancia* choosenInstancia = chooseInstancia(key);
+	if (choosenInstancia == NULL){
+		informPlanificador(key);
+		sendResponseToEsi(esiSocket, EXECUTION_ERROR);
+		return -1;
+	}
+
+	int esiId = validateAvailableKeyWithPlanificador(key);
+
+	if(esiId < 0){
+		return -1;
+	}
+
+	int valueSize = 0;
+	if(recv(esiSocket, &valueSize, sizeof(int), 0) <= 0){
+
+	}
+
+	char* value = malloc(valueSize);
+	if (recv(esiSocket, &value, valueSize, 0) <= 0){
+
+	}
+
+	if (sendRequest(choosenInstancia, key, value) <= 0){
+		//que pasa aca?
+		return -1;
+	}
+
+	int response = waitForInstanciaResponse(choosenInstancia);
+	if(response < 0){
+		informPlanificador(key);
+		sendResponseToEsi(esiSocket, EXECUTION_ERROR);
+		return -1;
+	}
+
+	sendResponseToEsi(esiSocket, response);
+
+	//5 es el tamanio de "ESI X" necesario para loggear, siendo X el id de esi
+	stringToLog = malloc(5 + keySize + valueSize + 1);
+	//hacer el string necesario
+	//strcpy();
+
+	free(key);
+	free(value);
+
+	return 0;
+}
+
+int recieveStentenceToProcess(int esiSocket){
+	char operationCode;
+	//primero se recibe codigo de op
+	//validar recv y
+	recv(esiSocket, &operationCode, sizeof(char), 0);
+
+	char* stringToLog;
+	switch (operationCode){
+		case SET:
+			doSet(esiSocket, stringToLog);
+			break;
+		case GET:
+
+			break;
+		case STORE:
+
+			break;
+		default:
+			//deberiamos matar al esi?
+			break;
+	}
+
+	logOperation(stringToLog);
+	free(stringToLog);
+	return 0;
+}
+
+int handleInstancia(int instanciaSocket){
+	log_info(logger, "An instancia thread was created\n");
+	while(1){
+		//recv();
+		//agregar a la lista de instancias
+	}
+	return 0;
+}
+
+int handleEsi(int esiSocket){
 	log_info(logger,"An esi thread was created\n");
+	while(1){
+		//recieveStentenceToProcess(esiSocket);
+	}
 	return 0;
 }
 
@@ -121,9 +220,9 @@ void* pthreadInitialize(void* clientSocket){
 	int id = recieveClientId(castedClientSocket, COORDINADOR, logger);
 
 	if (id == 11){
-		welcomeInstancia(castedClientSocket);
+		handleInstancia(castedClientSocket);
 	}else if(id == 12){
-		welcomeEsi(castedClientSocket);
+		handleEsi(castedClientSocket);
 	}else{
 		log_info(logger,"I received a strange\n");
 	}

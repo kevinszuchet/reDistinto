@@ -10,29 +10,27 @@
 
 	#include <our-commons/sockets/server.h>
 	#include <our-commons/modules/names.h>
+	#include <our-commons/messages/operation_codes.h>
+	#include <our-commons/tads/tads.h>
 	#include <commons/config.h>
 	#include <commons/collections/list.h>
 	#include <commons/log.h>
 
 	#define  CFG_FILE "../coordinador.cfg"
 
+	#define EXECUTION_ERROR -1
+
 	typedef struct Instancia{
 		int id;
+		int socket;
 		int spaceUsed;
 		char* firstLetter;
 		char* lastLetter;
 	}Instancia;
 
-	typedef struct Operation{
-		int operationCode;
-		char* key;
-		char* value;
-	}Operation;
-
 	typedef struct EsiRequest{
-		int id;
 		Operation* operation;
-		int socketConnection;
+		int socket;
 	}EsiRequest;
 
 	void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay);
