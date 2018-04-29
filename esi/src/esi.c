@@ -12,9 +12,8 @@ t_log* logger;
 int main(int argc, char* argv[]) {
 
 	logger = log_create("../esi.log", "tpSO", true, LOG_LEVEL_INFO);
-	FILE* scriptFile;
 
-	FILE * scriptFile;
+	FILE* scriptFile;
 	char * line = NULL;
 	size_t len = 0;
 	ssize_t read;
