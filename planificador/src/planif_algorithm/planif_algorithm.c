@@ -7,7 +7,6 @@
 
 #include "planif_algorithm.h"
 
-t_log* logger;
 
 typedef bool (*Comparator)(void*,void*); //Used this to not repeat code (high order function)
 

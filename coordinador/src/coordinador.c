@@ -15,7 +15,7 @@ Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
 t_list* instancias;
 
 int main(void) {
-	logger = log_create("coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
+	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
 	int listeningPort;
 	char* algorithm;
 	int cantEntry;

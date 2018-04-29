@@ -7,10 +7,10 @@
 
 #include "instancia.h"
 
-t_log* logger;
+t_log * logger;
 
 int main(void) {
-	logger = log_create("instancia.log", "tpSO", true, LOG_LEVEL_INFO);
+	logger = log_create("../instancia.log", "tpSO", true, LOG_LEVEL_INFO);
 	char* ipCoordinador;
 	int portCoordinador;
 	char* algorithm, * path, * name;
@@ -46,4 +46,7 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	*path = config_get_string_value(config, "PATH");
 	*name = config_get_string_value(config, "NAME");
 	*dump = config_get_int_value(config, "DUMP");
+}
+
+void initialize(int entryAmount, int entrySize){
 }
