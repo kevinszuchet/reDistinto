@@ -7,6 +7,7 @@
 
 #include "coordinador.h"
 #include <pthread.h>
+//#include "tests_functions/instancias.h"
 
 t_log* logger;
 
@@ -31,9 +32,12 @@ int main(void) {
 
 	//setDistributionAlgorithm(algorithm);
 
-	int coordinadorSocket = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
-
 	instancias = list_create();
+	//initializeSomeInstancias(instancias);
+	//Instancia instancia3 = { .id = 9, .socket = 10, .spaceUsed = 0, .firstLetter = 'a', .lastLetter = 'z' };
+	//list_add(instancias, &instancia3);
+
+	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
 
 	return 0;
 }
@@ -198,11 +202,60 @@ int recieveStentenceToProcess(int esiSocket){
 	return 0;
 }
 
+int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia){
+	if(firstInstancia->id > secondInstancia->id){
+		return 1;
+	}
+	return 0;
+}
+
+void showInstancia(Instancia* instancia){
+	printf("ID = %d\n", instancia->id);
+	printf("Socket = %d\n", instancia->socket);
+	printf("Space used = %d\n", instancia->spaceUsed);
+	printf("First letter = %c\n", instancia->firstLetter);
+	printf("Last letter = %c\n", instancia->lastLetter);
+	printf("----------\n");
+}
+
+void showInstancias(){
+	if(list_size(instancias) != 0){
+		printf("----- INSTANCIAS -----\n");
+		list_iterate(instancias, showInstancia);
+	}else{
+		printf("No instancias\n");
+	}
+}
+
+int createNewInstancia(int instanciaSocket){
+	Instancia* instanciaWithGreatestId = malloc(sizeof(Instancia));
+	showInstancias();
+
+	if(list_size(instancias) != 0){
+		memcpy(instanciaWithGreatestId, list_get(instancias, list_size(instancias) - 1), sizeof(Instancia));
+		instanciaWithGreatestId->id = instanciaWithGreatestId->id + 1;
+	}else{
+		instanciaWithGreatestId->id = 0;
+	}
+
+	instanciaWithGreatestId->socket = instanciaSocket;
+	instanciaWithGreatestId->spaceUsed = 0;
+	instanciaWithGreatestId->firstLetter = 'a';
+	instanciaWithGreatestId->lastLetter = 'z';
+
+	list_add(instancias, instanciaWithGreatestId);
+
+	showInstancias();
+
+	return 0;
+}
+
 int handleInstancia(int instanciaSocket){
 	log_info(logger, "An instancia thread was created\n");
+	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
+	createNewInstancia(instanciaSocket);
 	while(1){
 		//recv();
-		//agregar a la lista de instancias
 	}
 	return 0;
 }
@@ -210,7 +263,7 @@ int handleInstancia(int instanciaSocket){
 int handleEsi(int esiSocket){
 	log_info(logger,"An esi thread was created\n");
 	while(1){
-		//recieveStentenceToProcess(esiSocket);
+		recieveStentenceToProcess(esiSocket);
 	}
 	return 0;
 }

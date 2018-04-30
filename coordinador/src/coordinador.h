@@ -24,8 +24,8 @@
 		int id;
 		int socket;
 		int spaceUsed;
-		char* firstLetter;
-		char* lastLetter;
+		char firstLetter;
+		char lastLetter;
 	}Instancia;
 
 	typedef struct EsiRequest{
