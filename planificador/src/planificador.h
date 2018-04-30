@@ -63,6 +63,7 @@
 	void blockKey(char* keyToBlock, int esiBlocked);
 	int checkKeyBlocked(char* keyRecieved);
 	int isTakenResource(char* key);
+	void removeFromReady(Esi* esi);
 
 	int welcomeEsi();
 	int welcomeNewClients();

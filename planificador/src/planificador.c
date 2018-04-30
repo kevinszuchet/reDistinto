@@ -63,10 +63,11 @@ void executionProcedure(){
 		//Obtaining next esi to execute
 		Esi* nextEsi;
 		if(runningEsi==NULL){
-			nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+			nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 		}else{
 			nextEsi = runningEsi;
 		}
+		removeFromReady(nextEsi);
 		sendMessageExecuteToEsi(nextEsi);
 		key_operation keyOpRecieved;
 		receiveCoordinadorMessage(&keyOpRecieved);
@@ -101,6 +102,10 @@ void takeResource(char* key, Esi* esi){
 void finishRunningEsi(){
 	//Pasa el esi a finalizados
 	//Elimina el esi de running
+
+}
+
+void removeFromReady(Esi* esi){
 
 }
 
