@@ -61,7 +61,12 @@ void executionProcedure(){
 		//WAIT AT LEAST ONE ESI TO BE IN READY LIST
 
 		//Obtaining next esi to execute
-		Esi* nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+		Esi* nextEsi;
+		if(runningEsi==NULL){
+			nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+		}else{
+			nextEsi = runningEsi;
+		}
 		sendMessageExecuteToEsi(nextEsi);
 		key_operation keyOpRecieved;
 		receiveCoordinadorMessage(&keyOpRecieved);
@@ -89,6 +94,16 @@ void unlockEsi(char* key){
 	//Saca al esi del diccionario de bloqueados y lo pasa a listos
 }
 
+void takeResource(char* key, Esi* esi){
+	//Pone este esi como taker del diccionario en esa clave
+}
+
+void finishRunningEsi(){
+	//Pasa el esi a finalizados
+	//Elimina el esi de running
+
+}
+
 void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 	switch(esiExecutionInformation){
 		case EXITO:
@@ -97,20 +112,49 @@ void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 					//Nothing to be done
 				break;
 				case GET:
-
+					takeResource(keyOp.key,runningEsi);
 				break;
 				case STORE:
 					unlockEsi(keyOp.key);
 				break;
 
 			}
+			if(strcmp(algorithm,"SJF-CD")==0){
+				//Pasar el esi a ready
+				//Sacar el esi de running
+			}
 		break;
 		case FINALIZADO:
+			switch(keyOp.operation){
+				case SET:
+					//Nothing to be done
+				break;
+				case GET:
+					takeResource(keyOp.key,runningEsi); //No deberia pasar que un esi que finaliza haga get, pero mejor contemplarlo
+				break;
+				case STORE:
+					unlockEsi(keyOp.key);
+				break;
 
+			}
+			finishRunningEsi();
 		break;
 		case FALLA:
+			switch(keyOp.operation){
+				case SET:
+					//Nothing to be done
+				break;
+				case GET:
+					blockKey(keyOp.key,runningEsi->id);
 
+				break;
+				case STORE:
+					blockKey(keyOp.key,runningEsi->id);
+				break;
+
+			}
 		break;
+		runningEsi = NULL;
 
 	}
 }
