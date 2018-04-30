@@ -10,18 +10,21 @@
 //#include "tests_functions/instancias.h"
 
 t_log* logger;
+t_log* operationsLogger;
 
 void setDistributionAlgorithm(char* algorithm);
 Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
 t_list* instancias;
+int delay;
 
 int main(void) {
 	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
+	operationsLogger = log_create("../logOperaciones.log", "tpSO", true, LOG_LEVEL_INFO);
+
 	int listeningPort;
 	char* algorithm;
 	int cantEntry;
 	int entrySize;
-	int delay;
 	getConfig(&listeningPort, &algorithm, &cantEntry, &entrySize, &delay);
 
 	printf("Puerto = %d\n", listeningPort);
@@ -111,7 +114,7 @@ int sendRequest(Instancia* choosenInstancia, char* key, char* value){
 }
 
 void logOperation(char* stringToLog){
-
+	log_info(operationsLogger, stringToLog);
 }
 
 int doSet(int esiSocket, char* stringToLog){
@@ -182,6 +185,7 @@ int recieveStentenceToProcess(int esiSocket){
 	recv(esiSocket, &operationCode, sizeof(char), 0);
 
 	char* stringToLog;
+
 	switch (operationCode){
 		case SET:
 			doSet(esiSocket, stringToLog);
@@ -199,6 +203,8 @@ int recieveStentenceToProcess(int esiSocket){
 
 	logOperation(stringToLog);
 	free(stringToLog);
+	//simular el paso del tiempo segun establece la consigna
+	//sleep(delay);
 	return 0;
 }
 
@@ -221,7 +227,7 @@ void showInstancia(Instancia* instancia){
 void showInstancias(){
 	if(list_size(instancias) != 0){
 		printf("----- INSTANCIAS -----\n");
-		list_iterate(instancias, showInstancia);
+		list_iterate(instancias, (void*) showInstancia);
 	}else{
 		printf("No instancias\n");
 	}
@@ -253,9 +259,27 @@ int createNewInstancia(int instanciaSocket){
 int handleInstancia(int instanciaSocket){
 	log_info(logger, "An instancia thread was created\n");
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
+
+	//que pasa si una instancia se recupera? como la distinguimos?
+	//si seguimos este camino, se va a crear una nueva y no queremos
 	createNewInstancia(instanciaSocket);
+
+	int recvResult = 0;
 	while(1){
-		//recv();
+		int instanciaResponse = 0;
+		recvResult = recv(instanciaSocket, &instanciaResponse, sizeof(int), 0);
+		if(recvResult <= 0){
+			if(recvResult == 0){
+				printf("Instancia on socket %d has fallen\n", instanciaSocket);
+
+				//handlear que pasa en este caso. podriamos guardar el id de la instancia caida, sacar la instancia de la lista...
+				//de instancias. Despues, cuando se reincorpore, levantarla de ahi
+
+				close(instanciaSocket);
+			}
+		}else{
+			//TODO handlear la respuesta normal de ejecucion en una instancia
+		}
 	}
 	return 0;
 }
