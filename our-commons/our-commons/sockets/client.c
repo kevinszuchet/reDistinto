@@ -71,7 +71,7 @@ int welcomeServer(const char* serverIp, int serverPort, const char* serverName, 
 
 	welcomeProcedure();
 
-	return 0;
+	return serverSocket;
 }
 
 int sendMyIdToServer(int serverSocket, int clientId, const char* clientName, t_log* logger){

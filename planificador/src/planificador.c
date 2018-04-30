@@ -11,7 +11,7 @@ t_log* logger;
 
 int pauseState = 1; //1 is running, 0 is paussed
 
-t_dictionary* blockedEsiDic;
+t_dictionary* blockedEsiDic; //Key->esiQueue  if queue is empty, no one have take the resource
 t_list* readyEsis;
 t_list* finishedEsis;
 Esi* runningEsi;
@@ -27,6 +27,8 @@ pthread_t threadConsole;
 
 int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
+int coordinadorSocket;
+
 int welcomeNewClients();
 
 int main(void) {
@@ -38,25 +40,142 @@ int main(void) {
 	readyEsis = list_create();
 	finishedEsis = list_create();
 
-	int welcomeResponse = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
-	if (welcomeResponse < 0){
+	//int coordinadorSocket = ...    y cambiar lo que devuelve welcomeServer por el numero de socket
+	coordinadorSocket = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
+	if (coordinadorSocket < 0){
 		//reintentar?
 	}
+
 
 	return 0;
 }
 
-void executeEsi(int esiID){
-	//Obtengo el socket del ESI
-	Esi* nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
-	int socketEsi = nextEsi->id;
-	//Le mando un mensaje al socket
+//General execute ESI functions
 
-	//Lanzo un hilo para esperar la respuesta del ESI
+//Core execute function
+void executionProcedure(){
 
-	//Puedo obtener que se ejecuto correctamente, que se ejecuto correctamente Y FINALIZO o un FALLO en la operacion
+
+	while(pauseState){ //En vez de esto se puede hacer un semaforo?
+
+		//WAIT AT LEAST ONE ESI TO BE IN READY LIST
+
+		//Obtaining next esi to execute
+		Esi* nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+		sendMessageExecuteToEsi(nextEsi);
+		key_operation keyOpRecieved;
+		receiveCoordinadorMessage(&keyOpRecieved);
+		int keyStatus = checkKeyBlocked(keyOpRecieved.key);
+		sendKeyStatusToCoordinador(keyStatus);
+		int esiExecutionInformation = waitEsiInformation(nextEsi->socketConection);
+		handleEsiInformation(esiExecutionInformation,keyOpRecieved);
+		executionProcedure();
+		//Puedo obtener que se ejecuto correctamente, que se ejecuto correctamente Y FINALIZO o un FALLO en la operacion
+	}
+
 }
 
+//Returns 1 if key is blocked, otherwise return 0
+int checkKeyBlocked(char* keyRecieved){
+	t_queue* blockedEsis = dictionary_get(blockedEsiDic,keyRecieved);
+	if(queue_size(blockedEsis)==0){
+		return 0;
+	}else{
+		return 1;
+	}
+}
+
+void unlockEsi(char* key){
+	//Saca al esi del diccionario de bloqueados y lo pasa a listos
+}
+
+void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
+	switch(esiExecutionInformation){
+		case EXITO:
+			switch(keyOp.operation){
+				case SET:
+					//Nothing to be done
+				break;
+				case GET:
+
+				break;
+				case STORE:
+					unlockEsi(keyOp.key);
+				break;
+
+			}
+		break;
+		case FINALIZADO:
+
+		break;
+		case FALLA:
+
+		break;
+
+	}
+}
+
+void receiveCoordinadorMessage(key_operation* keyOp){
+	int keyLenght = 0;
+	int resultRecv = recv(coordinadorSocket, &keyLenght, sizeof(int), 0);
+	if(resultRecv <= 0){
+		log_error(logger, "recv failed on %s, while waiting coordinador message %s\n", COORDINADOR, strerror(errno));
+		//Que pasa si recibo mal el mensaje del coordinador?
+	}else{
+		int op = 0;
+		int resultRecv = recv(coordinadorSocket, &op, sizeof(int), 0);
+		if(resultRecv <= 0){
+			log_error(logger, "recv failed on %s, while waiting coordinador message %s\n", COORDINADOR, strerror(errno));
+			//Que pasa si recibo mal el mensaje del coordinador?
+		}else{
+			keyOp->operation = op;
+			if(op!=SET){
+				char* keyReceived;
+				recv(coordinadorSocket, &keyReceived, keyLenght, 0);
+				if(resultRecv <= 0){
+					log_error(logger, "recv failed on %s, while waiting coordinador message %s\n", COORDINADOR, strerror(errno));
+					//Que pasa si recibo mal el mensaje del coordinador?
+				}else{
+					keyOp->key= keyReceived;
+
+				}
+			}
+		}
+
+	}
+}
+
+int waitEsiInformation(int esiSocket){
+
+	int finishInformation = 0;
+	int resultRecv = recv(esiSocket, &finishInformation, sizeof(int), 0);
+	if(resultRecv <= 0){
+		log_error(logger, "recv failed on %s, while waiting ESI message %s\n", ESI, strerror(errno));
+		//Que pasa si recibo mal el mensaje del ESI?
+		return -1;
+	}else{
+		return finishInformation;
+	}
+}
+
+void sendKeyStatusToCoordinador(int status){
+	if (send(coordinadorSocket, &status, sizeof(int), 0) < 0){
+	   log_error(logger, "Coultn't send message to Coordinador about key status");
+	}else{
+		log_info(logger,"Send key status (%d) to coordinador %d",status);
+	}
+}
+void sendMessageExecuteToEsi(Esi* nextEsi){
+	int socketEsi = nextEsi->id;
+	int message = RUN;
+    if (send(socketEsi, &message, sizeof(int), 0) < 0){
+	   log_error(logger, "Coultn't send message to ESI %d", nextEsi->id);
+    }else{
+    	log_info(logger,"Send execute message to ESI %d in socket %d",nextEsi->id,nextEsi->socketConection);
+    }
+}
+
+/* Function to test SJF
 void testAlgorithm(){ //Use this to test SJF
 	log_info(logger, "Ready esis size = %d\n",list_size(readyEsis));
 	if(list_size(readyEsis)>=3){
@@ -73,36 +192,68 @@ void testAlgorithm(){ //Use this to test SJF
 		log_info("Selected ESI to run has id %d\n",proxEsi->id);
 	}
 }
+*/
 
+//General use functions
 void blockKey(char* keyToBlock, int esiBlocked){
-	t_queue* esiQueue = queue_create();
-	if(dictionary_has_key(blockedEsiDic,keyToBlock)){
-		esiQueue = dictionary_get(blockedEsiDic,keyToBlock);
-		dictionary_remove(blockedEsiDic,keyToBlock);
-		queue_push(esiQueue,(void*)esiBlocked);
-		dictionary_put(blockedEsiDic,keyToBlock,esiQueue);
-		log_info(logger, "Blocked esi %d in resource %s that already was taken \n",esiBlocked,keyToBlock);
+	t_queue* esiQueue;
+	blocked_queue* blockedQueue;
+	if(!dictionary_has_key(blockedEsiDic,keyToBlock)){
+		queue_create(esiQueue);
+		blockedQueue->blockedEsis = esiQueue;
+
+		blockedQueue->resourceTakerID = -1;
+		dictionary_put(blockedEsiDic,keyToBlock,blockedQueue);
+
 	}else{
-		queue_push(esiQueue,(void*)esiBlocked);
-		dictionary_put(blockedEsiDic,keyToBlock,esiQueue);
-		log_info(logger, "Blocked esi %d in resource %s \n",esiBlocked,keyToBlock);
+		if(isTakenResource(keyToBlock)){
+			blockedQueue = dictionary_get(blockedEsiDic,keyToBlock);
+			dictionary_remove(blockedEsiDic,keyToBlock);
+			esiQueue = blockedQueue->blockedEsis;
+			queue_push(esiQueue,(void*)esiBlocked);
+			blockedQueue->blockedEsis = esiQueue;
+			dictionary_put(blockedEsiDic,keyToBlock,blockedQueue);
+			log_info(logger, "Blocked esi %d in resource %s that already was taken \n",esiBlocked,keyToBlock);
+		}else{
+			//If resource isn't taken, its beeing taken by the running esi or by console
+			queue_create(esiQueue);
+			blockedQueue->blockedEsis = esiQueue;
+			if(esiBlocked == CONFIG_BLOCKED){
+
+				blockedQueue->resourceTakerID = CONFIG_BLOCKED;
+			}else{
+				blockedQueue->resourceTakerID = runningEsi->id;
+			}
+
+			dictionary_put(blockedEsiDic,keyToBlock,blockedQueue);
+			log_info(logger, "Esi %d has taken resource %s \n",esiBlocked,keyToBlock);
+		}
+	}
+
+}
+
+int isTakenResource(char* key){
+	blocked_queue* blockedQueue;
+	if(dictionary_has_key(blockedEsiDic,key)){
+		blockedQueue = dictionary_get(blockedEsiDic,key);
+		if(blockedQueue->resourceTakerID!=-1){
+			return 1;
+		}else{
+			return 0;
+		}
+	}else{
+		return -1; //Key doesn't exists
 	}
 }
 
 
-
-Esi* generateEsiStruct(int esiSocket){
-
-	Esi* newEsi = createEsi(actualID,initialEstimation,esiSocket);
-	actualID++;
-	return newEsi;
-}
 
 void addEsiToReady(Esi* esi){
 	list_add(readyEsis,(void*)esi);
 	log_info(logger, "Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
 }
 
+//Planificador setup functions
 void addConfigurationBlockedKeys(char** blockedKeys){
 	int i = 0;
 
@@ -125,12 +276,18 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 	*blockedKeys = config_get_array_value(config, "BLOCKED_KEYS");
 }
 
+
+//New esi functions
+Esi* generateEsiStruct(int esiSocket){
+	Esi* newEsi = createEsi(actualID,initialEstimation,esiSocket);
+	actualID++;
+	return newEsi;
+}
+
 int welcomeEsi(int clientSocket){
 	log_info(logger, "I received an esi\n");
 	Esi* newEsi = generateEsiStruct(clientSocket);
 	addEsiToReady(newEsi);
-
-	testAlgorithm();
 
 	return 0;
 }
