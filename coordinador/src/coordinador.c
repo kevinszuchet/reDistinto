@@ -378,6 +378,9 @@ int handleInstancia(int instanciaSocket){
 				//de instancias. Despues, cuando se reincorpore, levantarla de ahi
 
 				close(instanciaSocket);
+
+				//si se cae la instancia, se cae su hilo
+				break;
 			}
 		}else{
 			//TODO handlear la respuesta normal de ejecucion en una instancia
