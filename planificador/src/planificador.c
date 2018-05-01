@@ -115,13 +115,13 @@ void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 	switch(esiExecutionInformation){
 		case EXITO:
 			switch(keyOp.operation){
-				case SET:
+				case OURSET:
 					//Nothing to be done
 				break;
-				case GET:
+				case OURGET:
 					takeResource(keyOp.key,runningEsi);
 				break;
-				case STORE:
+				case OURSTORE:
 					unlockEsi(keyOp.key);
 				break;
 
@@ -133,13 +133,13 @@ void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 		break;
 		case FINALIZADO:
 			switch(keyOp.operation){
-				case SET:
+				case OURSET:
 					//Nothing to be done
 				break;
-				case GET:
+				case OURGET:
 					takeResource(keyOp.key,runningEsi); //No deberia pasar que un esi que finaliza haga get, pero mejor contemplarlo
 				break;
-				case STORE:
+				case OURSTORE:
 					unlockEsi(keyOp.key);
 				break;
 
@@ -148,14 +148,14 @@ void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 		break;
 		case FALLA:
 			switch(keyOp.operation){
-				case SET:
+				case OURSET:
 					//Nothing to be done
 				break;
-				case GET:
+				case OURGET:
 					blockKey(keyOp.key,runningEsi->id);
 
 				break;
-				case STORE:
+				case OURSTORE:
 					blockKey(keyOp.key,runningEsi->id);
 				break;
 
@@ -180,7 +180,7 @@ void receiveCoordinadorMessage(key_operation* keyOp){
 			//Que pasa si recibo mal el mensaje del coordinador?
 		}else{
 			keyOp->operation = op;
-			if(op!=SET){
+			if(op!=OURSET){
 				char* keyReceived;
 				recv(coordinadorSocket, &keyReceived, keyLenght, 0);
 				if(resultRecv <= 0){

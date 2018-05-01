@@ -288,13 +288,13 @@ int recieveStentenceToProcess(int esiSocket){
 	}
 
 	switch (operationCode){
-		case SET:
+		case OURSET:
 			doSet(esiSocket, esiId, &stringToLog);
 			break;
-		case STORE:
+		case OURSTORE:
 			doStore(esiSocket, esiId, &stringToLog);
 			break;
-		case GET:
+		case OURGET:
 			doGet(esiSocket, esiId, &stringToLog);
 			break;
 		default:

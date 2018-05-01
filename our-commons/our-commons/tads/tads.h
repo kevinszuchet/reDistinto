@@ -14,5 +14,4 @@
 		char* value;
 	}Operation;
 
-
 #endif /* TADS_H_ */
