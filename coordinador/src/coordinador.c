@@ -12,6 +12,7 @@
 t_log* logger;
 t_log* operationsLogger;
 
+int planificadorSocket;
 void setDistributionAlgorithm(char* algorithm);
 Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
 t_list* instancias;
@@ -82,9 +83,12 @@ void setDistributionAlgorithm(char* algorithm){
 }*/
 
 Instancia* chooseInstancia(char* keyToBeBlocked){
-	Instancia* instancia = NULL;
-	instancia = (*distributionAlgorithm)(keyToBeBlocked);
-	return instancia;
+	if(list_size(instancias) != 0){
+		Instancia* instancia;
+		instancia = (*distributionAlgorithm)(keyToBeBlocked);
+		return instancia;
+	}
+	return NULL;
 }
 
 int waitForInstanciaResponse(Instancia* choosenInstancia){
@@ -103,8 +107,14 @@ void sendResponseToEsi(int esiSocket, int response){
 
 }
 
-int validateAvailableKeyWithPlanificador(char* key){
-	return 0;
+int getActualEsiID(){
+	int esiId = 0;
+	if(recv(planificadorSocket, &esiId, sizeof(int), 0) <= 0){
+
+		return -1;
+	}
+
+	return esiId;
 }
 
 //TODO estaria bueno manejarnos con otro tad de esi que conozca todos los componentes recibidos...
@@ -117,43 +127,89 @@ void logOperation(char* stringToLog){
 	log_info(operationsLogger, stringToLog);
 }
 
-int doSet(int esiSocket, char* stringToLog){
-
-	//TODO estos 2 recv se pueden pasar a otra funcion para no repetir!
-	int keySize = 0;
-	if(recv(esiSocket, &keySize, sizeof(int), 0) <= 0){
-
-	}
-
-	char* key = malloc(keySize);
-	if (recv(esiSocket, &key, keySize, 0) <= 0){
-
-	}
-
-	Instancia* choosenInstancia = chooseInstancia(key);
-	if (choosenInstancia == NULL){
-		informPlanificador(key);
-		sendResponseToEsi(esiSocket, EXECUTION_ERROR);
+char* recieveAccordingToSize(int socket){
+	int size = 0;
+	if(recv(socket, &size, sizeof(int), 0) <= 0){
 		return -1;
 	}
 
-	int esiId = validateAvailableKeyWithPlanificador(key);
-
-	if(esiId < 0){
+	char* recieved = malloc(size);
+	if (recv(socket, &recieved, size, 0) <= 0){
 		return -1;
 	}
 
-	int valueSize = 0;
-	if(recv(esiSocket, &valueSize, sizeof(int), 0) <= 0){
+	return recieved;
+}
 
+/*int isLookedKey(char* actualKey){
+	return 0;
+}
+
+int isKeyInInstancia(Instancia* instancia){
+	if(list_any_satisfy(instancia->storedKeys, isLookedKey) ){
+		return 1;
 	}
 
-	char* value = malloc(valueSize);
-	if (recv(esiSocket, &value, valueSize, 0) <= 0){
+	/*t_link_element *element = instancia->storedKeys->head;
+	t_link_element *aux = NULL;
+	while (element != NULL) {
+		aux = element->next;
 
+		if(element)
+
+		element = aux;
+	}*/
+
+	/*return 0;
+}
+
+Instancia* lookForKey(char* key){
+	Instancia* instancia;
+	//TODO hay un problema: isKeyInInstancia necesita key pero espera un solo parametro...
+	//que es, en principio, una instancia (un elemento de la lista)
+	instancia = list_find(instancias, isKeyInInstancia);
+	return instancia;
+}*/
+
+Instancia* recieveKeyAndChooseInstancia(int esiSocket, char** key){
+	*key = recieveAccordingToSize(esiSocket);
+
+	Instancia* choosenInstancia;
+	//TODO la funcion lookForKey
+	//choosenInstancia = lookForKey(key);
+
+	if(choosenInstancia == NULL){
+		choosenInstancia = chooseInstancia(key);
+		if (choosenInstancia == NULL){
+			//TODO chequear que se le manda al planificador
+			informPlanificador(key);
+			sendResponseToEsi(esiSocket, EXECUTION_ERROR);
+			return NULL;
+		}
 	}
 
-	if (sendRequest(choosenInstancia, key, value) <= 0){
+	return choosenInstancia;
+}
+
+int instanciaDoSet(Instancia* instancia, char* key, char* value){
+	return 0;
+}
+
+int instanciaDoStore(Instancia* instancia, char* key){
+	return 0;
+}
+
+int doSet(int esiSocket, int esiId, char** stringToLog){
+	char* key;
+	Instancia* choosenInstancia = recieveKeyAndChooseInstancia(esiSocket, &key);
+	if(choosenInstancia == NULL){
+		return -1;
+	}
+
+	char* value = recieveAccordingToSize(esiSocket);
+
+	//TODO hay que enviar algo mas a la instancia, para que sepa que hacer
+	if (instanciaDoSet(choosenInstancia, key, value) <= 0){
 		//que pasa aca?
 		return -1;
 	}
@@ -167,9 +223,11 @@ int doSet(int esiSocket, char* stringToLog){
 
 	sendResponseToEsi(esiSocket, response);
 
-	//5 es el tamanio de "ESI X" necesario para loggear, siendo X el id de esi
-	stringToLog = malloc(5 + keySize + valueSize + 1);
-	//hacer el string necesario
+	//5 es el tamanio de "ESI X" necesario para loggear, siendo X el id de esi. el +1 del medio...
+	//es por el espacio entre key y value
+	*stringToLog = malloc(5 + strlen(key) + 1 + strlen(value) + 1);
+	//TODO hacer el string necesario
+	//sprintf();
 	//strcpy();
 
 	free(key);
@@ -178,23 +236,68 @@ int doSet(int esiSocket, char* stringToLog){
 	return 0;
 }
 
-int recieveStentenceToProcess(int esiSocket){
-	char operationCode;
-	//primero se recibe codigo de op
-	//validar recv y
-	recv(esiSocket, &operationCode, sizeof(char), 0);
+int doStore(int esiSocket, int esiId, char** stringToLog){
+	char* key = recieveAccordingToSize(esiSocket);
 
+	Instancia* choosenInstancia;
+	//TODO la funcion llokForKey
+	//choosenInstancia = lookForKey(key);
+	if(choosenInstancia == NULL){
+		//TODO avisar al planificador que no se puede hacer store de clave inexistente
+	}
+
+	//TODO hay que enviar algo mas a la instancia, para que sepa que hacer
+	if (instanciaDoStore(choosenInstancia, key) <= 0){
+		//que pasa aca?
+		return -1;
+	}
+
+	int response = waitForInstanciaResponse(choosenInstancia);
+	if(response < 0){
+		informPlanificador(key);
+		sendResponseToEsi(esiSocket, EXECUTION_ERROR);
+		return -1;
+	}
+
+	sendResponseToEsi(esiSocket, response);
+
+	*stringToLog = malloc(5 + strlen(key) + 1);
+	//TODO hacer el string necesario
+
+	free(key);
+
+	return 0;
+}
+
+int doGet(int esiSocket, int esiId, char** stringToLog){
+	char* value = recieveAccordingToSize(esiSocket);
+	//TODO ver como se le va avisar al planificador
+	informPlanificador(value);
+	//TODO hay que considerar los tamanios de int para crear el string?
+	//*stringToLog = malloc(5 + strlen(value) + 1);
+	sprintf(*stringToLog, "ESI %d - GET %s", esiId, value);
+	return 0;
+}
+
+int recieveStentenceToProcess(int esiSocket){
+	int esiId = getActualEsiID();
 	char* stringToLog;
+
+	char operationCode;
+	//TODO validar recv
+	if(recv(esiSocket, &operationCode, sizeof(char), 0) <= 0){
+		return -1;
+	}
 
 	switch (operationCode){
 		case SET:
-			doSet(esiSocket, stringToLog);
-			break;
-		case GET:
-
+			doSet(esiSocket, esiId, &stringToLog);
 			break;
 		case STORE:
-
+			doStore(esiSocket, esiId, &stringToLog);
+			break;
+		case GET:
+			doGet(esiSocket, esiId, &stringToLog);
 			break;
 		default:
 			//deberiamos matar al esi?
@@ -203,7 +306,6 @@ int recieveStentenceToProcess(int esiSocket){
 
 	logOperation(stringToLog);
 	free(stringToLog);
-	//simular el paso del tiempo segun establece la consigna
 	//sleep(delay);
 	return 0;
 }
@@ -221,6 +323,7 @@ void showInstancia(Instancia* instancia){
 	printf("Space used = %d\n", instancia->spaceUsed);
 	printf("First letter = %c\n", instancia->firstLetter);
 	printf("Last letter = %c\n", instancia->lastLetter);
+	//TODO mostrar las claves!
 	printf("----------\n");
 }
 
@@ -248,6 +351,7 @@ int createNewInstancia(int instanciaSocket){
 	instanciaWithGreatestId->spaceUsed = 0;
 	instanciaWithGreatestId->firstLetter = 'a';
 	instanciaWithGreatestId->lastLetter = 'z';
+	instanciaWithGreatestId->storedKeys = list_create();
 
 	list_add(instancias, instanciaWithGreatestId);
 
@@ -324,7 +428,8 @@ int clientHandler(int clientSocket){
 	return 0;
 }
 
-int welcomePlanificador(int coordinadorSocket){
+int welcomePlanificador(int coordinadorSocket, int newPlanificadorSocket){
+	planificadorSocket = newPlanificadorSocket;
 	log_info(logger, "%s recieved %s, so it'll now start listening esi/instancia connections\n", COORDINADOR, PLANIFICADOR);
 	while(1){
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);

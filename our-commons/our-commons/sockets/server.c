@@ -97,7 +97,7 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 }
 
 int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue,
-	int (*welcomeProcedure)(int coordinadorSocket), t_log* logger){
+	int (*welcomeProcedure)(int serverSocket, int clientSocket), t_log* logger){
 
 	int serverToClientSocket = 0;
 	if((serverToClientSocket = openConnection(listenerPort, serverName, clientName, logger)) < 0){
@@ -113,13 +113,13 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 		return -1;
 	}
 
-	int planificadorHandshakeResult = handshakeWithClient(clientSocket, handshakeValue, serverName, clientName, logger);
-	if(planificadorHandshakeResult < 0){
+	int handshakeResult = handshakeWithClient(clientSocket, handshakeValue, serverName, clientName, logger);
+	if(handshakeResult < 0){
 		//que pasa si no se puede hacer handshake?
 		return -1;
 	}
 
-	welcomeProcedure(serverToClientSocket);
+	welcomeProcedure(serverToClientSocket, clientSocket);
 
 	close(clientSocket);
 	close(serverToClientSocket);

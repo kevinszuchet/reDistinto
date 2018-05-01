@@ -26,6 +26,7 @@
 		int spaceUsed;
 		char firstLetter;
 		char lastLetter;
+		t_list* storedKeys;
 	}Instancia;
 
 	typedef struct EsiRequest{
@@ -35,7 +36,7 @@
 
 	void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay);
 
-	int welcomePlanificador(int coordinadorSocket);
+	int welcomePlanificador(int coordinadorSocket, int planificadorSocket);
 	int clientHandler(int clientSocket);
 
 #endif /* SRC_COORDINADOR_H_ */
