@@ -85,11 +85,11 @@ void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador
 
 void waitPlanificadorOrder(int planificadorSocket, FILE * scriptFile, int coordinadorSocket) {
 
-	int response = 0;
-	if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL)) {
+	int response = RUN;
+	/*if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL)) {
 		log_error(logger, "recv failed on, while esi trying to connect with planificador %s\n", strerror(errno));
 		exit(-1);
-	}
+	}*/
 
 	log_info(logger, "recv an order from planificador\n");
 
@@ -124,7 +124,7 @@ void tryToExecute(int planificadorSocket, FILE * scriptFile, int coordinadorSock
 			Operation * operation = malloc(sizeof(Operation));
 			interpretateOperation(operation, line);
 
-			sendOperation(operation);
+			//sendOperation(operation);
 
 			/*
 			 * send serialized operation to coordinador
@@ -133,7 +133,8 @@ void tryToExecute(int planificadorSocket, FILE * scriptFile, int coordinadorSock
 			 *		else if (response == FAILURE): failure response: try to interpretate the same line
 			 */
 
-			fseek(scriptFile, esiPC, NULL);
+			//fseek(scriptFile, esiPC, NULL);
+			free(operation);
 
 		} while ((read = getline(&line, &len, scriptFile)) != -1);
 	}
@@ -154,12 +155,15 @@ void interpretateOperation(Operation * operation, char * line) {
 	switch (parsedLine.keyword) {
 		case GET:
 			operation->operationCode = GET;
+			operation->key = malloc(strlen(parsedLine.argumentos.GET.clave) + 1);
 			strcpy(operation->key, parsedLine.argumentos.GET.clave);
 			log_info(logger, "GET\tclave: <%s>\n", parsedLine.argumentos.GET.clave);
 			break;
 
 		case SET:
 			operation->operationCode = SET;
+			operation->key = malloc(strlen(parsedLine.argumentos.SET.clave) + 1);
+			operation->value = malloc(strlen(parsedLine.argumentos.SET.valor) + 1);
 			strcpy(operation->key, parsedLine.argumentos.SET.clave);
 			strcpy(operation->value, parsedLine.argumentos.SET.valor);
 			log_info(logger, "SET\tclave: <%s>\tvalor: <%s>\n", parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
@@ -167,6 +171,7 @@ void interpretateOperation(Operation * operation, char * line) {
 
 		case STORE:
 			operation->operationCode = STORE;
+			operation->key = malloc(strlen(parsedLine.argumentos.STORE.clave) + 1);
 			strcpy(operation->key, parsedLine.argumentos.STORE.clave);
 			log_info(logger, "STORE\tclave: <%s>\n", parsedLine.argumentos.STORE.clave);
 			break;
@@ -175,6 +180,15 @@ void interpretateOperation(Operation * operation, char * line) {
 			log_error(logger, "Parsi could not understand the keyowrd %s", line);
 			exit(-1);
 	}
+
+	// Hay que hacer free de key y value?
+	//free(operation->key);
+
+	// Rompe y tira segmentation fault
+	/*if (strlen(operation->value) > 0) {
+	 	 Rompe y tira segmentation fault
+		free(operation->value);
+	}*/
 
 	destruir_operacion(parsedLine);
 }

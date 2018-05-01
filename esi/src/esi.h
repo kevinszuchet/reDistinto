@@ -15,12 +15,13 @@
 	#include <commons/log.h>
 	#include <parsi/parser.h>
 	#include <our-commons/tads/tads.h>
-	#include <our-commons/messages/operation_codes.h>
+	#include <our-commons/messages/serialization.h>
 
 	#define  CFG_FILE "../esi.cfg"
 	void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador, int* portPlanificador);
 
-	void waitToPlanificadorOrder(int planificadorSocket, FILE * scriptFile, int coordinadorSocket);
+	void waitPlanificadorOrder(int planificadorSocket, FILE * scriptFile, int coordinadorSocket);
 	void tryToExecute(int planificadorSocket, FILE * scriptFile, int coordinadorSocket);
+	void interpretateOperation(Operation * operation, char * line);
 
 #endif /* SRC_ESI_H_ */
