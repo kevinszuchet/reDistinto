@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 	/*
 	 * ESI wait to planificador, who will order to execute
 	 * */
-	waitPlanificadorOrder(planificadorSocket, scriptFile);
+	waitPlanificadorOrder(planificadorSocket, scriptFile, coordinadorSocket);
 
 	fclose(scriptFile);
 
@@ -83,24 +83,22 @@ void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador
  * Interaction with coordinador and planificador
  * */
 
-void waitPlanificadorOrder(int planificadorSocket, FILE * scriptFile) {
+void waitPlanificadorOrder(int planificadorSocket, FILE * scriptFile, int coordinadorSocket) {
 
-	while (1) {
-		int response = 0;
-		if (recv(planificadorSocket, &response, sizeof(int), 0)) {
-			log_error(logger, "recv failed on, while esi trying to connect with planificador %s\n", strerror(errno));
-			exit(-1);
-		} else {
-			log_info(logger, "recv a RUN order from planificador\n");
-		}
+	int response = 0;
+	if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL)) {
+		log_error(logger, "recv failed on, while esi trying to connect with planificador %s\n", strerror(errno));
+		exit(-1);
+	}
 
-		if (response == RUN) {
-			tryToExecute(scriptFile);
-		}
+	log_info(logger, "recv an order from planificador\n");
+
+	if (response == RUN) {
+		tryToExecute(planificadorSocket, scriptFile, coordinadorSocket);
 	}
 }
 
-void tryToExecute(FILE * scriptFile) {
+void tryToExecute(int planificadorSocket, FILE * scriptFile, int coordinadorSocket) {
 
 	char * line = NULL;
 	size_t len = 0;
@@ -130,9 +128,9 @@ void tryToExecute(FILE * scriptFile) {
 
 			/*
 			 * send serialized operation to coordinador
-			 * wait operation response from coordinador
-			 *		success response: iterate esiCP: esiCP += len
-			 *		failure response: try to interpretate the same line
+			 * recv(coordinadorSocket, response, sizeof(int), MSG_WAITALL) wait operation response from coordinador
+			 *		if (response == SUCCESS): success response: iterate esiCP: esiCP += len
+			 *		else if (response == FAILURE): failure response: try to interpretate the same line
 			 */
 
 			fseek(scriptFile, esiPC, NULL);
