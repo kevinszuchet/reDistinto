@@ -55,7 +55,7 @@ int handshakeWithServer(int serverSocket, int handshakeValue, const char* server
 }
 
 int welcomeServer(const char* serverIp, int serverPort, const char* serverName, const char* clientName, int handshakeValue,
-		int (*welcomeProcedure)(), t_log* logger){
+		int (*welcomeProcedure)(int serverSocket), t_log* logger){
 
 	int serverSocket = connectToServer(serverIp, serverPort, serverName, clientName, logger);
 	if (serverSocket < 0){
@@ -69,9 +69,9 @@ int welcomeServer(const char* serverIp, int serverPort, const char* serverName, 
 		return -1;
 	}
 
-	welcomeProcedure();
+	welcomeProcedure(serverSocket);
 
-	return serverSocket;
+	return 0;
 }
 
 int sendMyIdToServer(int serverSocket, int clientId, const char* clientName, t_log* logger){

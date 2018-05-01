@@ -41,10 +41,12 @@ int main(void) {
 	finishedEsis = list_create();
 
 	//int coordinadorSocket = ...    y cambiar lo que devuelve welcomeServer por el numero de socket
-	coordinadorSocket = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
-	if (coordinadorSocket < 0){
+	//cambio lo que devuelve welcomeServer, para que quede como antes
+	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
+	//Te comento esto porque no se usa mas. mira la funcion welcomeNewClients
+	/*if (coordinadorSocket < 0){
 		//reintentar?
-	}
+	}*/
 
 
 	return 0;
@@ -352,7 +354,9 @@ int clientHandler(int clientId, int clientSocket){
 	return 0;
 }
 
-int welcomeNewClients(){
+int welcomeNewClients(int newCoordinadorSocket){
+
+	coordinadorSocket = newCoordinadorSocket;
 
 	/*
 	 * Planificador console
