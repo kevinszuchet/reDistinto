@@ -208,8 +208,7 @@ int doSet(int esiSocket, int esiId, char** stringToLog){
 
 	char* value = recieveAccordingToSize(esiSocket);
 
-	//TODO hay que enviar algo mas a la instancia, para que sepa que hacer
-	if (instanciaDoSet(choosenInstancia, key, value) <= 0){
+	if (instanciaDoSet(choosenInstancia, key, value) < 0){
 		//que pasa aca?
 		return -1;
 	}
@@ -246,8 +245,7 @@ int doStore(int esiSocket, int esiId, char** stringToLog){
 		//TODO avisar al planificador que no se puede hacer store de clave inexistente
 	}
 
-	//TODO hay que enviar algo mas a la instancia, para que sepa que hacer
-	if (instanciaDoStore(choosenInstancia, key) <= 0){
+	if (instanciaDoStore(choosenInstancia, key) < 0){
 		//que pasa aca?
 		return -1;
 	}
