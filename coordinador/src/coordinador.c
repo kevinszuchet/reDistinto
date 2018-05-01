@@ -273,7 +273,7 @@ int doGet(int esiSocket, int esiId, char** stringToLog){
 	informPlanificador(value);
 	//TODO hay que considerar los tamanios de int para crear el string?
 	//*stringToLog = malloc(5 + strlen(value) + 1);
-	sprintf(*stringToLog, "ESI %d - GET %s", esiId, value);
+	//sprintf(*stringToLog, "ESI %d - GET %s", esiId, value);
 	return 0;
 }
 
@@ -362,7 +362,7 @@ int handleInstancia(int instanciaSocket){
 	log_info(logger, "An instancia thread was created\n");
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
-	//que pasa si una instancia se recupera? como la distinguimos?
+	//TODO que pasa si una instancia se recupera? como la distinguimos?
 	//si seguimos este camino, se va a crear una nueva y no queremos
 	createNewInstancia(instanciaSocket);
 
