@@ -157,7 +157,7 @@ char* recieveAccordingToSize(int socket){
 	return recieved;
 }
 
-/*int isLookedKey(char* actualKey){
+int isLookedKey(char* actualKey){
 	return 0;
 }
 
@@ -176,16 +176,24 @@ int isKeyInInstancia(Instancia* instancia){
 		element = aux;
 	}*/
 
-	/*return 0;
+	return 0;
 }
 
 Instancia* lookForKey(char* key){
 	Instancia* instancia;
 	//TODO hay un problema: isKeyInInstancia necesita key pero espera un solo parametro...
 	//que es, en principio, una instancia (un elemento de la lista)
+
+	int isKeyInInstancia(Instancia* instancia){
+		if(list_any_satisfy(instancia->storedKeys, isLookedKey)){
+			return 1;
+		}
+		return 0;
+	}
+
 	instancia = list_find(instancias, isKeyInInstancia);
 	return instancia;
-}*/
+}
 
 Instancia* recieveKeyAndChooseInstancia(int esiSocket, char** key){
 	*key = recieveAccordingToSize(esiSocket);
@@ -217,15 +225,15 @@ int instanciaDoSet(Instancia* instancia, char* key, char* value){
 	//agrego operationCode
 	int operationCode = OURSET;
 	char* package = malloc(sizeof(operationCode));
-	memcpy(package, &operationCode, sizeof(OURSET));
-	offset += sizeof(OURSET);
+	memcpy(package, &operationCode, sizeof(operationCode));
+	offset += sizeof(operationCode);
 	//agrego sizeClave
-	int sizeKey = strlen(key) + 1;//Para incluir \0 pongo +1
+	int sizeKey = strlen(key);
 	package = realloc(package, offset + sizeof(sizeKey));
 	memcpy(package + offset, &sizeKey, sizeof(sizeKey));
 	offset += sizeof(sizeKey);
 	//agrego sizeValue
-	int sizeValue = strlen(value) + 1;//Para incluir \0 pongo +1
+	int sizeValue = strlen(value);
 	package = realloc(package, offset + sizeof(sizeValue));
 	memcpy(package + offset, &sizeValue, sizeof(sizeValue));
 	offset += sizeof(sizeValue);
@@ -245,7 +253,7 @@ int instanciaDoSet(Instancia* instancia, char* key, char* value){
 
 //TODO Mover a commons
 //Usar send all en vez de send para aseguranos que se mande todo el package
-bool send_all(int socket, char *package, size_t length)
+int send_all(int socket, char *package, int length)
 {
     char *auxPointer = package;
     while (length > 0)
@@ -304,7 +312,7 @@ int doStore(int esiSocket, int esiId, char** stringToLog){
 	char* key = recieveAccordingToSize(esiSocket);
 
 	Instancia* choosenInstancia;
-	//TODO la funcion llokForKey
+	//TODO la funcion lookForKey
 	//choosenInstancia = lookForKey(key);
 	if(choosenInstancia == NULL){
 		//TODO avisar al planificador que no se puede hacer store de clave inexistente
