@@ -482,6 +482,7 @@ int handleInstancia(int instanciaSocket){
 int handleEsi(int esiSocket){
 	log_info(logger,"An esi thread was created\n");
 	while(1){
+		//TODO validar el retorno del recieve para que el hilo muera en caso de fallar algo
 		recieveStentenceToProcess(esiSocket);
 	}
 	return 0;
