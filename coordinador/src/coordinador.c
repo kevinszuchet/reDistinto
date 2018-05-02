@@ -220,20 +220,43 @@ Instancia* recieveKeyAndChooseInstancia(int esiSocket, char** key){
  * Hay que definir bien con el encargado de las instancias el formato de los mensajes
  * y usar el modulo de las commons
  */
+void* addToPackage(void* package, void* value, int size, int* offset) {
+	package = realloc(size);
+	memcpy(package + *offset, value, size);
+	*offset += size;
+}
+
+
 int instanciaDoSet(Instancia* instancia, char* key, char* value){
 	int offset = 0;
+	void* package;
+
+	int sizeKey = strlen(key);
+	int sizeValue = strlen(value);
+
+	addToPackage(package, OURSET, sizeof(OURSET), offset);
+	addToPackage(package, sizeKey, sizeof(sizeKey), offset);
+	addToPackage(package, sizeValue, sizeof(sizeValue), offset);
+	addToPackage(package, key, sizeKey, offset);
+	addToPackage(package, value, sizeValue, offset);
+
+	send_all(instancia->socket, package, offset);
+
+	return 0;
+
+	/*
 	//agrego operationCode
 	int operationCode = OURSET;
 	char* package = malloc(sizeof(operationCode));
-	memcpy(package, &operationCode, sizeof(operationCode));
-	offset += sizeof(operationCode);
+	memcpy(package, &operationCode, sizeof(OURSET));
+	offset += sizeof(OURSET);
 	//agrego sizeClave
-	int sizeKey = strlen(key);
+	int sizeKey = strlen(key) + 1;//Para incluir \0 pongo +1
 	package = realloc(package, offset + sizeof(sizeKey));
 	memcpy(package + offset, &sizeKey, sizeof(sizeKey));
 	offset += sizeof(sizeKey);
 	//agrego sizeValue
-	int sizeValue = strlen(value);
+	int sizeValue = strlen(value) + 1;//Para incluir \0 pongo +1
 	package = realloc(package, offset + sizeof(sizeValue));
 	memcpy(package + offset, &sizeValue, sizeof(sizeValue));
 	offset += sizeof(sizeValue);
@@ -245,15 +268,12 @@ int instanciaDoSet(Instancia* instancia, char* key, char* value){
 	package = realloc(package, offset + sizeValue);
 	memcpy(package + offset, value, sizeValue);
 	offset += sizeValue;
-
-	send_all(instancia->socket, package, offset);
-
-	return 0;
+	*/
 }
 
 //TODO Mover a commons
 //Usar send all en vez de send para aseguranos que se mande todo el package
-int send_all(int socket, char *package, int length)
+bool send_all(int socket, char *package, int length)
 {
     char *auxPointer = package;
     while (length > 0)
