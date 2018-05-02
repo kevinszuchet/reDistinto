@@ -221,11 +221,25 @@ Instancia* recieveKeyAndChooseInstancia(int esiSocket, char** key){
  * y usar el modulo de las commons
  */
 void* addToPackage(void* package, void* value, int size, int* offset) {
-	package = realloc(size);
+	package = realloc(package, size);
 	memcpy(package + *offset, value, size);
 	*offset += size;
 }
 
+//TODO Mover a commons
+//Usar send all en vez de send para aseguranos que se mande todo el package
+bool send_all(int socket, char *package, int length)
+{
+    char *auxPointer = package;
+    while (length > 0)
+    {
+        int i = send(socket, auxPointer, length, 0);
+        if (i < 1) return false;
+        auxPointer += i;
+        length -= i;
+    }
+    return true;
+}
 
 int instanciaDoSet(Instancia* instancia, char* key, char* value){
 	int offset = 0;
@@ -234,11 +248,11 @@ int instanciaDoSet(Instancia* instancia, char* key, char* value){
 	int sizeKey = strlen(key);
 	int sizeValue = strlen(value);
 
-	addToPackage(package, OURSET, sizeof(OURSET), offset);
-	addToPackage(package, sizeKey, sizeof(sizeKey), offset);
-	addToPackage(package, sizeValue, sizeof(sizeValue), offset);
-	addToPackage(package, key, sizeKey, offset);
-	addToPackage(package, value, sizeValue, offset);
+	addToPackage(package, OURSET, sizeof(OURSET), &offset);
+	addToPackage(package, sizeKey, sizeof(sizeKey), &offset);
+	addToPackage(package, sizeValue, sizeof(sizeValue), &offset);
+	addToPackage(package, key, sizeKey, &offset);
+	addToPackage(package, value, sizeValue, &offset);
 
 	send_all(instancia->socket, package, offset);
 
@@ -270,23 +284,6 @@ int instanciaDoSet(Instancia* instancia, char* key, char* value){
 	offset += sizeValue;
 	*/
 }
-
-//TODO Mover a commons
-//Usar send all en vez de send para aseguranos que se mande todo el package
-bool send_all(int socket, char *package, int length)
-{
-    char *auxPointer = package;
-    while (length > 0)
-    {
-        int i = send(socket, auxPointer, length, 0);
-        if (i < 1) return false;
-        auxPointer += i;
-        length -= i;
-    }
-    return true;
-}
-
-
 
 int instanciaDoStore(Instancia* instancia, char* key){
 	return 0;
