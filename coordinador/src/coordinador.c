@@ -6,6 +6,10 @@
  */
 
 #include "coordinador.h"
+
+//TODO REVISAR
+//No deberia haber ningun include que no sea el del coordinador.h
+
 #include <pthread.h>
 //#include "tests_functions/instancias.h"
 
@@ -127,6 +131,18 @@ void logOperation(char* stringToLog){
 	log_info(operationsLogger, stringToLog);
 }
 
+/* TODO A DEFINIR
+ *
+ * Con este metodo estas suponiendo que te va a venir el payload seguido del size
+ *
+ * Con solo un parametro no hay problema pero si usas esta funcion en el get
+ * por como tenemos definido el mensaje no te va a funcionar
+ * Necesitas: size - value - size  - value
+ * Tenemos  : size - size  - value - value
+ *
+ * Se puede cambiar el protocolo ya que este metodo parece que nos simplifica bastante
+ * Se puede pasar a las commons para que todos lo aprovechen
+ */
 char* recieveAccordingToSize(int socket){
 	int size = 0;
 	if(recv(socket, &size, sizeof(int), 0) <= 0){
@@ -191,9 +207,58 @@ Instancia* recieveKeyAndChooseInstancia(int esiSocket, char** key){
 	return choosenInstancia;
 }
 
+//TODO hay un modulo de serializacion vacio en las commons
+/*
+ * Hay que definir bien con el encargado de las instancias el formato de los mensajes
+ * y usar el modulo de las commons
+ */
 int instanciaDoSet(Instancia* instancia, char* key, char* value){
+	int offset = 0;
+	//agrego operationCode
+	int operationCode = OURSET;
+	char* package = malloc(sizeof(operationCode));
+	memcpy(package, &operationCode, sizeof(OURSET));
+	offset += sizeof(OURSET);
+	//agrego sizeClave
+	int sizeKey = strlen(key) + 1;//Para incluir \0 pongo +1
+	package = realloc(package, offset + sizeof(sizeKey));
+	memcpy(package + offset, &sizeKey, sizeof(sizeKey));
+	offset += sizeof(sizeKey);
+	//agrego sizeValue
+	int sizeValue = strlen(value) + 1;//Para incluir \0 pongo +1
+	package = realloc(package, offset + sizeof(sizeValue));
+	memcpy(package + offset, &sizeValue, sizeof(sizeValue));
+	offset += sizeof(sizeValue);
+	//agrego clave
+	package = realloc(package, offset + sizeKey);
+	memcpy(package + offset, key, sizeKey);
+	offset += sizeKey;
+	//agrego value
+	package = realloc(package, offset + sizeValue);
+	memcpy(package + offset, value, sizeValue);
+	offset += sizeValue;
+
+	send_all(instancia->socket, package, offset);
+
 	return 0;
 }
+
+//TODO Mover a commons
+//Usar send all en vez de send para aseguranos que se mande todo el package
+bool send_all(int socket, char *package, size_t length)
+{
+    char *auxPointer = package;
+    while (length > 0)
+    {
+        int i = send(socket, auxPointer, length, 0);
+        if (i < 1) return false;
+        auxPointer += i;
+        length -= i;
+    }
+    return true;
+}
+
+
 
 int instanciaDoStore(Instancia* instancia, char* key){
 	return 0;
