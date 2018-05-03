@@ -61,13 +61,13 @@ int sendOperation(Operation* operation, int sendSocket) {
 }
 
 int recieveOperation(Operation * operation, int recvSocket) {
-	int* sizeKey = malloc(sizeof(int));
-	int* sizeValue = malloc(sizeof(int));
+	int sizeKey;
+	int sizeValue;
 
 	return
 		recv_all(recvSocket, &operation->operationCode, sizeof(char)) *
-		recv_all(recvSocket, sizeKey, sizeof(int)) *
-		recv_all(recvSocket, sizeValue, sizeof(int)) *
-		recv_all(recvSocket, &operation->key, *sizeKey) *
-		(sizeValue != 0) ? recv_all(recvSocket, &operation->value, *sizeValue) : 1;
+		recv_all(recvSocket, &sizeKey, sizeof(int)) *
+		recv_all(recvSocket, &sizeValue, sizeof(int)) *
+		recv_all(recvSocket, &operation->key, sizeKey) *
+		(sizeValue != 0) ? recv_all(recvSocket, &operation->value, sizeValue) : 1;
 }
