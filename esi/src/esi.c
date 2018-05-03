@@ -13,17 +13,41 @@ int main(int argc, char* argv[]) {
 
 	logger = log_create("../esi.log", "tpSO", true, LOG_LEVEL_INFO);
 
-	FILE* scriptFile;
+	/*
+	 * Script handle (with mmap)
+	 * */
+
+	int scriptFd;
+	char *script;
+	struct stat sb;
 
 	if (argc != 2) {
 		log_error(logger, "ESI cannot execute: you must enter a script file to read\n");
 		return -1;
 	}
 
-	if ((scriptFile = fopen(argv[1], "r")) == NULL) {
-		log_error(logger, "ESI cannot execute: the script file cannot be opened\n");
+	if ((scriptFd = open(argv[1], O_RDONLY)) == -1) {
+		log_error(logger, "The script file cannot be opened\n");
 		return -1;
 	}
+
+	if (fstat(scriptFd, &sb) == -1) {
+		log_error(logger, "It is not possible to determinate the script file size\n");
+		return -1;
+	}
+
+	script = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, scriptFd, 0);
+
+	if (script == MAP_FAILED) {
+		log_error(logger, "mmap failed\n");
+		return -1;
+	}
+
+	close(scriptFd);
+
+	/*
+	 * End of script handle
+	 * */
 
 	char* ipCoordinador;
 	char* ipPlanificador;
@@ -59,9 +83,7 @@ int main(int argc, char* argv[]) {
 	/*
 	 * ESI wait to planificador, who will order to execute
 	 * */
-	waitPlanificadorOrders(planificadorSocket, scriptFile, coordinadorSocket);
-
-	fclose(scriptFile);
+	waitPlanificadorOrders(planificadorSocket, script, coordinadorSocket);
 
 	return 0;
 }
@@ -83,16 +105,16 @@ void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador
  * Interaction with coordinador and planificador
  * */
 
-void waitPlanificadorOrders(int planificadorSocket, FILE * scriptFile, int coordinadorSocket) {
+void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinadorSocket) {
 
 	char * line = NULL;
-	size_t len = 0;
-	ssize_t read;
+	char ** scriptsSplitted = string_split(script, "\n");
+	size_t len = sizeof(scriptsSplitted);
 	int esiPC = 0; // ESI program counter
 
 	int response = RUN;
 
-	while ((read = getline(&line, &len, scriptFile)) != -1) {
+	while (esiPC < len && (line = scriptsSplitted[esiPC]) != "" && line != NULL) {
 		/*if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL)) {
 			log_error(logger, "recv failed on, while esi trying to connect with planificador %s\n", strerror(errno));
 			exit(-1);
@@ -102,8 +124,6 @@ void waitPlanificadorOrders(int planificadorSocket, FILE * scriptFile, int coord
 			log_info(logger, "recv an order from planificador\n");
 			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC);
 		}
-
-		//fseek(scriptFile, esiPC, NULL);
 	}
 
 	if (line) {
@@ -111,7 +131,7 @@ void waitPlanificadorOrders(int planificadorSocket, FILE * scriptFile, int coord
 	}
 }
 
-void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiCP) {
+void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC) {
 
 	/*
 	 * Parser tries to understand each line, one by one
@@ -135,6 +155,8 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	 *		if (response == SUCCESS): success response: iterate esiCP: esiCP += len
 	 *		else if (response == FAILURE): failure response: try to interpretate the same line
 	 */
+
+	*esiPC += 1;
 
 	free(operation);
 }
