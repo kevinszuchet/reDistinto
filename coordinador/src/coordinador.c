@@ -157,32 +157,19 @@ char* recieveAccordingToSize(int socket){
 	return recieved;
 }
 
-int isLookedKey(char* actualKey){
-	return 0;
-}
-
-int isKeyInInstancia(Instancia* instancia){
-	if(list_any_satisfy(instancia->storedKeys, isLookedKey) ){
-		return 1;
-	}
-
-	/*t_link_element *element = instancia->storedKeys->head;
-	t_link_element *aux = NULL;
-	while (element != NULL) {
-		aux = element->next;
-
-		if(element)
-
-		element = aux;
-	}*/
-
-	return 0;
-}
-
 Instancia* lookForKey(char* key){
 	Instancia* instancia;
 	//TODO hay un problema: isKeyInInstancia necesita key pero espera un solo parametro...
 	//que es, en principio, una instancia (un elemento de la lista)
+
+	printf("Voy a elegir la instancia. Aca es donde esta rompiendo. La lista de instancias tiene %d\n", list_size(instancias));
+
+	int isLookedKey(char* actualKey){
+		if(strcmp(actualKey, key)){
+			return 0;
+		}
+		return 1;
+	}
 
 	int isKeyInInstancia(Instancia* instancia){
 		if(list_any_satisfy(instancia->storedKeys, isLookedKey)){
@@ -196,17 +183,21 @@ Instancia* lookForKey(char* key){
 }
 
 Instancia* recieveKeyAndChooseInstancia(int esiSocket, char** key){
-	*key = recieveAccordingToSize(esiSocket);
+	/**key = recieveAccordingToSize(esiSocket);*/
+
+	//cadena de prueba
+	*key = malloc(10);
+	strcpy(*key, "cadena");
 
 	Instancia* choosenInstancia;
 	//TODO la funcion lookForKey
-	//choosenInstancia = lookForKey(key);
+	choosenInstancia = lookForKey(*key);
 
 	if(choosenInstancia == NULL){
-		choosenInstancia = chooseInstancia(key);
+		choosenInstancia = chooseInstancia(*key);
 		if (choosenInstancia == NULL){
 			//TODO chequear que se le manda al planificador
-			informPlanificador(key);
+			informPlanificador(*key);
 			sendResponseToEsi(esiSocket, EXECUTION_ERROR);
 			return NULL;
 		}
@@ -291,6 +282,7 @@ int instanciaDoStore(Instancia* instancia, char* key){
 
 int doSet(int esiSocket, int esiId, char** stringToLog){
 	char* key;
+	printf("Voy a hacer el doSet\n");
 	Instancia* choosenInstancia = recieveKeyAndChooseInstancia(esiSocket, &key);
 	if(choosenInstancia == NULL){
 		return -1;
@@ -368,24 +360,26 @@ int doGet(int esiSocket, int esiId, char** stringToLog){
 }
 
 int recieveStentenceToProcess(int esiSocket){
-	int esiId = getActualEsiID();
+	//int esiId = getActualEsiID();
 	char* stringToLog;
 
 	char operationCode;
 	//TODO validar recv
-	if(recv(esiSocket, &operationCode, sizeof(char), 0) <= 0){
+	/**if(recv(esiSocket, &operationCode, sizeof(char), 0) <= 0){
 		return -1;
-	}
+	}*/
+
+	operationCode = OURSET;
 
 	switch (operationCode){
 		case OURSET:
-			doSet(esiSocket, esiId, &stringToLog);
+			doSet(esiSocket, 1, &stringToLog);
 			break;
 		case OURSTORE:
-			doStore(esiSocket, esiId, &stringToLog);
+			/*doStore(esiSocket, esiId, &stringToLog);
 			break;
 		case OURGET:
-			doGet(esiSocket, esiId, &stringToLog);
+			doGet(esiSocket, esiId, &stringToLog);*/
 			break;
 		default:
 			//deberiamos matar al esi?
@@ -440,6 +434,7 @@ int createNewInstancia(int instanciaSocket){
 	instanciaWithGreatestId->firstLetter = 'a';
 	instanciaWithGreatestId->lastLetter = 'z';
 	instanciaWithGreatestId->storedKeys = list_create();
+	list_add(instanciaWithGreatestId->storedKeys, "cadena");
 
 	list_add(instancias, instanciaWithGreatestId);
 
