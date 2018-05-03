@@ -48,8 +48,8 @@ int sendOperation(Operation* operation, int sendSocket) {
 		return addToPackageGeneric(package, value, size, offset);
 	}
 
-	int sizeKey = strlen(operation->key);
-	int sizeValue = strlen(operation->value);
+	int sizeKey = strlen(operation->key) + 1;
+	int sizeValue = strlen(operation->value) + 1;
 
 	addToPackage(&operation->operationCode, sizeof(operation->operationCode));
 	addToPackage(&sizeKey, sizeof(sizeKey));
