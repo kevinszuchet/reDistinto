@@ -41,7 +41,7 @@ int addToPackageGeneric(void* package, void* value, int size, int* offset) {
 	}
 
 int sendOperation(Operation* operation, int sendSocket) {
-	void* package;
+	void* package = NULL;
 	int offset = 0;
 
 	int addToPackage(void* value, int size) {
@@ -55,7 +55,7 @@ int sendOperation(Operation* operation, int sendSocket) {
 	addToPackage(&sizeKey, sizeof(sizeKey));
 	addToPackage(&sizeValue, sizeof(sizeValue));
 	addToPackage(&operation->key, sizeKey);
-	addToPackage(&operation->value, sizeValue);
+	if (sizeValue != 0) {addToPackage(&operation->value, sizeValue);}
 
 	return send_all(sendSocket, package, offset);
 }
@@ -69,5 +69,5 @@ int recieveOperation(Operation * operation, int recvSocket) {
 		recv_all(recvSocket, sizeKey, sizeof(int)) *
 		recv_all(recvSocket, sizeValue, sizeof(int)) *
 		recv_all(recvSocket, &operation->key, *sizeKey) *
-		recv_all(recvSocket, &operation->value, *sizeValue);
+		(sizeValue != 0) ? recv_all(recvSocket, &operation->value, *sizeValue) : 1;
 }

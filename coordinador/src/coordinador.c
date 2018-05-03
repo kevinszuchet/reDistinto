@@ -178,7 +178,7 @@ Instancia* lookForKey(char* key){
 		return 0;
 	}
 
-	instancia = list_find(instancias, isKeyInInstancia);
+	instancia = list_find(instancias, &isKeyInInstancia);
 	return instancia;
 }
 
