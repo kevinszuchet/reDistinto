@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 	/*
 	 * ESI wait to planificador, who will order to execute
 	 * */
-	waitPlanificadorOrder(planificadorSocket, scriptFile, coordinadorSocket);
+	waitPlanificadorOrders(planificadorSocket, scriptFile, coordinadorSocket);
 
 	fclose(scriptFile);
 
@@ -83,27 +83,35 @@ void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador
  * Interaction with coordinador and planificador
  * */
 
-void waitPlanificadorOrder(int planificadorSocket, FILE * scriptFile, int coordinadorSocket) {
-
-	int response = RUN;
-	/*if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL)) {
-		log_error(logger, "recv failed on, while esi trying to connect with planificador %s\n", strerror(errno));
-		exit(-1);
-	}*/
-
-	log_info(logger, "recv an order from planificador\n");
-
-	if (response == RUN) {
-		tryToExecute(planificadorSocket, scriptFile, coordinadorSocket);
-	}
-}
-
-void tryToExecute(int planificadorSocket, FILE * scriptFile, int coordinadorSocket) {
+void waitPlanificadorOrders(int planificadorSocket, FILE * scriptFile, int coordinadorSocket) {
 
 	char * line = NULL;
 	size_t len = 0;
 	ssize_t read;
 	int esiPC = 0; // ESI program counter
+
+	int response = RUN;
+
+	while ((read = getline(&line, &len, scriptFile)) != -1) {
+		/*if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL)) {
+			log_error(logger, "recv failed on, while esi trying to connect with planificador %s\n", strerror(errno));
+			exit(-1);
+		}*/
+
+		if (response == RUN) {
+			log_info(logger, "recv an order from planificador\n");
+			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC);
+		}
+
+		//fseek(scriptFile, esiPC, NULL);
+	}
+
+	if (line) {
+		free(line);
+	}
+}
+
+void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiCP) {
 
 	/*
 	 * Parser tries to understand each line, one by one
@@ -118,30 +126,17 @@ void tryToExecute(int planificadorSocket, FILE * scriptFile, int coordinadorSock
 	 *  send my response to planificador (ending or in process)
 	 */
 
-	if ((read = getline(&line, &len, scriptFile)) != -1) {
+	Operation * operation = malloc(sizeof(Operation));
+	interpretateOperation(operation, line);
 
-		do {
-			Operation * operation = malloc(sizeof(Operation));
-			interpretateOperation(operation, line);
+	/*
+	 * sendOperation(operation, coordinadorSocket): send serialized operation to coordinador
+	 * recv(coordinadorSocket, response, sizeof(int), MSG_WAITALL) wait operation response from coordinador
+	 *		if (response == SUCCESS): success response: iterate esiCP: esiCP += len
+	 *		else if (response == FAILURE): failure response: try to interpretate the same line
+	 */
 
-			//sendOperation(operation);
-
-			/*
-			 * send serialized operation to coordinador
-			 * recv(coordinadorSocket, response, sizeof(int), MSG_WAITALL) wait operation response from coordinador
-			 *		if (response == SUCCESS): success response: iterate esiCP: esiCP += len
-			 *		else if (response == FAILURE): failure response: try to interpretate the same line
-			 */
-
-			//fseek(scriptFile, esiPC, NULL);
-			free(operation);
-
-		} while ((read = getline(&line, &len, scriptFile)) != -1);
-	}
-
-	if (line) {
-		free(line);
-	}
+	free(operation);
 }
 
 void interpretateOperation(Operation * operation, char * line) {

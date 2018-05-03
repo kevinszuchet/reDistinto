@@ -20,8 +20,8 @@
 	#define  CFG_FILE "../esi.cfg"
 	void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador, int* portPlanificador);
 
-	void waitPlanificadorOrder(int planificadorSocket, FILE * scriptFile, int coordinadorSocket);
-	void tryToExecute(int planificadorSocket, FILE * scriptFile, int coordinadorSocket);
+	void waitPlanificadorOrders(int planificadorSocket, FILE * scriptFile, int coordinadorSocket);
+	void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiCP);
 	void interpretateOperation(Operation * operation, char * line);
 
 #endif /* SRC_ESI_H_ */
