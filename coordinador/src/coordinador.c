@@ -146,7 +146,7 @@ void logOperation(char* stringToLog){
 char* recieveAccordingToSize(int socket){
 	int size = 0;
 	if(recv(socket, &size, sizeof(int), 0) <= 0){
-		return -1;
+		return -1;//para que no te joda los tipos, devolve null en estos casos
 	}
 
 	char* recieved = malloc(size);
@@ -172,7 +172,7 @@ Instancia* lookForKey(char* key){
 	}
 
 	int isKeyInInstancia(Instancia* instancia){
-		if(list_any_satisfy(instancia->storedKeys, isLookedKey)){
+		if(list_any_satisfy(instancia->storedKeys, &isLookedKey)){
 			return 1;
 		}
 		return 0;
