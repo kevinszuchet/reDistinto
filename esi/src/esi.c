@@ -115,8 +115,13 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 	int response = RUN;
 
 	while (esiPC < len && (line = scriptsSplitted[esiPC]) != "" && line != NULL) {
-		/*if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL)) {
-			log_error(logger, "recv failed on, while esi trying to connect with planificador %s\n", strerror(errno));
+
+		/*
+		 * Parser tries to understand each line, one by one (when planificador says)
+		 * */
+
+		/*if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL) <= 0) {
+			log_error(logger, "recv failed on trying to connect with planificador %s\n", strerror(errno));
 			exit(-1);
 		}*/
 
@@ -133,29 +138,41 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 
 void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC) {
 
-	/*
-	 * Parser tries to understand each line, one by one
-	 * */
+	int operationResponse;
 
 	/*
 	 *  Try to read the line that correspond to esiCP
-	 *  Send the line to coordinador
-	 *  recv response from coordinador
-	 *  	success response: esiCP++
-	 *  	error response: nothing with esiCP
-	 *  send my response to planificador (ending or in process)
+	 *  Send serialized operation to coordinador
+	 *  Wait (recv) operation response from coordinador
+	 *  	Success response: iterate esiCP
+	 *  	Error response: try to execute same line when planificador says
+	 *  Send my response to planificador (ending or in process)
 	 */
 
 	Operation * operation = malloc(sizeof(Operation));
 	interpretateOperation(operation, line);
 
-	/*
-	 * sendOperation(operation, coordinadorSocket): send serialized operation to coordinador
-	 * recv(coordinadorSocket, response, sizeof(int), MSG_WAITALL) wait operation response from coordinador
-	 *		if (response == SUCCESS): success response: iterate esiCP: esiCP += len
-	 *		else if (response == FAILURE): failure response: try to interpretate the same line
-	 */
+	/*if (sendOperation(operation, coordinadorSocket) == 0) {
+		log_error(logger, "ESI cannot send the serialized operation to coordinador", line);
+		exit(-1);
+	}*/
 
+	/*if (recv(coordinadorSocket, &coordinadorResponse, sizeof(int), MSG_WAITALL) <= 0) {
+		log_error(logger, "recv failed on try to get the coordinador operation response", line);
+		exit(-1);
+	}*/
+
+	/*if (operationResponse != EXITO && operationResponse != FALLA) {
+		log_error(logger, "ESI does not understand the operation response", line);
+		exit(-1);
+	}*/
+
+	/*if (send(planificadorSocket, &operationResponse, sizeof(int), 0) <= 0) {
+		log_error(logger, "ESI cannot send the operation response to planificador", line);
+		exit(-1);
+	}*/
+
+	//*esiPC += (operationResponse == EXITO ? 1 : 0);
 	*esiPC += 1;
 
 	free(operation);
