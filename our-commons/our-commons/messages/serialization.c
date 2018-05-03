@@ -45,11 +45,11 @@ int sendOperation(Operation* operation, int sendSocket) {
 	int offset = 0;
 
 	int addToPackage(void* value, int size) {
-		return addToPackageGeneric(package, value, size, offset);
+		return addToPackageGeneric(package, value, size, &offset);
 	}
 
 	int sizeKey = strlen(operation->key) + 1;
-	int sizeValue = strlen(operation->value) + 1;
+	int sizeValue = operation->value != NULL ? strlen(operation->value) + 1 : 0;
 
 	addToPackage(&operation->operationCode, sizeof(operation->operationCode));
 	addToPackage(&sizeKey, sizeof(sizeKey));
