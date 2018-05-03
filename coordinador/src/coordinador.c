@@ -288,6 +288,7 @@ int doSet(int esiSocket, int esiId, char** stringToLog){
 		return -1;
 	}
 
+	//TODO validar
 	char* value = recieveAccordingToSize(esiSocket);
 
 	if (instanciaDoSet(choosenInstancia, key, value) < 0){

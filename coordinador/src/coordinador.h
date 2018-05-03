@@ -17,7 +17,10 @@
 	#include <commons/collections/list.h>
 	#include <commons/log.h>
 
+	//RUN CONSOLA
 	#define  CFG_FILE "../coordinador.cfg"
+	//RUN ECLIPSE
+	//#define  CFG_FILE "coordinador.cfg"
 
 	#define EXECUTION_ERROR -1
 
