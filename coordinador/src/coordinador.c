@@ -60,59 +60,16 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 	*delay = config_get_int_value(config, "DELAY");
 }
 
-int isLast(Instancia* instancia, t_list* instancias){
-	t_link_element *element = instancias->head;
-	int position = 0;
-
-	//chequear el .data, en caso de necesitar esta funcion
-	while (element != NULL && element->data != instancia) {
-		element = element->next;
-		position++;
-	}
-
-	return position == list_size(instancias) - 1;
-}
-
-int isFirst(Instancia* instancia, t_list* instancias){
-	return instancias->head->data == instancia;
-}
-
 int instanciaIsNextToActual(Instancia* instancia){
-	/*if(lastInstanciaChosen == 0){
+
+	if(lastInstanciaChosen == 0 && firstAlreadyPass == 0){
+		firstAlreadyPass = 1;
 		return 1;
 	}
-
-	//que pasa si es la ultima instancia? tengo que volver a 0
-	//(y podrian no tener ids ordenados)
-	//en realidad no quiero volver al principio!
-	if(isLast(instancia, instancias)){
-		lastInstanciaChosen = 0;
-		return 1;
-	}*/
 
 	//no contempla que se agregue, entre dos distribuciones, una instancia de < id que la actual
 	//esto no seria un problema ya que "ya se habria pasado por esa instancia"
-
-	//con lo de abajo se contempla, pero no si el id es mayor que el menor de todos los id's
-	if (instancia->id >= lastInstanciaChosen + 1){
-		//esto no esta bien, ya que si es el ultimo va a dejar pasar al primero al if de abajo...
-		//...deberia ponerse en otro lado esta condicion
-		if(isLast(instancia, instancias)){
-			firstAlreadyPass = 0;
-		}
-		return 1;
-	}else{
-		//si agrego uno al principio, va a volver a ejecutarse todo! (prioridad de id's)
-		//tal vez no esta tan bueno eso, seria mejor seguir de largo
-
-		//creo que no esta andando bien el isFirst
-		if (isFirst(instancia, instancias) && firstAlreadyPass == 0){
-			firstAlreadyPass = 1;
-			return 1;
-		}
-	}
-
-	return 0;
+	return instancia->id >= lastInstanciaChosen + 1;
 }
 
 Instancia* equitativeLoad(char* keyToBeBlocked){
@@ -120,7 +77,9 @@ Instancia* equitativeLoad(char* keyToBeBlocked){
 	//... ya que vuelve a cero
 	//por eso seria mejor guardar el ultimo id por el que se paso (y el nombre de esta variable esta mal)
 	Instancia* instancia = list_find(instancias, (void*) &instanciaIsNextToActual);
-	//lastInstanciaChosen = lastInstanciaChosen + 1 < list_size(instancias) ? lastInstanciaChosen + 1 : 0;
+	if(instancia == NULL){
+		instancia = list_get(instancias, 0);
+	}
 	lastInstanciaChosen = instancia->id;
 	return instancia;
 }
