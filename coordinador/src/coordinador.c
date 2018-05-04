@@ -61,21 +61,14 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 }
 
 int instanciaIsNextToActual(Instancia* instancia){
-
 	if(lastInstanciaChosen == 0 && firstAlreadyPass == 0){
 		firstAlreadyPass = 1;
 		return 1;
 	}
-
-	//no contempla que se agregue, entre dos distribuciones, una instancia de < id que la actual
-	//esto no seria un problema ya que "ya se habria pasado por esa instancia"
 	return instancia->id >= lastInstanciaChosen + 1;
 }
 
 Instancia* equitativeLoad(char* keyToBeBlocked){
-	//TODO no esta considerando el caso de que llegue una instancia cuando se paso por la ultima...
-	//... ya que vuelve a cero
-	//por eso seria mejor guardar el ultimo id por el que se paso (y el nombre de esta variable esta mal)
 	Instancia* instancia = list_find(instancias, (void*) &instanciaIsNextToActual);
 	if(instancia == NULL){
 		instancia = list_get(instancias, 0);
@@ -84,21 +77,23 @@ Instancia* equitativeLoad(char* keyToBeBlocked){
 	return instancia;
 }
 
-/*Instancia* leastSpaceUsed(char* keyToBeBlocked){
-	return ;
+Instancia* leastSpaceUsed(char* keyToBeBlocked){
+	//TODO
+	return list_get(instancias, 0);
 }
 
 Instancia* keyExplicit(char* keyToBeBlocked){
-	return ;
-}*/
+	//TODO
+	return list_get(instancias, 0);
+}
 
 void setDistributionAlgorithm(char* algorithm){
 	if(strcmp(algorithm, "EL") == 0){
 		distributionAlgorithm = &equitativeLoad;
 	}else if(strcmp(algorithm, "LSU") == 0){
-		//distributionAlgorithm = &leastSpaceUsed;
+		distributionAlgorithm = &leastSpaceUsed;
 	}else if(strcmp(algorithm, "KE") == 0){
-		//distributionAlgorithm = &keyExplicit;
+		distributionAlgorithm = &keyExplicit;
 	}else{
 		printf("Couldn't determine the distribution algorithm\n");
 		//loggear el error
@@ -468,7 +463,10 @@ int createNewInstancia(int instanciaSocket){
 	instanciaWithGreatestId->firstLetter = 'a';
 	instanciaWithGreatestId->lastLetter = 'z';
 	instanciaWithGreatestId->storedKeys = list_create();
-	list_add(instanciaWithGreatestId->storedKeys, "cadena");
+	//TODO sacar esto, es para que no se ponga esta cadena en todas las instancias
+	if(instanciaWithGreatestId->id == 0){
+		list_add(instanciaWithGreatestId->storedKeys, "cadena");
+	}
 
 	list_add(instancias, instanciaWithGreatestId);
 
