@@ -47,9 +47,15 @@
 		int resourceTakerID;
 	}blocked_queue;
 
+
+	//DUMMIE FUNCTIONS
+	void sendKeyStatusToCoordinadorDummie(int status);
+	void sendMessageExecuteToEsiDummie(Esi* nextEsi);
+	int waitEsiInformationDummie(int esiSocket);
+
 	void executionProcedure();
 
-	void handleEsiInformation(int esiExecutionInformation,Operation keyOp);
+	void handleEsiInformation(char esiExecutionInformation,Operation* keyOp);
 
 	int waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(int status);

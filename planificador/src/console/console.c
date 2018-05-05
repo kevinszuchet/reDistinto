@@ -101,7 +101,7 @@ int validCommand(char** parameters) {
 	int commandNumber = getCommandNumber(command);
 	int cantExtraParameters = parameterQuantity(parameters) - 1;
 
-	char* key;
+	char* key = malloc(40);
 	int id;
 	switch(commandNumber) {
 		case PAUSAR:
