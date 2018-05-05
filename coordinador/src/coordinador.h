@@ -16,26 +16,21 @@
 	#include <commons/config.h>
 	#include <commons/collections/list.h>
 	#include <commons/log.h>
+	#include <pthread.h>
+	#include "submodules/instancia/instanciaFunctions.h"
 
 	//RUN CONSOLA
 	#define  CFG_FILE "../coordinador.cfg"
 	//RUN ECLIPSE
 	//#define  CFG_FILE "coordinador.cfg"
 
+	//TODO revisar que hace esto aca
 	#define EXECUTION_ERROR -1
 
-	typedef struct Instancia{
+	typedef struct EsiRequest{
 		int id;
 		int socket;
-		int spaceUsed;
-		char firstLetter;
-		char lastLetter;
-		t_list* storedKeys;
-	}Instancia;
-
-	typedef struct EsiRequest{
 		Operation* operation;
-		int socket;
 	}EsiRequest;
 
 	void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay);

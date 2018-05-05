@@ -7,13 +7,6 @@
 
 #include "coordinador.h"
 
-//TODO REVISAR
-//No deberia haber ningun include que no sea el del coordinador.h
-
-#include <pthread.h>
-//che wtf: sin estar esto incluido, funcionan las funciones showInstancia/s...
-//#include "tests_functions/instancias.h"
-
 t_log* logger;
 t_log* operationsLogger;
 
@@ -108,14 +101,6 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 	return NULL;
 }
 
-int waitForInstanciaResponse(Instancia* chosenInstancia){
-	int response = 0;
-	if (recv(chosenInstancia->socket, &response, sizeof(int), 0) <= 0){
-		return -1;
-	}
-	return response;
-}
-
 void informPlanificador(char* key){
 
 }
@@ -159,12 +144,12 @@ void logOperation(char* stringToLog){
 char* recieveAccordingToSize(int socket){
 	int size = 0;
 	if(recv(socket, &size, sizeof(int), 0) <= 0){
-		return -1;//para que no te joda los tipos, devolve null en estos casos
+		return NULL;//para que no te joda los tipos, devolve null en estos casos
 	}
 
 	char* recieved = malloc(size);
 	if (recv(socket, &recieved, size, 0) <= 0){
-		return -1;
+		return NULL;
 	}
 
 	return recieved;
@@ -179,40 +164,31 @@ Instancia* lookForKey(char* key){
 	}
 
 	int isKeyInInstancia(Instancia* instancia){
-		if(list_any_satisfy(instancia->storedKeys, &isLookedKey)){
+		if(list_any_satisfy(instancia->storedKeys, (void*) &isLookedKey)){
 			return 1;
 		}
 		return 0;
 	}
 
 	//TODO hay que castear el return del find? Supongo que no por el tipo de retorno de esta func
-	return list_find(instancias, &isKeyInInstancia);
+	return list_find(instancias, (void*) &isKeyInInstancia);
 }
 
-//TODO esta funcion, cuando pasemos a usar serialization.c...
-//...deberia llamarse lookForOrChoseInstancia
-Instancia* recieveKeyAndChooseInstancia(int esiSocket, char** key){
-	/**key = recieveAccordingToSize(esiSocket);*/
-
-	//cadena de prueba
-	*key = malloc(10);
-	strcpy(*key, "cadena");
-
+Instancia* lookForOrChoseInstancia(int esiSocket, char* key){
 	Instancia* chosenInstancia;
-	//TODO la funcion lookForKey
-	//chosenInstancia = lookForKey(*key);
+	chosenInstancia = lookForKey(key);
 	//TODO descomentar esto, es para probar el algoritmo de distribucion
 	chosenInstancia = NULL;
 
 	showInstancia(chosenInstancia);
 
 	if(chosenInstancia == NULL){
-		chosenInstancia = chooseInstancia(*key);
+		chosenInstancia = chooseInstancia(key);
 		//TODO sacar este show
 		showInstancia(chosenInstancia);
 		if (chosenInstancia == NULL){
 			//TODO chequear que se le manda al planificador
-			informPlanificador(*key);
+			informPlanificador(key);
 			sendResponseToEsi(esiSocket, EXECUTION_ERROR);
 			return NULL;
 		}
@@ -247,18 +223,18 @@ bool send_all(int socket, char *package, int length)
     return true;
 }
 
-int instanciaDoSet(Instancia* instancia, char* key, char* value){
+int instanciaDoSet(Instancia* instancia, EsiRequest* esiRequest){
 	int offset = 0;
 	void* package;
 
-	int sizeKey = strlen(key);
-	int sizeValue = strlen(value);
+	int sizeKey = strlen(esiRequest->operation->key);
+	int sizeValue = strlen(esiRequest->operation->value);
 
 	addToPackage(package, OURSET, sizeof(OURSET), &offset);
 	addToPackage(package, sizeKey, sizeof(sizeKey), &offset);
 	addToPackage(package, sizeValue, sizeof(sizeValue), &offset);
-	addToPackage(package, key, sizeKey, &offset);
-	addToPackage(package, value, sizeValue, &offset);
+	addToPackage(package, esiRequest->operation->key, sizeKey, &offset);
+	addToPackage(package, esiRequest->operation->value, sizeValue, &offset);
 
 	send_all(instancia->socket, package, offset);
 
@@ -291,88 +267,81 @@ int instanciaDoSet(Instancia* instancia, char* key, char* value){
 	*/
 }
 
-int instanciaDoStore(Instancia* instancia, char* key){
+int instanciaDoStore(Instancia* instancia, EsiRequest* esiRequest){
 	return 0;
 }
 
-int doSet(int esiSocket, int esiId, char** stringToLog){
-	char* key;
-	Instancia* chosenInstancia = recieveKeyAndChooseInstancia(esiSocket, &key);
+int doSet(EsiRequest* esiRequest, char** stringToLog){
+
+	//TODO fijarse con el planificador si la clave esta bloqueada
+
+	Instancia* chosenInstancia = lookForOrChoseInstancia(esiRequest->socket, esiRequest->operation->key);
 
 	//TODO descomentar esto, es para probar el algoritmo de distribucion
-	/*	if(chosenInstancia == NULL){
+	if(chosenInstancia == NULL){
 		return -1;
 	}
 
-	//TODO validar, se podria haber desconectado el esi
-	char* value = recieveAccordingToSize(esiSocket);
-
-	if (instanciaDoSet(chosenInstancia, key, value) < 0){
+	//TODO mariano: instanciaDoSet no se podria reemplazar directamente por la funcion de serialization.c?
+	if (instanciaDoSet(chosenInstancia, esiRequest) < 0){
 		//que pasa aca?
 		return -1;
 	}
 
 	int response = waitForInstanciaResponse(chosenInstancia);
 	if(response < 0){
-		informPlanificador(key);
-		sendResponseToEsi(esiSocket, EXECUTION_ERROR);
+		informPlanificador(esiRequest->operation->key);
+		sendResponseToEsi(esiRequest->socket, EXECUTION_ERROR);
 		return -1;
 	}
 
-	sendResponseToEsi(esiSocket, response);
+	sendResponseToEsi(esiRequest->socket, response);
 
 	//5 es el tamanio de "ESI X" necesario para loggear, siendo X el id de esi. el +1 del medio...
 	//es por el espacio entre key y value
-	*stringToLog = malloc(5 + strlen(key) + 1 + strlen(value) + 1);
+	*stringToLog = malloc(5 + strlen(esiRequest->operation->key) + 1 + strlen(esiRequest->operation->value) + 1);
 	//TODO hacer el string necesario
 	//sprintf();
 	//strcpy();
 
-	free(key);
-	free(value);*/
-
-	//TODO sacar esto, ya esta arriba
-	*stringToLog = malloc(10);
-
 	return 0;
 }
 
-int doStore(int esiSocket, int esiId, char** stringToLog){
-	char* key = recieveAccordingToSize(esiSocket);
+int doStore(EsiRequest* esiRequest, char** stringToLog){
 
-	Instancia* chosenInstancia;
+	//TODO fijarse con el planificador si la clave esta bloqueada
+
+	Instancia* chosenInstancia = NULL;
 	//TODO la funcion lookForKey
 	//chosenInstancia = lookForKey(key);
 	if(chosenInstancia == NULL){
 		//TODO avisar al planificador que no se puede hacer store de clave inexistente
 	}
 
-	if (instanciaDoStore(chosenInstancia, key) < 0){
+	if (instanciaDoStore(chosenInstancia, esiRequest) < 0){
 		//que pasa aca?
 		return -1;
 	}
 
 	int response = waitForInstanciaResponse(chosenInstancia);
 	if(response < 0){
-		informPlanificador(key);
-		sendResponseToEsi(esiSocket, EXECUTION_ERROR);
+		informPlanificador(esiRequest->operation->key);
+		sendResponseToEsi(esiRequest->socket, EXECUTION_ERROR);
 		return -1;
 	}
 
-	sendResponseToEsi(esiSocket, response);
+	sendResponseToEsi(esiRequest->socket, response);
 
-	*stringToLog = malloc(5 + strlen(key) + 1);
+	*stringToLog = malloc(5 + strlen(esiRequest->operation->key) + 1);
 	//TODO hacer el string necesario
-
-	free(key);
 
 	return 0;
 }
 
-int doGet(int esiSocket, int esiId, char** stringToLog){
-	char* value = recieveAccordingToSize(esiSocket);
+int doGet(EsiRequest* esiRequest, char** stringToLog){
 	//TODO ver como se le va avisar al planificador
-	informPlanificador(value);
+	informPlanificador(esiRequest->operation->value);
+
 	//TODO hay que considerar los tamanios de int para crear el string?
 	//*stringToLog = malloc(5 + strlen(value) + 1);
 	//sprintf(*stringToLog, "ESI %d - GET %s", esiId, value);
@@ -380,33 +349,25 @@ int doGet(int esiSocket, int esiId, char** stringToLog){
 }
 
 int recieveStentenceToProcess(int esiSocket){
-	//int esiId = getActualEsiID();
-	//TODO sacar esto que es provisorio
-	int esiId = 1;
+	int esiId = getActualEsiID();
 	char* stringToLog;
 
-	char operationCode;
-	//TODO validar recv
-	/**if(recv(esiSocket, &operationCode, sizeof(char), 0) <= 0){
-		return -1;
-	}*/
-
-	//TODO esto se va a recibir
-	operationCode = OURSET;
+	//TOOD mariano recibir la estructura operacion (sacar este NULL)
+	EsiRequest* esiRequest = NULL;
 
 	//TODO validar los siguientes casos, los 3, por si es necesario matar al hilo
-	//(y cada uno de ellos evisara al planificador/esi lo que corresponda)
-	switch (operationCode){
+	//(y cada uno de ellos avisara al planificador/esi lo que corresponda)
+	switch (esiRequest->operation->operationCode){
 		case OURSET:
-			if(doSet(esiSocket, esiId, &stringToLog) < 0){
+			if(doSet(esiRequest, &stringToLog) < 0){
 				return -1;
 			}
 			break;
 		case OURSTORE:
-			/*doStore(esiSocket, esiId, &stringToLog);
+			doStore(esiRequest, &stringToLog);
 			break;
 		case OURGET:
-			doGet(esiSocket, esiId, &stringToLog);*/
+			doGet(esiRequest, &stringToLog);
 			break;
 		default:
 			//deberiamos matar al esi?
@@ -415,63 +376,12 @@ int recieveStentenceToProcess(int esiSocket){
 
 	//TODO descomentar
 	//logOperation(stringToLog);
+
+	//TODO liberar todo lo necesario en esiRequest. se podria delegar en una funcion
+
 	free(stringToLog);
 	//lo pide la consigna
 	//sleep(delay);
-	return 0;
-}
-
-int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia){
-	if(firstInstancia->id > secondInstancia->id){
-		return 1;
-	}
-	return 0;
-}
-
-/*void showInstancia(Instancia* instancia){
-	printf("ID = %d\n", instancia->id);
-	printf("Socket = %d\n", instancia->socket);
-	printf("Space used = %d\n", instancia->spaceUsed);
-	printf("First letter = %c\n", instancia->firstLetter);
-	printf("Last letter = %c\n", instancia->lastLetter);
-	//TODO mostrar las claves!
-	printf("----------\n");
-}
-
-void showInstancias(){
-	if(list_size(instancias) != 0){
-		printf("----- INSTANCIAS -----\n");
-		list_iterate(instancias, (void*) showInstancia);
-	}else{
-		printf("No instancias\n");
-	}
-}*/
-
-int createNewInstancia(int instanciaSocket){
-	Instancia* instanciaWithGreatestId = malloc(sizeof(Instancia));
-	showInstancias(instancias);
-
-	if(list_size(instancias) != 0){
-		memcpy(instanciaWithGreatestId, list_get(instancias, list_size(instancias) - 1), sizeof(Instancia));
-		instanciaWithGreatestId->id = instanciaWithGreatestId->id + 1;
-	}else{
-		instanciaWithGreatestId->id = 0;
-	}
-
-	instanciaWithGreatestId->socket = instanciaSocket;
-	instanciaWithGreatestId->spaceUsed = 0;
-	instanciaWithGreatestId->firstLetter = 'a';
-	instanciaWithGreatestId->lastLetter = 'z';
-	instanciaWithGreatestId->storedKeys = list_create();
-	//TODO sacar esto, es para que no se ponga esta cadena en todas las instancias
-	if(instanciaWithGreatestId->id == 0){
-		list_add(instanciaWithGreatestId->storedKeys, "cadena");
-	}
-
-	list_add(instancias, instanciaWithGreatestId);
-
-	showInstancias(instancias);
-
 	return 0;
 }
 
@@ -481,7 +391,7 @@ int handleInstancia(int instanciaSocket){
 
 	//TODO que pasa si una instancia se recupera? como la distinguimos?
 	//si seguimos este camino, se va a crear una nueva y no queremos
-	createNewInstancia(instanciaSocket);
+	createNewInstancia(instanciaSocket, instancias);
 
 	int recvResult = 0;
 	while(1){
@@ -517,7 +427,7 @@ int handleEsi(int esiSocket){
 	return 0;
 }
 
-void* pthreadInitialize(void* clientSocket){
+void pthreadInitialize(void* clientSocket){
 	int castedClientSocket = *((int*) clientSocket);
 	int id = recieveClientId(castedClientSocket, COORDINADOR, logger);
 
@@ -536,7 +446,7 @@ int clientHandler(int clientSocket){
 	pthread_t clientThread;
 	int* clientSocketPointer = malloc(sizeof(int));
 	*clientSocketPointer = clientSocket;
-	if(pthread_create(&clientThread, NULL, &pthreadInitialize, clientSocketPointer)){
+	if(pthread_create(&clientThread, NULL, (void*) &pthreadInitialize, clientSocketPointer)){
 		log_error(logger, "Error creating thread\n");
 		return -1;
 	}
@@ -554,7 +464,7 @@ int welcomePlanificador(int coordinadorSocket, int newPlanificadorSocket){
 	log_info(logger, "%s recieved %s, so it'll now start listening esi/instancia connections\n", COORDINADOR, PLANIFICADOR);
 	while(1){
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);
-		//validar el retorno
+		//TODO validar el retorno
 		clientHandler(clientSocket);
 	}
 
