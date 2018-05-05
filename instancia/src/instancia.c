@@ -10,7 +10,7 @@
 t_log * logger;
 int entryAmount;
 int entrySize;
-t_dictionary * keyTable; //Takes record of the key + how many entraces the value occupies
+t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
 int main(void) {
 	logger = log_create("../instancia.log", "tpSO", true, LOG_LEVEL_INFO);
 	char* ipCoordinador;
@@ -55,7 +55,7 @@ int initialize(int entraces, int storage){
 	//Que casos de error puede haber?? Pensarlo.
 	entryAmount = entraces;
 	entrySize = storage;
-	keyTable = dictionary_creat();//tendría que tocar las so-commons para hacer un dictionary_create que reciba un
+	entryTable = dictionary_create();//tendría que tocar las so-commons para hacer un dictionary_create que reciba un
 								 //int como parametro y ese int sea la máxima cantidad de entradas así no es por default
 	//Pensar bien como se crea la table de clave-valor
 	log_info(logger, "Instancia was intialized correctly\n");
@@ -64,12 +64,12 @@ int initialize(int entraces, int storage){
 int set(char *key, char *value){
 	int freeStorage;
 	int entriesForValue;
-	if((dictionary_has_key(keyTable, key),"true")){
+	if((dictionary_has_key(entryTable, key),"true")){
 		updateKey(key, value);
 	}
 	log_info(logger, "Total free storage: %d", getFreeStorage());
 	log_info(logger, "Total size of value: %d", sizeof(value));
-	log_info(logger, "Total free contiguous free entriens: %d", getcontiguousFreeEntries());
+	log_info(logger, "Total free contiguous free entriens: %d", getMaxContiguousFreeEntries());
 	entriesForValue = sizeof(value) / entrySize;
 	log_info(logger, "Total entries for value: %d", entriesForValue);
 	if(getFreeStorage() < sizeof(value)){
@@ -77,7 +77,7 @@ int set(char *key, char *value){
 		//borro alguna key según algoritmo y setteo
 
 	}
-	if(getContiguousFreeEntries() < entriesForValue){
+	if(getMaxContiguousFreeEntries() < entriesForValue){
 		//tengo que compactar
 	}
 
@@ -108,7 +108,7 @@ int store(char *key){
 	return 0;
 }
 int finish(){
-	//dictionary_clean_and_destroy_elements(keyTable, ); Averiguar bien que es lo que le tengo que pasar como segundo parametro
+	//dictionary_clean_and_destroy_elements(entryTable, ); Averiguar bien que es lo que le tengo que pasar como segundo parametro
 	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!\n");
 	return 0;
 }
@@ -120,7 +120,7 @@ int getAmountOfFreeEntraces(){
 int getFreeStorage(){
 	return getAmountOfFreeEntraces() * entrySize;
 }
-int getMaxContiguousFreeEtries(){
+int getMaxContiguousFreeEntries(){
 	int max = 0;
 	log_info(logger, "There are %d contiguous free entries\n", max);
 	return max;
