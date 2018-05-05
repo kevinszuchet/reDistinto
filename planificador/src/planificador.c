@@ -24,6 +24,10 @@ char* ipCoordinador;
 int portCoordinador;
 char** blockedKeys;
 pthread_t threadConsole;
+pthread_t threadExecution;
+
+pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
 
 int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
@@ -40,6 +44,7 @@ int main(void) {
 	readyEsis = list_create();
 	finishedEsis = list_create();
 
+	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 	//int coordinadorSocket = ...    y cambiar lo que devuelve welcomeServer por el numero de socket
 	//cambio lo que devuelve welcomeServer, para que quede como antes
 	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
@@ -48,6 +53,9 @@ int main(void) {
 		//reintentar?
 	}*/
 
+	//Start planificador task
+	log_info(logger,"Start to execute ESIs\n");
+	executionProcedure();
 
 	return 0;
 }
@@ -63,22 +71,29 @@ void executionProcedure(){
 		//WAIT AT LEAST ONE ESI TO BE IN READY LIST
 
 		//Obtaining next esi to execute
-		Esi* nextEsi;
-		if(runningEsi==NULL){
-			nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
-		}else{
-			nextEsi = runningEsi;
+		if(list_size(readyEsis)>0){
+			log_info(logger,"At least an ESI is ready to run\n");
+			Esi* nextEsi;
+			if(runningEsi==NULL){
+				pthread_mutex_lock(&mutexReadyList);
+				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+				pthread_mutex_unlock(&mutexReadyList);
+			}else{
+				nextEsi = runningEsi;
+			}
+			log_info(logger,"Esi %d was selected to execute\n",nextEsi->id);
+			removeFromReady(nextEsi);
+			sendMessageExecuteToEsi(nextEsi);
+			Operation operationRecieved;
+			recieveOperation(&operationRecieved,coordinadorSocket);
+			log_info(logger,"Key received = %s , Op received = %s\n",operationRecieved.key,operationRecieved.operationCode);
+			int keyStatus = checkKeyBlocked(operationRecieved.key);
+			sendKeyStatusToCoordinador(keyStatus);
+			int esiExecutionInformation = waitEsiInformation(nextEsi->socketConection);
+			handleEsiInformation(esiExecutionInformation,operationRecieved);
+			executionProcedure();
+
 		}
-		removeFromReady(nextEsi);
-		sendMessageExecuteToEsi(nextEsi);
-		key_operation keyOpRecieved;
-		receiveCoordinadorMessage(&keyOpRecieved);
-		int keyStatus = checkKeyBlocked(keyOpRecieved.key);
-		sendKeyStatusToCoordinador(keyStatus);
-		int esiExecutionInformation = waitEsiInformation(nextEsi->socketConection);
-		handleEsiInformation(esiExecutionInformation,keyOpRecieved);
-		executionProcedure();
-		//Puedo obtener que se ejecuto correctamente, que se ejecuto correctamente Y FINALIZO o un FALLO en la operacion
 	}
 
 }
@@ -108,13 +123,14 @@ void finishRunningEsi(){
 }
 
 void removeFromReady(Esi* esi){
-
+	pthread_mutex_lock(&mutexReadyList);
+	pthread_mutex_unlock(&mutexReadyList);
 }
 
-void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
+void handleEsiInformation(int esiExecutionInformation,Operation keyOp){
 	switch(esiExecutionInformation){
 		case EXITO:
-			switch(keyOp.operation){
+			switch(atoi(&(keyOp.operationCode))){
 				case OURSET:
 					//Nothing to be done
 				break;
@@ -132,7 +148,7 @@ void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 			}
 		break;
 		case FINALIZADO:
-			switch(keyOp.operation){
+			switch(atoi(&(keyOp.operationCode))){
 				case OURSET:
 					//Nothing to be done
 				break;
@@ -147,7 +163,7 @@ void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 			finishRunningEsi();
 		break;
 		case FALLA:
-			switch(keyOp.operation){
+			switch(atoi(&(keyOp.operationCode))){
 				case OURSET:
 					//Nothing to be done
 				break;
@@ -166,35 +182,7 @@ void handleEsiInformation(int esiExecutionInformation,key_operation keyOp){
 	}
 }
 
-void receiveCoordinadorMessage(key_operation* keyOp){
-	int keyLenght = 0;
-	int resultRecv = recv(coordinadorSocket, &keyLenght, sizeof(int), 0);
-	if(resultRecv <= 0){
-		log_error(logger, "recv failed on %s, while waiting coordinador message %s\n", COORDINADOR, strerror(errno));
-		//Que pasa si recibo mal el mensaje del coordinador?
-	}else{
-		int op = 0;
-		int resultRecv = recv(coordinadorSocket, &op, sizeof(int), 0);
-		if(resultRecv <= 0){
-			log_error(logger, "recv failed on %s, while waiting coordinador message %s\n", COORDINADOR, strerror(errno));
-			//Que pasa si recibo mal el mensaje del coordinador?
-		}else{
-			keyOp->operation = op;
-			if(op!=OURSET){
-				char* keyReceived;
-				recv(coordinadorSocket, &keyReceived, keyLenght, 0);
-				if(resultRecv <= 0){
-					log_error(logger, "recv failed on %s, while waiting coordinador message %s\n", COORDINADOR, strerror(errno));
-					//Que pasa si recibo mal el mensaje del coordinador?
-				}else{
-					keyOp->key= keyReceived;
 
-				}
-			}
-		}
-
-	}
-}
 
 int waitEsiInformation(int esiSocket){
 
@@ -300,7 +288,9 @@ int isTakenResource(char* key){
 
 
 void addEsiToReady(Esi* esi){
+	pthread_mutex_lock(&mutexReadyList);
 	list_add(readyEsis,(void*)esi);
+	pthread_mutex_unlock(&mutexReadyList);
 	log_info(logger, "Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
 }
 

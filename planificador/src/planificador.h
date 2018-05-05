@@ -23,7 +23,7 @@
 	#include "tad_esi/tad_esi.h" //Necessary to control ESIs
 	#include "planif_algorithm/planif_algorithm.h" //Necessary to delegate planification algorithm stuff
 	#include <commons/log.h>
-
+	#include <our-commons/messages/serialization.h>
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define CONFIG_BLOCKED 0
@@ -41,18 +41,16 @@
 	int portCoordinador;
 	char** blockedKeys;
 
-	typedef struct{
-		char* key;
-		int operation;
-	}key_operation;
 
 	typedef struct{
 		t_queue* blockedEsis;
 		int resourceTakerID;
 	}blocked_queue;
 
-	void handleEsiInformation(int esiExecutionInformation,key_operation keyOp);
-	void receiveCoordinadorMessage(key_operation* keyOp);
+	void executionProcedure();
+
+	void handleEsiInformation(int esiExecutionInformation,Operation keyOp);
+
 	int waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(int status);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
