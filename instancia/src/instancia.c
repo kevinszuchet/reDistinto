@@ -11,6 +11,7 @@ t_log * logger;
 int entryAmount;
 int entrySize;
 t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
+char * storage;
 int main(void) {
 	logger = log_create("../instancia.log", "tpSO", true, LOG_LEVEL_INFO);
 	char* ipCoordinador;
@@ -51,36 +52,44 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	*dump = config_get_int_value(config, "DUMP");
 }
 
-int initialize(int entraces, int storage){
+int initialize(int entraces, int entryStorage){
 	//Que casos de error puede haber?? Pensarlo.
 	entryAmount = entraces;
-	entrySize = storage;
+	entrySize = entryStorage;
 	entryTable = dictionary_create();//tendría que tocar las so-commons para hacer un dictionary_create que reciba un
 								 //int como parametro y ese int sea la máxima cantidad de entradas así no es por default
-	//Pensar bien como se crea la table de clave-valor
+	storage = malloc(entraces * entryStorage);
 	log_info(logger, "Instancia was intialized correctly\n");
 	return 0;
 }
 int set(char *key, char *value){
-	int freeStorage;
 	int entriesForValue;
+	int valueStart;
+	int valueSize = sizeof(value);
+	char * sentinelChar;
+	entryTableInfo * entryInfo;
 	if((dictionary_has_key(entryTable, key),"true")){
 		updateKey(key, value);
 	}
 	log_info(logger, "Total free storage: %d", getFreeStorage());
-	log_info(logger, "Total size of value: %d", sizeof(value));
+	log_info(logger, "Total size of value: %d", valueSize);
 	log_info(logger, "Total free contiguous free entriens: %d", getMaxContiguousFreeEntries());
-	entriesForValue = sizeof(value) / entrySize;
+	entriesForValue = valueSize / entrySize;
 	log_info(logger, "Total entries for value: %d", entriesForValue);
-	if(getFreeStorage() < sizeof(value)){
+	if(getFreeStorage() < valueSize){
 	    log_info(logger, "there is not enough space to set the key: %s", key);
 		//borro alguna key según algoritmo y setteo
 
-	}
-	if(getMaxContiguousFreeEntries() < entriesForValue){
+	}else if(getMaxContiguousFreeEntries() < entriesForValue){
 		//tengo que compactar
 	}
 
+	valueStart = getValueStartEntryPointer(value);
+	entryInfo = malloc(sizeof(entryTableInfo));
+	entryInfo = createTableInfo(valueStart, valueSize);
+	if(valueSize % entrySize >0){
+		autoCompletesentinelValue(valueSize % entrySize, sentinelChar);
+	}
 	//hago el set.
 	log_info(logger, "Set operation for key: %s and value: %s, was successfully done\n", key, value);
 	return 0;
@@ -124,5 +133,16 @@ int getMaxContiguousFreeEntries(){
 	int max = 0;
 	log_info(logger, "There are %d contiguous free entries\n", max);
 	return max;
+}
+void autoCompletesentinelValue(int amount, char **s){
+	s = malloc(amount);
+	for(int i=0;i<amount;i++){
+		strcpy(*s, sentinelValue);
+	}
+}
+int getValueStartEntryPointer(char * value){
+	int entryPointer = 0;
+	log_info(logger, "Entry pointer is: %d", entryPointer);
+	return entryPointer;
 }
 
