@@ -13,41 +13,10 @@ int main(int argc, char* argv[]) {
 
 	logger = log_create("../esi.log", "tpSO", true, LOG_LEVEL_INFO);
 
-	/*
-	 * Script handle (with mmap)
-	 * */
-
-	int scriptFd;
-	char *script;
-	struct stat sb;
-
 	if (argc != 2) {
 		log_error(logger, "ESI cannot execute: you must enter a script file to read\n");
 		return -1;
 	}
-
-	if ((scriptFd = open(argv[1], O_RDONLY)) == -1) {
-		log_error(logger, "The script file cannot be opened\n");
-		return -1;
-	}
-
-	if (fstat(scriptFd, &sb) == -1) {
-		log_error(logger, "It is not possible to determinate the script file size\n");
-		return -1;
-	}
-
-	script = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, scriptFd, 0);
-
-	if (script == MAP_FAILED) {
-		log_error(logger, "mmap failed\n");
-		return -1;
-	}
-
-	close(scriptFd);
-
-	/*
-	 * End of script handle
-	 * */
 
 	char* ipCoordinador;
 	char* ipPlanificador;
@@ -81,6 +50,33 @@ int main(int argc, char* argv[]) {
 	sendMyIdToServer(coordinadorSocket, 12, ESI, logger);
 
 	/*
+	 * Script handle (with mmap)
+	 * */
+
+	int scriptFd;
+	char *script;
+	struct stat sb;
+
+	if ((scriptFd = open(argv[1], O_RDONLY)) == -1) {
+		log_error(logger, "The script file cannot be opened\n");
+		return -1;
+	}
+
+	if (fstat(scriptFd, &sb) == -1) {
+		log_error(logger, "It is not possible to determinate the script file size\n");
+		return -1;
+	}
+
+	script = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, scriptFd, 0);
+
+	if (script == MAP_FAILED) {
+		log_error(logger, "mmap failed\n");
+		return -1;
+	}
+
+	close(scriptFd);
+
+	/*
 	 * ESI wait to planificador, who will order to execute
 	 * */
 	waitPlanificadorOrders(planificadorSocket, script, coordinadorSocket);
@@ -112,22 +108,22 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 	size_t len = sizeof(scriptsSplitted);
 	int esiPC = 0; // ESI program counter
 
-	int response = RUN;
+	int response;
 
-	while (esiPC < len && (line = scriptsSplitted[esiPC]) != "" && line != NULL) {
+	while (esiPC < len && empty_string(line = scriptsSplitted[esiPC]) == 0) {
 
 		/*
 		 * Parser tries to understand each line, one by one (when planificador says)
 		 * */
 
-		/*if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL) <= 0) {
+		if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL) <= 0) {
 			log_error(logger, "recv failed on trying to connect with planificador %s\n", strerror(errno));
 			exit(-1);
-		}*/
+		}
 
 		if (response == RUN) {
 			log_info(logger, "recv an order from planificador\n");
-			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC);
+			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
 		}
 	}
 
@@ -136,7 +132,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 	}
 }
 
-void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC) {
+void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len) {
 
 	int operationResponse;
 
@@ -146,36 +142,37 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	 *  Wait (recv) operation response from coordinador
 	 *  	Success response: iterate esiCP
 	 *  	Error response: try to execute same line when planificador says
-	 *  Send my response to planificador (ending or in process)
+	 *  Send my response to planificador (ending, success, failure)
 	 */
 
 	Operation * operation = malloc(sizeof(Operation));
 	interpretateOperation(operation, line);
 
-	/*if (sendOperation(operation, coordinadorSocket) == 0) {
+	if (sendOperation(operation, coordinadorSocket) == 0) {
 		log_error(logger, "ESI cannot send the serialized operation to coordinador", line);
 		exit(-1);
-	}*/
+	}
 
-	/*if (recv(coordinadorSocket, &coordinadorResponse, sizeof(int), MSG_WAITALL) <= 0) {
+	destroy_operation(operation);
+
+	if (recv(coordinadorSocket, &operationResponse, sizeof(int), MSG_WAITALL) <= 0) {
 		log_error(logger, "recv failed on try to get the coordinador operation response", line);
 		exit(-1);
-	}*/
+	}
 
-	/*if (operationResponse != EXITO && operationResponse != FALLA) {
+	if (operationResponse != EXITO && operationResponse != FALLA) {
 		log_error(logger, "ESI does not understand the operation response", line);
 		exit(-1);
-	}*/
+	}
 
-	/*if (send(planificadorSocket, &operationResponse, sizeof(int), 0) <= 0) {
+	*esiPC += (operationResponse == EXITO ? 1 : 0);
+
+	operationResponse = (*esiPC == (len - 1) ? FINALIZADO : operationResponse);
+
+	if (send(planificadorSocket, &operationResponse, sizeof(int), 0) <= 0) {
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
 		exit(-1);
-	}*/
-
-	//*esiPC += (operationResponse == EXITO ? 1 : 0);
-	*esiPC += 1;
-
-	free(operation);
+	}
 }
 
 void interpretateOperation(Operation * operation, char * line) {
@@ -185,6 +182,8 @@ void interpretateOperation(Operation * operation, char * line) {
 		log_error(logger, "Parsi cannot understand the line %s", line);
 		exit(-1);
 	}
+
+	operation->value = "";
 
 	switch (parsedLine.keyword) {
 		case GET:
@@ -215,14 +214,15 @@ void interpretateOperation(Operation * operation, char * line) {
 			exit(-1);
 	}
 
-	// Hay que hacer free de key y value?
-	//free(operation->key);
-
-	// Rompe y tira segmentation fault
-	/*if (strlen(operation->value) > 0) {
-	 	 Rompe y tira segmentation fault
-		free(operation->value);
-	}*/
-
 	destruir_operacion(parsedLine);
+}
+
+void destroy_operation(Operation * operation) {
+	if (empty_string(operation->key) == 0)
+		free(operation->key);
+
+	if (empty_string(operation->value) == 0)
+		free(operation->value);
+
+	free(operation);
 }

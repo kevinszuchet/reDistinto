@@ -27,7 +27,12 @@
 	#define  CFG_FILE "../esi.cfg"
 	void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador, int* portPlanificador);
 	void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinadorSocket);
-	void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC);
+	void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len);
 	void interpretateOperation(Operation * operation, char * line);
+	void destroy_operation(Operation * operation);
+
+	int empty_string(char * str) {
+		return (str != NULL && strcmp(str, "") != 0 ? 0 : 1);
+	}
 
 #endif /* SRC_ESI_H_ */
