@@ -11,6 +11,7 @@
 	#include <our-commons/sockets/server.h>
 	#include <our-commons/modules/names.h>
 	#include <our-commons/messages/operation_codes.h>
+	#include <our-commons/messages/serialization.h>
 	#include <our-commons/tads/tads.h>
 	//#include <commons/string.h>
 	#include <commons/config.h>

@@ -129,32 +129,6 @@ void logOperation(char* stringToLog){
 	log_info(operationsLogger, stringToLog);
 }
 
-/* TODO A DEFINIR
- *
- * Con este metodo estas suponiendo que te va a venir el payload seguido del size
- *
- * Con solo un parametro no hay problema pero si usas esta funcion en el get
- * por como tenemos definido el mensaje no te va a funcionar
- * Necesitas: size - value - size  - value
- * Tenemos  : size - size  - value - value
- *
- * Se puede cambiar el protocolo ya que este metodo parece que nos simplifica bastante
- * Se puede pasar a las commons para que todos lo aprovechen
- */
-char* recieveAccordingToSize(int socket){
-	int size = 0;
-	if(recv(socket, &size, sizeof(int), 0) <= 0){
-		return NULL;//para que no te joda los tipos, devolve null en estos casos
-	}
-
-	char* recieved = malloc(size);
-	if (recv(socket, &recieved, size, 0) <= 0){
-		return NULL;
-	}
-
-	return recieved;
-}
-
 Instancia* lookForKey(char* key){
 	int isLookedKey(char* actualKey){
 		if(strcmp(actualKey, key)){
@@ -197,76 +171,6 @@ Instancia* lookForOrChoseInstancia(int esiSocket, char* key){
 	return chosenInstancia;
 }
 
-//TODO hay un modulo de serializacion vacio en las commons
-/*
- * Hay que definir bien con el encargado de las instancias el formato de los mensajes
- * y usar el modulo de las commons
- */
-void* addToPackage(void* package, void* value, int size, int* offset) {
-	package = realloc(package, size);
-	memcpy(package + *offset, value, size);
-	*offset += size;
-}
-
-//TODO Mover a commons
-//Usar send all en vez de send para aseguranos que se mande todo el package
-bool send_all(int socket, char *package, int length)
-{
-    char *auxPointer = package;
-    while (length > 0)
-    {
-        int i = send(socket, auxPointer, length, 0);
-        if (i < 1) return false;
-        auxPointer += i;
-        length -= i;
-    }
-    return true;
-}
-
-int instanciaDoSet(Instancia* instancia, EsiRequest* esiRequest){
-	int offset = 0;
-	void* package;
-
-	int sizeKey = strlen(esiRequest->operation->key);
-	int sizeValue = strlen(esiRequest->operation->value);
-
-	addToPackage(package, OURSET, sizeof(OURSET), &offset);
-	addToPackage(package, sizeKey, sizeof(sizeKey), &offset);
-	addToPackage(package, sizeValue, sizeof(sizeValue), &offset);
-	addToPackage(package, esiRequest->operation->key, sizeKey, &offset);
-	addToPackage(package, esiRequest->operation->value, sizeValue, &offset);
-
-	send_all(instancia->socket, package, offset);
-
-	return 0;
-
-	/*
-	//agrego operationCode
-	int operationCode = OURSET;
-	char* package = malloc(sizeof(operationCode));
-	memcpy(package, &operationCode, sizeof(OURSET));
-	offset += sizeof(OURSET);
-	//agrego sizeClave
-	int sizeKey = strlen(key) + 1;//Para incluir \0 pongo +1
-	package = realloc(package, offset + sizeof(sizeKey));
-	memcpy(package + offset, &sizeKey, sizeof(sizeKey));
-	offset += sizeof(sizeKey);
-	//agrego sizeValue
-	int sizeValue = strlen(value) + 1;//Para incluir \0 pongo +1
-	package = realloc(package, offset + sizeof(sizeValue));
-	memcpy(package + offset, &sizeValue, sizeof(sizeValue));
-	offset += sizeof(sizeValue);
-	//agrego clave
-	package = realloc(package, offset + sizeKey);
-	memcpy(package + offset, key, sizeKey);
-	offset += sizeKey;
-	//agrego value
-	package = realloc(package, offset + sizeValue);
-	memcpy(package + offset, value, sizeValue);
-	offset += sizeValue;
-	*/
-}
-
 int instanciaDoStore(Instancia* instancia, EsiRequest* esiRequest){
 	return 0;
 }
@@ -282,8 +186,7 @@ int doSet(EsiRequest* esiRequest, char** stringToLog){
 		return -1;
 	}
 
-	//TODO mariano: instanciaDoSet no se podria reemplazar directamente por la funcion de serialization.c?
-	if (instanciaDoSet(chosenInstancia, esiRequest) < 0){
+	if (sendOperation(esiRequest->operation, chosenInstancia->socket) == 0){
 		//que pasa aca?
 		return -1;
 	}
@@ -352,22 +255,29 @@ int recieveStentenceToProcess(int esiSocket){
 	int esiId = getActualEsiID();
 	char* stringToLog;
 
-	//TOOD mariano recibir la estructura operacion (sacar este NULL)
-	EsiRequest* esiRequest = NULL;
+	//TODO liberar memoria
+	Operation* operation = malloc(sizeof(Operation));
+	//TODO validar
+	recieveOperation(operation, esiSocket);
+
+	EsiRequest esiRequest;
+	esiRequest.id = esiId;
+	esiRequest.operation = operation;
+	esiRequest.socket = esiSocket;
 
 	//TODO validar los siguientes casos, los 3, por si es necesario matar al hilo
 	//(y cada uno de ellos avisara al planificador/esi lo que corresponda)
-	switch (esiRequest->operation->operationCode){
+	switch (esiRequest.operation->operationCode){
 		case OURSET:
-			if(doSet(esiRequest, &stringToLog) < 0){
+			if(doSet(&esiRequest, &stringToLog) < 0){
 				return -1;
 			}
 			break;
 		case OURSTORE:
-			doStore(esiRequest, &stringToLog);
+			doStore(&esiRequest, &stringToLog);
 			break;
 		case OURGET:
-			doGet(esiRequest, &stringToLog);
+			doGet(&esiRequest, &stringToLog);
 			break;
 		default:
 			//deberiamos matar al esi?
