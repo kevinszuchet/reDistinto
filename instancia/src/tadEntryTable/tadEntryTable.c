@@ -7,11 +7,9 @@
 
 #include "tadEntryTable.h"
 
-entryTableInfo *createTableInfo(int valueEntryStart, int valueTotalSize){
-	entryTableInfo * entryInfo = malloc(sizeof(entryTableInfo));
+void createTableInfo(entryTableInfo * entryInfo, int valueEntryStart, int valueTotalSize){
 	entryInfo->valueStart = valueEntryStart;
 	entryInfo->valueSize = valueTotalSize;
-	return entryInfo;
 }
 int getValueStart(entryTableInfo * entryInfo){
 	return entryInfo->valueStart;

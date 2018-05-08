@@ -35,12 +35,9 @@ int main(void) {
 	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA, logger);
 
 	if (coordinadorSocket < 0) {
-
 		//reintentar conexion?
-
 		log_error(logger, "An error has occurred while trying to connect to coordinador\n socket number: %d\n", coordinadorSocket);
 		return -1;
-
 	}
 
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
@@ -58,7 +55,6 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	*path = config_get_string_value(config, "PATH");
 	*name = config_get_string_value(config, "NAME");
 	*dump = config_get_int_value(config, "DUMP");
-
 }
 
 int initialize(int entraces, int entryStorage){
@@ -84,37 +80,41 @@ int set(char *key, char *value){
 	char *valueAndSentinel;
 	entryTableInfo * entryInfo;
 
-	if (valueSize > entryAmount * entrySize) {
-
+	// Asks if the size of the value can be stored
+	if (valueSize > (entryAmount * entrySize)) {
 		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
 		return -1;
-
 	}
 
-	if ((dictionary_has_key(entryTable, key),"true")) {
-
+	// If the key exists, the value is update
+	if ((dictionary_has_key(entryTable, key), "true")) {
 		updateKey(key, value);
-
 	}
 
+	// Get the amount of entries that is needed to store the value
 	entriesForValue = wholeUpperDivision(valueSize, entrySize);
 	log_info(logger, "Total entries for value: %d", entriesForValue);
 
-	valueStart = getStartEntryToSet(wholeUpperDivision(valueSize, entrySize));
+	// Get the start position to store the value
+	valueStart = getStartEntryToSet(entriesForValue);
 
-	entryInfo = malloc(sizeof(entryTableInfo));
-	entryInfo = createTableInfo(valueStart, valueSize);
+	/*
+	 * Copy the value
+	 * If there is space to store, complete the space with many sentinel values as possible
+	 * */
+
 	valueAndSentinel = malloc(entriesForValue * entrySize);
 	strcpy(valueAndSentinel, value);
 
-	if (valueSize % entrySize >0) {
-
+	if ((valueSize % entrySize) > 0) {
 		autoCompleteSentinelValue(valueSize % entrySize, &sentinelChar);
 		strcat(valueAndSentinel, sentinelChar);
-
 	}
 
-	entryInfo = createTableInfo(valueStart, valueSize);
+	// Create the entry structure
+	entryInfo = malloc(sizeof(entryTableInfo));
+	createTableInfo(entryInfo, valueStart, valueSize);
+
 	dictionary_put(entryTable, key, entryInfo);
 	storageSet(valueStart, valueAndSentinel);
 
@@ -235,25 +235,24 @@ int getStartEntryToSet(int valueNeededEntries) {
 
 		for (int i = 0; i < entryAmount; i++) {
 
-			if (strcmp(storage[i * entrySize], SENTINEL_VALUE)) {
+			// If the entry value is empty (only a sentinel value)
+			if (strcmp(storage[i * entrySize], SENTINEL_VALUE) == 0) {
 
-				totalFreeEntries++;
 				int j = i + 1;
+				totalFreeEntries++;
 				validEntries++;
 
-				while (j < entryAmount && strcmp(storage[j * entrySize], SENTINEL_VALUE) && validEntries < valueNeededEntries) {
-
+				// Get the valid entries (adjacent) and the total free entries
+				while (j < entryAmount && strcmp(storage[j * entrySize], SENTINEL_VALUE) == 0 && validEntries < valueNeededEntries) {
 					totalFreeEntries++;
 					validEntries++;
 					j++;
-
 				}
-				if (validEntries == valueNeededEntries) {
 
+				if (validEntries == valueNeededEntries) {
 					entryStart = i;
 					log_info(logger, "Valid start entry to set was found. Entry Number: %d", entryStart);
 					break;
-
 				}
 
 				i = j;
@@ -264,52 +263,38 @@ int getStartEntryToSet(int valueNeededEntries) {
 		if(entryStart == ENTRY_START_ERROR) {
 
 			if (valueNeededEntries > totalFreeEntries) {
-
-				//hay que eliminar algun value según el algoritmo de reemplazo
+				// Delete any value considering the replacement algorithm
 				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm");
-
-			}
-			else {
-
-				//hay que compactar
+			} else {
+				// compact
 				log_info(logger, "There are not enough contiguous free entries to set the value, we are about to compact the storage");
-
 			}
 		}
-
 	}
 
 	return -1;
 }
 
-int getTotalSettedEntries(){
+int getTotalSettedEntries() {
 
 	int totalEntries = 0;
 
 	for (int i = 0; i < entryAmount; i++) {
-
-		if (!strcmp(storage[i * entrySize], SENTINEL_VALUE)) {
-
+		if (strcmp(storage[i * entrySize], SENTINEL_VALUE)) {
 			totalEntries++;
-
 		}
 	}
 
 	return totalEntries;
 }
 
-int wholeUpperDivision(int x, int y) {// X/Y
-
+int wholeUpperDivision(int x, int y) {
 	return (1 + ((x-1)/y));
-
 }
 
 void storageSet(int initialEntry,  char * value) {
 
 	for (int i = 0; i < sizeof(value) ; i++) {
-
 		storage[i + initialEntry] = value[i];
-
 	}
-
 }

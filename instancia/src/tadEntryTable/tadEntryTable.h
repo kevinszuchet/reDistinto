@@ -15,7 +15,7 @@ typedef struct entryTableInfo{
 	int valueSize;
 }entryTableInfo;
 
-entryTableInfo * createTableInfo(int valueEntryStart, int valueTotalSize);
+void createTableInfo(entryTableInfo * entryInfo, int valueEntryStart, int valueTotalSize);
 int getValueStart(entryTableInfo *entryInfo);
 int getValueSize(entryTableInfo *entryInfo);
 

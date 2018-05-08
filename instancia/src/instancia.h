@@ -35,6 +35,6 @@
 	int getStartEntryToSet(int amountOfEtries);
 	int wholeUpperDivision(int x, int y);
 	int getTotalSettedEntries();
-	void storageSet(int initialEntry, int finalEntry, char * value);
+	void storageSet(int initialEntry,  char * value);
 
 #endif /* SRC_INSTANCIA_H_ */
