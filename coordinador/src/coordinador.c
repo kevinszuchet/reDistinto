@@ -110,12 +110,16 @@ void informPlanificador(Operation* operation, char operationCode){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 	if(send(planificadorSocket, operationCode, sizeof(char), 0) < 0){
-
+		//TODO que pasa aca
 	}
 }
 
 void sendResponseToEsi(int esiSocket, int response){
-
+	//TODO aca tambien hay que reintentar hasta que se mande todo?
+	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
+	if(send(planificadorSocket, &response, sizeof(int), 0) < 0){
+		//TODO que pasa aca
+	}
 }
 
 int getActualEsiID(){
@@ -130,6 +134,10 @@ int getActualEsiID(){
 	}
 
 	return esiId;
+}
+
+int getActualEsiIDDummy(){
+	return 0;
 }
 
 void logOperation(char* stringToLog){
@@ -178,6 +186,7 @@ int instanciaDoStore(Instancia* instancia, EsiRequest* esiRequest){
 }
 
 int doSet(EsiRequest* esiRequest, char** stringToLog){
+	printf("Vamos a probar el set\n");
 	Instancia* chosenInstancia = lookForOrChoseInstancia(esiRequest->socket, esiRequest->operation->key);
 
 	if(chosenInstancia == NULL){
@@ -271,13 +280,31 @@ char recieveKeyStatusFromPlanificador(){
 	return response;
 }
 
+char recieveKeyStatusFromPlanificadorDummy(){
+	return CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR;
+}
+
+void recieveOperationDummy(Operation* operation){
+	operation->key = "lio:messi";
+	operation->value = "elMasCapo";
+	operation->operationCode = OURSET;
+}
+
+void showOperation(Operation* operation){
+	printf("Operation key = %s\n", operation->key);
+}
+
 int recieveStentenceToProcess(int esiSocket){
-	printf("Voy a recibir el id del planificador\n");
-	int esiId = getActualEsiID();
+	int esiId = 0;
+	//esiId = getActualEsiID();
+	esiId = getActualEsiIDDummy();
+
 	char* stringToLog;
 
 	//TODO fijarse con el planificador si la clave esta bloqueada
-	char keyStatus = recieveKeyStatusFromPlanificador();
+	char keyStatus;
+	//keyStatus = recieveKeyStatusFromPlanificador();
+	keyStatus = recieveKeyStatusFromPlanificadorDummy();
 	if(keyStatus == CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR){
 		//TODO ojo, no siempre: creo que si es el mismo esi que la bloqueo, se puede hacer
 		//habria que hablar con el planificador para que nos diga si en ese caso manda error, no deberia
@@ -285,10 +312,16 @@ int recieveStentenceToProcess(int esiSocket){
 	}
 
 	Operation* operation = malloc(sizeof(Operation));
+	//TODO descomentar, esta asi para probar
 	if(recieveOperation(operation, esiSocket) < 1){
 		//TODO en este caso se mata al esi?
 		informPlanificador(operation, FALLA);
 	}
+
+	showOperation(operation);
+
+	//testea el set
+	//recieveOperationDummy(operation);
 
 	EsiRequest esiRequest;
 	esiRequest.id = esiId;
@@ -363,6 +396,7 @@ int handleEsi(int esiSocket){
 	while(1){
 		//TODO validar el retorno del recieve para que el hilo muera en caso de fallar algo
 		recieveStentenceToProcess(esiSocket);
+		exit(-1);
 	}
 	return 0;
 }
