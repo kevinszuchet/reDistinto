@@ -7,6 +7,17 @@
 
 #include "instanciaFunctions.h"
 
+//TODO testear esta funcion
+void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias){
+
+	int isFallenInstancia(Instancia* instancia){
+		return instancia == fallenInstancia ? 1 : 0;
+	}
+
+	list_remove_by_condition(instancias, (void*) &isFallenInstancia);
+	list_add(fallenInstancias, fallenInstancia);
+}
+
 int waitForInstanciaResponse(Instancia* chosenInstancia){
 	int response = 0;
 	if (recv(chosenInstancia->socket, &response, sizeof(int), 0) <= 0){

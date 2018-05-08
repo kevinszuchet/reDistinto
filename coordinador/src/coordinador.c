@@ -6,6 +6,9 @@
  */
 
 #include "coordinador.h"
+//TODO cambiar esta por la posta
+#define CLAVE_PROVISORIA_ERROR_A_PLANIFICADOR '30'
+#define CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR '31'
 
 t_log* logger;
 t_log* operationsLogger;
@@ -14,6 +17,7 @@ int planificadorSocket;
 void setDistributionAlgorithm(char* algorithm);
 Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
 t_list* instancias;
+t_list* fallenInstancias;
 int delay;
 int lastInstanciaChosen = 0;
 int firstAlreadyPass = 0;
@@ -37,6 +41,7 @@ int main(void) {
 	setDistributionAlgorithm(algorithm);
 
 	instancias = list_create();
+	fallenInstancias = list_create();
 
 	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
 
@@ -101,8 +106,12 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 	return NULL;
 }
 
-void informPlanificador(char* key){
+void informPlanificador(Operation* operation, char operationCode){
+	//TODO aca tambien hay que reintentar hasta que se mande todo?
+	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
+	if(send(planificadorSocket, operationCode, sizeof(char), 0) < 0){
 
+	}
 }
 
 void sendResponseToEsi(int esiSocket, int response){
@@ -111,18 +120,16 @@ void sendResponseToEsi(int esiSocket, int response){
 
 int getActualEsiID(){
 	int esiId = 0;
-	if(recv(planificadorSocket, &esiId, sizeof(int), 0) <= 0){
-
-		return -1;
+	int recvResult = recv(planificadorSocket, &esiId, sizeof(int), 0);
+	if(recvResult <= 0){
+		if(recvResult == 0)
+		log_error(logger, "Planificador disconnected from coordinador, quitting...");
+		//TODO decidamos: de aca en mas hacemos exit si muere la conexion con el planificador?
+		//Misma decision que en recieveKeyStatusFromPlanificador
+		exit(-1);
 	}
 
 	return esiId;
-}
-
-//TODO estaria bueno manejarnos con otro tad de esi que conozca todos los componentes recibidos...
-//esto es: los dos tamanios y los dos valores, para evitar pasar tantos parametros
-int sendRequest(Instancia* chosenInstancia, char* key, char* value){
-	return 0;
 }
 
 void logOperation(char* stringToLog){
@@ -151,8 +158,6 @@ Instancia* lookForKey(char* key){
 Instancia* lookForOrChoseInstancia(int esiSocket, char* key){
 	Instancia* chosenInstancia;
 	chosenInstancia = lookForKey(key);
-	//TODO descomentar esto, es para probar el algoritmo de distribucion
-	chosenInstancia = NULL;
 
 	showInstancia(chosenInstancia);
 
@@ -161,9 +166,6 @@ Instancia* lookForOrChoseInstancia(int esiSocket, char* key){
 		//TODO sacar este show
 		showInstancia(chosenInstancia);
 		if (chosenInstancia == NULL){
-			//TODO chequear que se le manda al planificador
-			informPlanificador(key);
-			sendResponseToEsi(esiSocket, EXECUTION_ERROR);
 			return NULL;
 		}
 	}
@@ -176,13 +178,11 @@ int instanciaDoStore(Instancia* instancia, EsiRequest* esiRequest){
 }
 
 int doSet(EsiRequest* esiRequest, char** stringToLog){
-
-	//TODO fijarse con el planificador si la clave esta bloqueada
-
 	Instancia* chosenInstancia = lookForOrChoseInstancia(esiRequest->socket, esiRequest->operation->key);
 
-	//TODO descomentar esto, es para probar el algoritmo de distribucion
 	if(chosenInstancia == NULL){
+		informPlanificador(esiRequest->operation->key, CLAVE_PROVISORIA_ERROR_A_PLANIFICADOR);
+		sendResponseToEsi(esiRequest->socket, FALLA);
 		return -1;
 	}
 
@@ -191,13 +191,15 @@ int doSet(EsiRequest* esiRequest, char** stringToLog){
 		return -1;
 	}
 
+	//TODO important ojo con este recv, ya que se esta escuchando a la instancia en su hilo..
 	int response = waitForInstanciaResponse(chosenInstancia);
 	if(response < 0){
-		informPlanificador(esiRequest->operation->key);
-		sendResponseToEsi(esiRequest->socket, EXECUTION_ERROR);
+		informPlanificador(esiRequest->operation->key, CLAVE_PROVISORIA_ERROR_A_PLANIFICADOR);
+		sendResponseToEsi(esiRequest->socket, FALLA);
 		return -1;
 	}
 
+	//TODO chequear que lo que nos devuelve la instancia es lo mismo que espera el ESI
 	sendResponseToEsi(esiRequest->socket, response);
 
 	//5 es el tamanio de "ESI X" necesario para loggear, siendo X el id de esi. el +1 del medio...
@@ -211,14 +213,12 @@ int doSet(EsiRequest* esiRequest, char** stringToLog){
 }
 
 int doStore(EsiRequest* esiRequest, char** stringToLog){
-
-	//TODO fijarse con el planificador si la clave esta bloqueada
-
 	Instancia* chosenInstancia = NULL;
-	//TODO la funcion lookForKey
-	//chosenInstancia = lookForKey(key);
+	chosenInstancia = lookForKey(esiRequest->operation->key);
 	if(chosenInstancia == NULL){
 		//TODO avisar al planificador que no se puede hacer store de clave inexistente
+		informPlanificador(esiRequest->operation, ERROR_CLAVE_NON_EXISTENT);
+		return -1;
 	}
 
 	if (instanciaDoStore(chosenInstancia, esiRequest) < 0){
@@ -228,11 +228,14 @@ int doStore(EsiRequest* esiRequest, char** stringToLog){
 
 	int response = waitForInstanciaResponse(chosenInstancia);
 	if(response < 0){
-		informPlanificador(esiRequest->operation->key);
-		sendResponseToEsi(esiRequest->socket, EXECUTION_ERROR);
+		//TODO habria que buscar con otra? es medio rebuscado creo
+		instanciaHasFallen(chosenInstancia, instancias, fallenInstancias);
+		informPlanificador(esiRequest->operation, ERROR_CLAVE_NON_EXISTENT);
+		sendResponseToEsi(esiRequest->socket, FALLA);
 		return -1;
 	}
 
+	//TODO chequear que lo que nos devuelve la instancia es lo mismo que espera el ESI
 	sendResponseToEsi(esiRequest->socket, response);
 
 	*stringToLog = malloc(5 + strlen(esiRequest->operation->key) + 1);
@@ -242,8 +245,12 @@ int doStore(EsiRequest* esiRequest, char** stringToLog){
 }
 
 int doGet(EsiRequest* esiRequest, char** stringToLog){
-	//TODO ver como se le va avisar al planificador
-	informPlanificador(esiRequest->operation->value);
+	if(lookForKey(esiRequest->operation->key) == NULL){
+		informPlanificador(esiRequest->operation, ERROR_CLAVE_NON_EXISTENT);
+	}
+
+	//TODO se manda un lock o ourget? estan ambos en nuestras commons
+	informPlanificador(esiRequest->operation, EXITO);
 
 	//TODO hay que considerar los tamanios de int para crear el string?
 	//*stringToLog = malloc(5 + strlen(value) + 1);
@@ -251,14 +258,37 @@ int doGet(EsiRequest* esiRequest, char** stringToLog){
 	return 0;
 }
 
+char recieveKeyStatusFromPlanificador(){
+	char response = 0;
+	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
+	if(recvResult <= 0){
+		if(recvResult == 0){
+			log_error(logger, "Planificador disconnected from coordinador, quitting...");
+			//TODO decidamos: de aca en mas hacemos exit si muere la conexion con el planificador?
+			exit(-1);
+		}
+	}
+	return response;
+}
+
 int recieveStentenceToProcess(int esiSocket){
+	printf("Voy a recibir el id del planificador\n");
 	int esiId = getActualEsiID();
 	char* stringToLog;
 
-	//TODO liberar memoria
+	//TODO fijarse con el planificador si la clave esta bloqueada
+	char keyStatus = recieveKeyStatusFromPlanificador();
+	if(keyStatus == CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR){
+		//TODO ojo, no siempre: creo que si es el mismo esi que la bloqueo, se puede hacer
+		//habria que hablar con el planificador para que nos diga si en ese caso manda error, no deberia
+		return -1;
+	}
+
 	Operation* operation = malloc(sizeof(Operation));
-	//TODO validar
-	recieveOperation(operation, esiSocket);
+	if(recieveOperation(operation, esiSocket) < 1){
+		//TODO en este caso se mata al esi?
+		informPlanificador(operation, FALLA);
+	}
 
 	EsiRequest esiRequest;
 	esiRequest.id = esiId;
@@ -281,14 +311,14 @@ int recieveStentenceToProcess(int esiSocket){
 			break;
 		default:
 			//deberiamos matar al esi?
+			//TODO se puede hacer informPlanificador con un error, pero hay que ver si esta esperando eso
 			break;
 	}
 
 	//TODO descomentar
 	//logOperation(stringToLog);
 
-	//TODO liberar todo lo necesario en esiRequest. se podria delegar en una funcion
-
+	free(operation);
 	free(stringToLog);
 	//lo pide la consigna
 	//sleep(delay);
@@ -330,10 +360,10 @@ int handleEsi(int esiSocket){
 	log_info(logger,"An esi thread was created\n");
 	//TODO descomentar esto, esta porque el esi cae y los recv dan 0 y todavia...
 	//...no se valida lo de aca abajo
-	//while(1){
+	while(1){
 		//TODO validar el retorno del recieve para que el hilo muera en caso de fallar algo
 		recieveStentenceToProcess(esiSocket);
-	//}
+	}
 	return 0;
 }
 
