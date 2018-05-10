@@ -317,6 +317,8 @@ int recieveStentenceToProcess(int esiSocket){
 	//se esta esperando que el planificador no mande bloqueada si bloqueante = solicitante
 	//keyStatus = checkKeyStatusFromPlanificador(esiId, operation->key);
 	keyStatus = checkKeyStatusFromPlanificadorDummy();
+
+	//TODO validar si la clave fue tomada por el mismo esi que quiere accederla
 	if(keyStatus == CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR){
 		sendResponseToEsi(esiSocket, FALLA);
 		//TODO hay que logear que no pudo operar por clave bloqueada...
