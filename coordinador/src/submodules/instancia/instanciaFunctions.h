@@ -19,6 +19,7 @@
 		t_list* storedKeys;
 	}Instancia;
 
+	int addKeyToInstanciaStruct(Instancia* instancia, char* key);
 	void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias);
 	int waitForInstanciaResponse(Instancia* chosenInstancia);
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);

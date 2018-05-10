@@ -7,6 +7,10 @@
 
 #include "instanciaFunctions.h"
 
+int addKeyToInstanciaStruct(Instancia* instancia, char* key){
+	list_add(instancia->storedKeys, key);
+}
+
 //TODO testear esta funcion
 void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias){
 
@@ -20,8 +24,14 @@ void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* 
 
 int waitForInstanciaResponse(Instancia* chosenInstancia){
 	int response = 0;
-	if (recv(chosenInstancia->socket, &response, sizeof(int), 0) <= 0){
-		return -1;
+	int recvResult = recv(chosenInstancia->socket, &response, sizeof(int), 0);
+	if (recvResult <= 0){
+		if(recvResult == 0){
+			//se cayo la instancia
+			return -1;
+		}else{
+			//TODO que hacemos aca? que paso?
+		}
 	}
 	return response;
 }
@@ -51,7 +61,7 @@ int createNewInstancia(int instanciaSocket, t_list* instancias){
 
 	//TODO sacar esto, es para que no se ponga esta cadena en todas las instancias
 	if(greatestId == 0){
-		list_add(instanciaWithGreatestId->storedKeys, "cadena");
+		list_add(instanciaWithGreatestId->storedKeys, "lio:messi");
 	}
 
 	list_add(instancias, instanciaWithGreatestId);
@@ -88,6 +98,18 @@ void initializeSomeInstancias(t_list* instancias){
 	list_add(instancias, createInstancia(9, 10, 0, 'a', 'z', NULL));
 }
 
+void showStoredKey(char* key){
+	printf("%s\n", key);
+}
+
+void showStoredKeys(Instancia* instancia){
+	if(instancia->storedKeys != NULL){
+		list_iterate(instancia->storedKeys, (void*) showStoredKey);
+	}else{
+		printf("storedKeys cannot be showed\n");
+	}
+}
+
 void showInstancia(Instancia* instancia){
 	if(instancia != NULL){
 		printf("ID = %d\n", instancia->id);
@@ -95,6 +117,7 @@ void showInstancia(Instancia* instancia){
 		printf("Space used = %d\n", instancia->spaceUsed);
 		printf("First letter = %c\n", instancia->firstLetter);
 		printf("Last letter = %c\n", instancia->lastLetter);
+		showStoredKeys(instancia);
 		printf("----------\n");
 	}else{
 		printf("Instance cannot be showed\n");
