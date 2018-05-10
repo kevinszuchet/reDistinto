@@ -59,7 +59,8 @@ void execute(char** parameters) {
 		case BLOQUEAR:
 		    key = parameters[1];
 		    esiID = atoi(parameters[2]);
-			blockKey(key,esiID);
+			blockEsi(key,esiID);
+			takeResource(key,CONSOLE_BLOCKED);
 			printf("ESI %d was blocked in %s resource:\n", esiID,key);
 		break;
 		case DESBLOQUEAR:
@@ -144,7 +145,7 @@ int validCommand(char** parameters) {
 }
 
 int validateBloquear(char* key,int id){
-	if(keyExists(key)&&(isReady(id)||isRunning(id))){
+	if(keyExists(key)&&(isReady(id)||isRunning(id))&&(!isTakenResource(key))){
 		return 1;
 	}
 	return 0;

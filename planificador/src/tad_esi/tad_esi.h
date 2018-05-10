@@ -10,6 +10,7 @@
 
 #include<stdlib.h>
 #include <commons/log.h>
+#include <commons/collections/list.h>
 
 typedef struct Esi{
 	int id;
@@ -17,6 +18,8 @@ typedef struct Esi{
 	int waitingTime;
 	int socketConection;
 	int lastEstimation;
+	t_list* lockedKeys;
+
 }Esi;
 
 void addWaitingTime(Esi*);
@@ -26,5 +29,8 @@ void addWaitingTimeToAll(Esi**);
 Esi *createEsi(int id,double initialBurst,int socketConection);
 
 int id(Esi* esi);
+
+void addLockedKey(char* key, Esi* esi);
+void removeLockedKey(char* key, Esi* esi);
 
 #endif /* SRC_TAD_ESI_TAD_ESI_H_ */

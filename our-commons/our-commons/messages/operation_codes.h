@@ -8,9 +8,9 @@
 #ifndef OPERATION_CODES_H_
 #define OPERATION_CODES_H_
 
-#define EXITO '1'
-#define FINALIZADO '2'
-#define FALLA '3'
+#define SUCCESS '1'
+#define FINISHED '2'
+#define ABORT '3'
 #define OURSET '4'
 #define OURGET '5'
 #define RUN '6'
@@ -21,5 +21,8 @@
 #define ERROR_CLAVE_NOT_IDENTIFIED 'q'
 #define ERROR_CLAVE_NON_EXISTENT 'w'
 #define ERROR_CLAVE_NOT_FOUND 'e'
+#define BLOCK 'r'
+#define FREE 't'
+#define NOTFINISHED 'y'
 
 #endif /* OPERATION_CODES_H_ */

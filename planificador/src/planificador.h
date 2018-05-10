@@ -26,13 +26,16 @@
 	#include <our-commons/messages/serialization.h>
 
 	#define  CFG_FILE "../planificador.cfg"
-	#define CONFIG_BLOCKED 0
+	#define CONSOLE_BLOCKED 0
 
 
 	t_dictionary* blockedEsiDic;
 	t_list* readyEsis;
 	t_list* finishedEsis;
 	Esi* runningEsi;
+
+	t_dictionary* takenResources;
+
 	int listeningPort;
 	char* algorithm;
 	int alphaEstimation;
@@ -42,35 +45,34 @@
 	char** blockedKeys;
 
 
-	typedef struct{
-		t_queue* blockedEsis;
-		int resourceTakerID;
-	}blocked_queue;
 
 
 	//DUMMIE FUNCTIONS
-	void sendKeyStatusToCoordinadorDummie(int status);
+	void sendKeyStatusToCoordinadorDummie(char status);
 	void sendMessageExecuteToEsiDummie(Esi* nextEsi);
 	int waitEsiInformationDummie(int esiSocket);
+	void sendEsiIdToCoordinador(int esiID);
 
 	void executionProcedure();
 
 	void handleEsiInformation(char esiExecutionInformation,Operation* keyOp);
 
 	int waitEsiInformation(int esiSocket);
-	void sendKeyStatusToCoordinador(int status);
+	void sendKeyStatusToCoordinador(char status);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
 
 	void generateTestEsi();
 	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation,int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
-	void blockKey(char* keyToBlock, int esiBlocked);
+	void takeResource(char* keyToLock, int esiTaker);
+	void blockEsi(char* lockedResource, int esiBlocked);
 	int checkKeyBlocked(char* keyRecieved);
 	int isTakenResource(char* key);
 	void removeFromReady(Esi* esi);
 
+	void addEsiToReady(Esi* esi);
 	int welcomeEsi();
 	int welcomeNewClients();
-	void addConfigurationBlockedKeys(char**);
+	void addConfigurationLockedKeys(char**);
 	int handleConcurrence(int listenerPort);
 #endif /* SRC_PLANIFICADOR_H_ */

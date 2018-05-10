@@ -32,3 +32,11 @@ Esi *createEsi(int id,double initialEstimation,int socketConection){
 int id(Esi* esi){
 	return esi->id;
 }
+
+void addLockedKey(char* key, Esi* esi){
+
+}
+void removeLockedKey(char* key, Esi* esi){
+
+}
+
