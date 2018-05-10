@@ -134,7 +134,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 
 void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len) {
 
-	int operationResponse;
+	char coordinadorResponse, status;
 
 	/*
 	 *  Try to read the line that correspond to esiCP
@@ -155,19 +155,19 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 
 	destroy_operation(operation);
 
-	if (recv(coordinadorSocket, &operationResponse, sizeof(int), MSG_WAITALL) <= 0) {
+	if (recv(coordinadorSocket, &coordinadorResponse, sizeof(int), MSG_WAITALL) <= 0) {
 		log_error(logger, "recv failed on try to get the coordinador operation response", line);
 		exit(-1);
 	}
 
-	if (operationResponse != EXITO && operationResponse != FALLA) {
-		log_error(logger, "ESI does not understand the operation response", line);
-		exit(-1);
-	}
+	*esiPC += (coordinadorResponse == SUCCESS ? 1 : 0);
 
-	*esiPC += (operationResponse == EXITO ? 1 : 0);
+	status = (*esiPC == (len - 1) ? FINISHED : NOTFINISHED);
 
-	operationResponse = (*esiPC == (len - 1) ? FINALIZADO : operationResponse);
+	// Create and send the operationResponse
+	OperationResponse operationResponse;
+	operationResponse.coordinadorResponse = coordinadorResponse;
+	operationResponse.esiStatus = status;
 
 	if (send(planificadorSocket, &operationResponse, sizeof(int), 0) <= 0) {
 		log_error(logger, "ESI cannot send the operation response to planificador", line);

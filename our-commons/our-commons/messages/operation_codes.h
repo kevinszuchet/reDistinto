@@ -25,4 +25,9 @@
 #define FREE 't'
 #define NOTFINISHED 'y'
 
+typedef struct OperationResponse {
+	char coordinadorResponse;
+	char esiStatus;
+} __attribute__((packed)) OperationResponse;
+
 #endif /* OPERATION_CODES_H_ */
