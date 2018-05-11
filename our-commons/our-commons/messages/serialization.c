@@ -57,7 +57,9 @@ int sendOperation(Operation* operation, int sendSocket) {
 	addToPackage(&operation->key, sizeKey);
 	if (sizeValue != 0) {addToPackage(&operation->value, sizeValue);}
 
-	return send_all(sendSocket, package, offset);
+	int result = send_all(sendSocket, package, offset);
+	free(package);
+	return result;
 }
 
 int recieveOperation(Operation * operation, int recvSocket) {
