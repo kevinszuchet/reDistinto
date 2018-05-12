@@ -12,6 +12,7 @@ int entryAmount;
 int entrySize;
 t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
 char * storage;
+int ** biMap;
 
 int main(void) {
 
@@ -41,7 +42,8 @@ int main(void) {
 	}
 
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
-
+	initialize(entryAmount, entrySize);
+	finish();
 	return 0;
 }
 
@@ -64,21 +66,51 @@ int initialize(int entraces, int entryStorage){
 	entryAmount = entraces;
 	entrySize = entryStorage;
 	entryTable = dictionary_create();
+	// Se puede hacer dictioanry_resize()? Como se recorre el dictionary?
+	// Hace falta un +1 para el \0?
 	storage = malloc(entraces * entryStorage);
-	autoCompleteSentinelValue(entryAmount * entrySize, &storage);
+	biMapInitialize(entraces);
 	log_info(logger, "Instancia was intialized correctly\n");
 
 	return 0;
 }
 
+int finish() {
+
+	dictionary_destroy_and_destroy_elements(entryTable, (void *) destroyTableInfo);
+	free(storage);
+	free(biMap);
+	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!\n");
+
+	return 0;
+}
+
+/* BiMap */
+void biMapInitialize(int entraces) {
+
+	biMap = malloc(entraces * sizeof(int));
+
+	for (int i = 0; i < entraces; i++) {
+		biMap[i] = IS_EMPTY;
+	}
+}
+
+void biMapUpdate(int valueStart, int entriesForValue) {
+	for(int i = valueStart; i < (valueStart + entriesForValue); i++) {
+		// TODO resolver warning: assignment makes pointer from integer without a cast [-Wint-conversion]
+		*biMap[i] = IS_SET;
+	}
+}
+
+/* Set */
 int set(char *key, char *value){
 
 	int entriesForValue;
 	int valueStart = -1;
-	int valueSize = sizeof(value);
-	char * sentinelChar;
-	char *valueAndSentinel;
+	int valueSize = strlen(value);
 	entryTableInfo * entryInfo;
+
+	log_info(logger, "Size of value: %d", valueSize);
 
 	// Asks if the size of the value can be stored
 	if (valueSize > (entryAmount * entrySize)) {
@@ -87,7 +119,7 @@ int set(char *key, char *value){
 	}
 
 	// If the key exists, the value is update
-	if ((dictionary_has_key(entryTable, key), "true")) {
+	if (dictionary_has_key(entryTable, key)) {
 		updateKey(key, value);
 	}
 
@@ -98,131 +130,16 @@ int set(char *key, char *value){
 	// Get the start position to store the value
 	valueStart = getStartEntryToSet(entriesForValue);
 
-	/*
-	 * Copy the value
-	 * If there is space to store, complete the space with many sentinel values as possible
-	 * */
-
-	valueAndSentinel = malloc(entriesForValue * entrySize);
-	strcpy(valueAndSentinel, value);
-
-	if ((valueSize % entrySize) > 0) {
-		autoCompleteSentinelValue(valueSize % entrySize, &sentinelChar);
-		strcat(valueAndSentinel, sentinelChar);
-	}
-
 	// Create the entry structure
 	entryInfo = malloc(sizeof(entryTableInfo));
 	createTableInfo(entryInfo, valueStart, valueSize);
 
 	dictionary_put(entryTable, key, entryInfo);
-	storageSet(valueStart, valueAndSentinel);
-
-	free(valueAndSentinel);
-	free(entryInfo);
-	free(sentinelChar);
+	storageSet(valueStart, value);
+	biMapUpdate(valueStart, entriesForValue);
 
 	log_info(logger, "Set operation for key: %s and value: %s, was successfully done\n", key, value);
 	return 0;
-}
-
-int notifyCoodinador(char *key, char *value, char *operation) {
-
-	log_info(logger, "%s operation, with key: %s and value: %s, was successfully notified to coordinador\n", operation, key, value);
-	return 0;
-
-}
-
-int dump() {
-
-	log_info(logger, "Dump was successfully done\n");
-	return 0;
-
-}
-
-int compact() {
-
-	int totalSettedEntries = getTotalSettedEntries();
-	char * auxStorage = malloc(totalSettedEntries);
-	int auxIndex = 0;
-	char * sentinelChar;
-
-	for (int i = 0; i < entryAmount; i++) {
-
-		if (!strcmp(storage[i * entrySize], SENTINEL_VALUE)) {
-
-			int j = i * entrySize;
-
-			while (j < (entryAmount * entrySize) && j < ((i + 1) * entrySize)){
-
-				auxStorage[auxIndex] = storage[j];
-				auxIndex++;
-
-			}
-
-		}
-	}
-
-	strcpy(storage, auxStorage);
-	autoCompleteSentinelValue((entryAmount - totalSettedEntries) * entrySize, &sentinelChar);
-	strcat(storage, sentinelChar);
-
-	free(auxStorage);
-	log_info(logger, "Compactation was successfully done\n");
-	return 0;
-
-}
-
-int updateKey(char *key, char *value) {
-
-	log_info(logger, "The key: %s, already exists so it will be updated with value: %s\n", key, value);
-
-	//...
-
-	log_info(logger, "The key: %s, was successfully updated with the value: %s\n", key, value);
-
-	return 0;
-
-}
-
-int store(char *key) {
-
-	log_info(logger, "The key: %s, was successfully stored/n", key);
-
-	return 0;
-
-}
-
-int finish() {
-
-	//dictionary_clean_and_destroy_elements(entryTable, entryTableInfo *);
-	free(storage);
-	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!\n");
-
-	return 0;
-}
-
-void autoCompleteSentinelValue(int amount, char **s) {
-
-	s = malloc(amount);
-	strcpy(*s,"");
-
-	for (int i=0;i<amount;i++) {
-
-		strcat(*s, SENTINEL_VALUE);
-
-	}
-
-}
-
-int getValueStartEntry(char * key) {
-
-	int entry = 0;
-
-	log_info(logger, "Start entry for value with key: %s, is: %d", key, entry);
-
-	return entry;
-
 }
 
 int getStartEntryToSet(int valueNeededEntries) {
@@ -236,14 +153,14 @@ int getStartEntryToSet(int valueNeededEntries) {
 		for (int i = 0; i < entryAmount; i++) {
 
 			// If the entry value is empty (only a sentinel value)
-			if (strcmp(storage[i * entrySize], SENTINEL_VALUE) == 0) {
+			if (!biMap[i]) {
 
 				int j = i + 1;
 				totalFreeEntries++;
 				validEntries++;
 
 				// Get the valid entries (adjacent) and the total free entries
-				while (j < entryAmount && strcmp(storage[j * entrySize], SENTINEL_VALUE) == 0 && validEntries < valueNeededEntries) {
+				while (j < entryAmount && !biMap[j] && validEntries < valueNeededEntries) {
 					totalFreeEntries++;
 					validEntries++;
 					j++;
@@ -266,13 +183,86 @@ int getStartEntryToSet(int valueNeededEntries) {
 				// Delete any value considering the replacement algorithm
 				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm");
 			} else {
-				// compact
+				// compact();
 				log_info(logger, "There are not enough contiguous free entries to set the value, we are about to compact the storage");
 			}
 		}
 	}
 
-	return -1;
+	return entryStart;
+}
+
+void storageSet(int initialEntry,  char * value) {
+	int base = initialEntry * entrySize;
+	int j = 0;
+	for (int i = base; i < (strlen(value) + base) ; i++) {
+		storage[i] = value[j];
+		j++;
+	}
+}
+
+int updateKey(char *key, char *value) {
+
+	log_info(logger, "The key: %s, already exists so it will be updated with value: %s\n", key, value);
+
+	//...
+
+	log_info(logger, "The key: %s, was successfully updated with the value: %s\n", key, value);
+
+	return 0;
+
+}
+
+int compact() {
+
+	int totalSettedEntries = getTotalSettedEntries();
+	int totalUsedMemory = totalSettedEntries * entrySize;
+	char * auxStorage = malloc(totalSettedEntries);
+	int auxIndex = 0;
+
+	int valueSize, valueStart, j;
+
+	// Iterate all elements of the dictionary
+	for (int i = 0; i < entryTable->table_max_size; i++) {
+		t_hash_element *element = entryTable->elements[i];
+
+		while (element != NULL) {
+
+			 j = 0;
+
+			 valueSize = getValueSize(element->data);
+			 valueStart = getValueStart(element->data);
+			 char * value = malloc(valueSize);
+			 getValue(&value, valueStart, valueSize);
+
+			 // Update ValueStart on dictionary(key) element
+			 setValueStart(element->data, auxIndex);
+
+			 for (; auxIndex < totalUsedMemory; auxIndex++) {
+				 auxStorage[auxIndex] = value[j];
+				 j++;
+			 }
+
+			 // Get the next able position to store values
+			 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
+			 free(value);
+		}
+	}
+
+	strcpy(storage, auxStorage);
+	biMapUpdate(0, totalSettedEntries);
+
+	free(auxStorage);
+	log_info(logger, "Compactation was successfully done\n");
+	return 0;
+}
+
+void getValue(char ** value, int valueStart, int valueSize) {
+	int j = 0;
+	for (int i = valueStart; i < (valueStart + valueSize); i++) {
+		*value[j] = storage[i];
+		j++;
+	}
 }
 
 int getTotalSettedEntries() {
@@ -280,7 +270,7 @@ int getTotalSettedEntries() {
 	int totalEntries = 0;
 
 	for (int i = 0; i < entryAmount; i++) {
-		if (strcmp(storage[i * entrySize], SENTINEL_VALUE)) {
+		if (!biMap[i]) {
 			totalEntries++;
 		}
 	}
@@ -289,12 +279,36 @@ int getTotalSettedEntries() {
 }
 
 int wholeUpperDivision(int x, int y) {
-	return (1 + ((x-1)/y));
+	return (1 + ((x - 1) / y));
+}
+/*int notifyCoodinador(char *key, char *value, char *operation) {
+
+	log_info(logger, "%s operation, with key: %s and value: %s, was successfully notified to coordinador\n", operation, key, value);
+	return 0;
+
 }
 
-void storageSet(int initialEntry,  char * value) {
+int dump() {
 
-	for (int i = 0; i < sizeof(value) ; i++) {
-		storage[i + initialEntry] = value[i];
-	}
+	log_info(logger, "Dump was successfully done\n");
+	return 0;
+
 }
+
+int store(char *key) {
+
+	log_info(logger, "The key: %s, was successfully stored/n", key);
+
+	return 0;
+
+}
+
+int getValueStartEntry(char * key) {
+
+	int entry = 0;
+
+	log_info(logger, "Start entry for value with key: %s, is: %d", key, entry);
+
+	return entry;
+
+}*/
