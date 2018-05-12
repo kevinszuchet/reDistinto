@@ -22,8 +22,11 @@
 #define ERROR_CLAVE_NON_EXISTENT 'w'
 #define ERROR_CLAVE_NOT_FOUND 'e'
 #define BLOCK 'r'
+#define NOTBLOCKED 'u'
 #define FREE 't'
 #define NOTFINISHED 'y'
+#define BLOCKED 'i'
+#define LOCKED 'o'
 
 typedef struct OperationResponse {
 	char coordinadorResponse;

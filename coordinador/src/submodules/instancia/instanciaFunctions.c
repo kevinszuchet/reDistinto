@@ -7,6 +7,16 @@
 
 #include "instanciaFunctions.h"
 
+void removeKeyFromFallenInstancia(char* key, Instancia* instancia){
+	//TODO sacar de esa instancia
+
+	if(instancia != NULL){
+
+	}else{
+		//TODO buscar la clave y sacarla de la instancia
+	}
+}
+
 int addKeyToInstanciaStruct(Instancia* instancia, char* key){
 	list_add(instancia->storedKeys, key);
 }
