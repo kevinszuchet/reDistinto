@@ -100,26 +100,21 @@ void setDistributionAlgorithm(char* algorithm){
 }
 
 Instancia* chooseInstancia(char* keyToBeBlocked){
+	//TODO este if podria estar demas
 	if(list_size(instancias) != 0){
 		return (*distributionAlgorithm)(keyToBeBlocked);
 	}
 	return NULL;
 }
 
-void informPlanificador(Operation* operation, char operationCode){
+int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
-	if(send(planificadorSocket, operationCode, sizeof(char), 0) < 0){
-		//TODO que pasa aca
+	if(send(esiRequest->socket, &response, sizeof(int), 0) < 0){
+		sprintf(*stringToLog, "ESI %d hizo perdio conexion con el coordinador", esiRequest->id);
+		return -1;
 	}
-}
-
-void sendResponseToEsi(int esiSocket, int response){
-	//TODO aca tambien hay que reintentar hasta que se mande todo?
-	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
-	if(send(planificadorSocket, &response, sizeof(int), 0) < 0){
-		//TODO que pasa aca
-	}
+	return 0;
 }
 
 int getActualEsiID(){
@@ -163,8 +158,8 @@ Instancia* lookForKey(char* key, t_list* instanciasList){
 	return list_find(instanciasList, (void*) &isKeyInInstancia);
 }
 
-int keyIsInFallenInstancia(char* key){
-	return lookForKey(key, fallenInstancias) != NULL ? 1 : 0;
+int fallenInstanciaThatHasKey(char* key){
+	return lookForKey(key, fallenInstancias);
 }
 
 Instancia* lookForOrChoseInstancia(char* key, int* keyExists){
@@ -192,8 +187,14 @@ int instanciaDoOperation(Instancia* instancia, Operation* operation){
 int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
 	Instancia* chosenInstancia = lookForKey(esiRequest->operation->key, instancias);
 	if(chosenInstancia == NULL){
-		//TODO logear que la clave no identificada
-		sendResponseToEsi(esiRequest->socket, ABORT);
+		chosenInstancia = fallenInstanciaThatHasKey(esiRequest->operation->key);
+		if(chosenInstancia){
+			//logear error de clave inaccesible
+		}else{
+			//TODO logear que la clave no identificada
+		}
+		//TODO validar como mas abajo
+		sendResponseToEsi(esiRequest, ABORT, stringToLog);
 		return -1;
 	}
 
@@ -206,71 +207,83 @@ int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
 		//sendResponseToEsi(esiRequest->socket, BLOCK);
 		return -1;
 	}else{
-		sendResponseToEsi(esiRequest->socket, SUCCESS);
+		//TODO validar como mas abajo
+		sendResponseToEsi(esiRequest, SUCCESS, stringToLog);
 	}
 
 	//*stringToLog = malloc(/* lugar para guardar un exito */);
 }
 
-int doSet(EsiRequest* esiRequest, char** stringToLog){
+int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 
-	//TODO validar porque si se aborta al esi, se deberia matar este hilo
-	lookForKeyAndExecuteOperation(esiRequest, stringToLog);
-
-	return 0;
-}
-
-int doStore(EsiRequest* esiRequest, char** stringToLog){
-
-	//TODO chequear si hay validacion necesaria
-	lookForKeyAndExecuteOperation(esiRequest, stringToLog);
-
-	return 0;
-}
-
-int doGet(EsiRequest* esiRequest, char** stringToLog){
-	printf("Vamos a probar el GET\n");
-	int keyIsInAliveInstancia = 0;
-	Instancia* chosenInstancia = lookForOrChoseInstancia(esiRequest->operation->key, &keyIsInAliveInstancia);
-
-	if(chosenInstancia == NULL){
-		//TODO logear que no hay instancias disponibles (y ninguna tiene la clave pero eso no es error)
-		//TODO que pasa aca?
-		//sendResponseToEsi(esiRequest->socket, BLOCK);
+	if(lookForKeyAndExecuteOperation(esiRequest, stringToLog) < 0){
 		return -1;
 	}
 
-	//TODO descomentar.
-	/*if (sendOperation(esiRequest->operation, chosenInstancia->socket) == 0){
-		//que pasa aca?
-		return -1;
-	}*/
+	return 0;
+}
 
-	if(keyIsInAliveInstancia == 0){
-		//TODO me parece que esta parte se valida siempre, no solo en caso de GET
-		if(keyIsInFallenInstancia(esiRequest->operation->key)){
-			//TODO logear error de clave inaxesible
-			//TODO removeKeyFromAliveInstancia(esiRequest->operation->key);
-			sendResponseToEsi(esiRequest->socket, ABORT);
-			return -1;
-		}else{
-			addKeyToInstanciaStruct(chosenInstancia, esiRequest->operation->key);
-		}
+int doStore(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
+
+	if(lookForKeyAndExecuteOperation(esiRequest, stringToLog) < 0){
+		return -1;
+	}
+
+	return 0;
+}
+
+//doget, set y store deben devolver 0 si salio ok y -1 si muere el hilo del esi
+int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
+	if(keyStatus == BLOCKED){
+		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave bloqueada", esiRequest->id, esiRequest->operation->key);
+		//no se mata al esi en caso de clave inaccesible por si luego se recupera la clave
+		return sendResponseToEsi(esiRequest, BLOCK, stringToLog);
+	}
+
+	//la clave esta tomada por el o libre, fijarse si la clave esta en instancia caida
+
+	//TODO me parece que esta parte se valida siempre, no solo en caso de GET
+	Instancia* chosenInstancia = fallenInstanciaThatHasKey(esiRequest->operation->key);
+	if(chosenInstancia != NULL){
+		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave inaccesible", esiRequest->id, esiRequest->operation->key);
+		sendResponseToEsi(esiRequest, ABORT, stringToLog);
+		return -1;
+	}
+
+	int keyExists = 0;
+	chosenInstancia = lookForOrChoseInstancia(esiRequest->operation->key, &keyExists);
+
+	if(chosenInstancia == NULL){
+		sprintf(*stringToLog, "ESI %d es abortado por no existir la clave en ninguna instancia y no haber instancias disponibles", esiRequest->id);
+		sendResponseToEsi(esiRequest, ABORT, stringToLog);
+		return -1;
+	}
+
+	if(keyExists == 0){
+		addKeyToInstanciaStruct(chosenInstancia, esiRequest->operation->key);
 	}
 
 	showInstancia(chosenInstancia);
 
-	//TODO es necesario validar?
-	sendResponseToEsi(esiRequest->operation, LOCK);
+	if(sendResponseToEsi(esiRequest, LOCK, stringToLog) < 0){
+		//se cayo la conexion con el esi. muere su hilo. el planificador deberia enterarse por su select
+		return -1;
+	}
 
-	//TODO hay que considerar los tamanios de int para crear el string?
-	//*stringToLog = malloc(5 + strlen(value) + 1);
-	//sprintf(*stringToLog, "ESI %d - GET %s", esiId, value);
+	if(keyStatus == LOCKED){
+		sprintf(*stringToLog, "ESI %d hace GET sobre la clave %s, que ya tenia", esiRequest->id, esiRequest->operation->key);
+		//TODO chequear con planificador si espera que en este caso tambien se le mande LOCK
+	}else{
+		sprintf(*stringToLog, "ESI %d hizo GET sobre la clave %s", esiRequest->id, esiRequest->operation->key);
+	}
 	return 0;
 }
 
 char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
+
+	//TODO enviar la clave al planificador (no la operacion)
+
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
 		if(recvResult == 0){
@@ -283,7 +296,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 }
 
 char checkKeyStatusFromPlanificadorDummy(){
-	return 'a';
+	return LOCKED;
 }
 
 void recieveOperationDummy(Operation* operation){
@@ -297,11 +310,13 @@ void showOperation(Operation* operation){
 }
 
 int recieveStentenceToProcess(int esiSocket){
+	int operationResult = 0;
 	int esiId = 0;
 	//esiId = getActualEsiID();
 	esiId = getActualEsiIDDummy();
 
-	char* stringToLog;
+	//TODO chequear esto para evitar alocar demas. por otro lado, evitar alocar por cada sentencia...
+	char* stringToLog = malloc(100);
 
 	Operation* operation = malloc(sizeof(Operation));
 	//TODO descomentar, esta asi para probar
@@ -309,50 +324,43 @@ int recieveStentenceToProcess(int esiSocket){
 		//TODO en este caso se mata al esi?
 		informPlanificador(operation, FALLA);
 	}*/
-
 	recieveOperationDummy(operation);
 	showOperation(operation);
 
 	char keyStatus;
 	//TODO descomentar
-	//se esta esperando que el planificador no mande bloqueada si bloqueante = solicitante
 	//keyStatus = checkKeyStatusFromPlanificador(esiId, operation->key);
 	keyStatus = checkKeyStatusFromPlanificadorDummy();
-
-	//TODO validar si la clave fue tomada por el mismo esi que quiere accederla
-	if(keyStatus == CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR){
-		//TODO descomentar esto
-		//sendResponseToEsi(esiSocket, FALLA);
-		//TODO hay que logear que no pudo operar por clave bloqueada...
-		//OJO! vamos a estar repitiendo los free y posiblemente nos olvidemos alguno
-		return 0;
-	}
-
-	//TODO validar que estos casos estan ok. que pasa si hay doble get?
-	/*if((esGet && noEstaTomada) || (!esGet && tieneMismoQuePide)){
-
-	}*/
 
 	EsiRequest esiRequest;
 	esiRequest.id = esiId;
 	esiRequest.operation = operation;
 	esiRequest.socket = esiSocket;
 
+	//TODO agregar estos casos a cada operacion
+	/*if((operation->operationCode == OURGET && keyStatus == NOTBLOCKED) || (!(operation->operationCode == OURGET) && keyStatus == LOCK)){
+		if(keyIsInFallenInstancia(operation->key)){
+			//TODO logear clave en instancia caida
+			removeKeyFromFallenInstancia(operation->key, NULL);
+			return -1;
+		}
+	}*/
+
 	//TODO validar los siguientes casos, los 3, por si es necesario matar al hilo
 	//(y cada uno de ellos avisara al esi lo que corresponda)
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
-			if(doSet(&esiRequest, &stringToLog) < 0){
+			if(doSet(&esiRequest, keyStatus, &stringToLog) < 0){
 				//TODO ojo! si entra aca pero lo que fallo es la instancia, no se deberia matar al hilo del esi
-				return -1;
+				operationResult = -1;
 			}
 			break;
 		case OURSTORE:
-			doStore(&esiRequest, &stringToLog);
+			doStore(&esiRequest, keyStatus, &stringToLog);
 			break;
 		case OURGET:
-			if (doGet(&esiRequest, &stringToLog) < 0){
-				return -1;
+			if (doGet(&esiRequest, keyStatus, &stringToLog) < 0){
+				operationResult = -1;
 			}
 			break;
 		default:
@@ -361,14 +369,12 @@ int recieveStentenceToProcess(int esiSocket){
 			break;
 	}
 
-	//TODO descomentar
-	//logOperation(stringToLog);
+	logOperation(stringToLog);
 
 	free(operation);
-	//TODO descomentar cuando se hagan los malloc's
-	//free(stringToLog);
+	free(stringToLog);
 	sleep(delay);
-	return 0;
+	return operationResult == 0 ? 1 : -1;
 }
 
 int handleInstancia(int instanciaSocket){
@@ -409,8 +415,6 @@ int handleEsi(int esiSocket){
 			//va a matar al hilo porque sale de este while!
 			break;
 		}
-		//TODO descomentar este exit, es para probar nomas
-		//exit(-1);
 	}
 	return 0;
 }
