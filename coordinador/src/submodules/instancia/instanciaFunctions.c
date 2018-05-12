@@ -7,14 +7,52 @@
 
 #include "instanciaFunctions.h"
 
-void removeKeyFromFallenInstancia(char* key, Instancia* instancia){
-	//TODO sacar de esa instancia
+int instanciaDoOperationDummy(){
+	return 1;
+}
 
-	if(instancia != NULL){
-
-	}else{
-		//TODO buscar la clave y sacarla de la instancia
+int instanciaDoOperation(Instancia* instancia, Operation* operation){
+	if(sendOperation(operation, instancia->socket) < 0){
+		return -1;
 	}
+	return waitForInstanciaResponse(instancia);
+}
+
+int isLookedKeyGeneric(char* actualKey, char* key){
+	if(strcmp(actualKey, key)){
+		return 0;
+	}
+	return 1;
+}
+
+Instancia* lookForKey(char* key, t_list* instanciasList){
+	int isLookedKey(char* actualKey){
+		return isLookedKeyGeneric(actualKey, key);
+	}
+
+	int isKeyInInstancia(Instancia* instancia){
+		if(list_any_satisfy(instancia->storedKeys, (void*) &isLookedKey)){
+			return 1;
+		}
+		return 0;
+	}
+
+	//TODO hay que castear el return del find? Supongo que no por el tipo de retorno de esta func
+	return list_find(instanciasList, (void*) &isKeyInInstancia);
+}
+
+Instancia* fallenInstanciaThatHasKey(char* key, t_list* fallenInstancias){
+	return lookForKey(key, fallenInstancias);
+}
+
+//TODO testear
+void removeKeyFromFallenInstancia(char* key, Instancia* instancia){
+	int isLookedKey(char* actualKey){
+		return isLookedKeyGeneric(actualKey, key);
+	}
+
+	list_remove_by_condition(instancia->storedKeys, (void*) &isLookedKey);
+	showInstancia(instancia);
 }
 
 int addKeyToInstanciaStruct(Instancia* instancia, char* key){
@@ -36,12 +74,7 @@ int waitForInstanciaResponse(Instancia* chosenInstancia){
 	int response = 0;
 	int recvResult = recv(chosenInstancia->socket, &response, sizeof(int), 0);
 	if (recvResult <= 0){
-		if(recvResult == 0){
-			//se cayo la instancia
-			return -1;
-		}else{
-			//TODO que hacemos aca? que paso?
-		}
+		return -1;
 	}
 	return response;
 }
@@ -55,9 +88,6 @@ int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInsta
 
 int createNewInstancia(int instanciaSocket, t_list* instancias){
 	Instancia* instanciaWithGreatestId;
-	//TODO se puede sacar esto y el showInstancias de abajo
-	showInstancias(instancias);
-
 	int greatestId = 0;
 
 	if(list_size(instancias) != 0){
@@ -75,8 +105,6 @@ int createNewInstancia(int instanciaSocket, t_list* instancias){
 	}
 
 	list_add(instancias, instanciaWithGreatestId);
-
-	showInstancias(instancias);
 
 	return 0;
 }

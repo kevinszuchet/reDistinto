@@ -19,6 +19,11 @@
 		t_list* storedKeys;
 	}Instancia;
 
+	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
+	int instanciaDoOperation(Instancia* instancia, Operation* operation);
+	int instanciaDoOperationDummy();
+	Instancia* lookForKey(char* key, t_list* instanciasList);
+	Instancia* fallenInstanciaThatHasKey(char* key, t_list* fallenInstancias);
 	int addKeyToInstanciaStruct(Instancia* instancia, char* key);
 	void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias);
 	int waitForInstanciaResponse(Instancia* chosenInstancia);
