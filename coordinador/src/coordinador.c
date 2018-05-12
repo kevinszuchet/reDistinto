@@ -192,21 +192,21 @@ int instanciaDoOperation(Instancia* instancia, Operation* operation){
 int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
 	Instancia* chosenInstancia = lookForKey(esiRequest->operation->key, instancias);
 	if(chosenInstancia == NULL){
-		//TODO logear que la clave no existe y descomentar (abort aun no existe)
-		//sendResponseToEsi(esiRequest->socket, ABORT);
+		//TODO logear que la clave no identificada
+		sendResponseToEsi(esiRequest->socket, ABORT);
 		return -1;
 	}
 
-	//TODO ojo, que esta sentencia la estamos repitiendo en los 3 do
 	int response = instanciaDoOperation(chosenInstancia, esiRequest->operation);
 
 	if(response < 0){
 		//TODO logear que se cayo la instancia
 		instanciaHasFallen(chosenInstancia, instancias, fallenInstancias);
-		sendResponseToEsi(esiRequest->socket, FALLA);
+		//TODO que pasa en este caso?
+		//sendResponseToEsi(esiRequest->socket, BLOCK);
 		return -1;
 	}else{
-		sendResponseToEsi(esiRequest->socket, EXITO);
+		sendResponseToEsi(esiRequest->socket, SUCCESS);
 	}
 
 	//*stringToLog = malloc(/* lugar para guardar un exito */);
@@ -214,7 +214,7 @@ int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
 
 int doSet(EsiRequest* esiRequest, char** stringToLog){
 
-	//TODO chequear si hay validacion necesaria
+	//TODO validar porque si se aborta al esi, se deberia matar este hilo
 	lookForKeyAndExecuteOperation(esiRequest, stringToLog);
 
 	return 0;
@@ -235,21 +235,23 @@ int doGet(EsiRequest* esiRequest, char** stringToLog){
 
 	if(chosenInstancia == NULL){
 		//TODO logear que no hay instancias disponibles (y ninguna tiene la clave pero eso no es error)
-		sendResponseToEsi(esiRequest->socket, FALLA);
+		//TODO que pasa aca?
+		//sendResponseToEsi(esiRequest->socket, BLOCK);
 		return -1;
 	}
 
-	//TODO descomentar. tiene sentido validar esto? siempre devuelve uno...
+	//TODO descomentar.
 	/*if (sendOperation(esiRequest->operation, chosenInstancia->socket) == 0){
 		//que pasa aca?
 		return -1;
 	}*/
 
 	if(keyIsInAliveInstancia == 0){
+		//TODO me parece que esta parte se valida siempre, no solo en caso de GET
 		if(keyIsInFallenInstancia(esiRequest->operation->key)){
 			//TODO logear error de clave inaxesible
-			//TODO removeKeyFromSystem(esiRequest->operation->key);
-			sendResponseToEsi(esiRequest->socket, FALLA);
+			//TODO removeKeyFromAliveInstancia(esiRequest->operation->key);
+			sendResponseToEsi(esiRequest->socket, ABORT);
 			return -1;
 		}else{
 			addKeyToInstanciaStruct(chosenInstancia, esiRequest->operation->key);
@@ -257,10 +259,9 @@ int doGet(EsiRequest* esiRequest, char** stringToLog){
 	}
 
 	showInstancia(chosenInstancia);
-	instanciaDoOperation(chosenInstancia, esiRequest->operation);
 
 	//TODO es necesario validar?
-	sendResponseToEsi(esiRequest->operation, EXITO);
+	sendResponseToEsi(esiRequest->operation, LOCK);
 
 	//TODO hay que considerar los tamanios de int para crear el string?
 	//*stringToLog = malloc(5 + strlen(value) + 1);
@@ -320,11 +321,17 @@ int recieveStentenceToProcess(int esiSocket){
 
 	//TODO validar si la clave fue tomada por el mismo esi que quiere accederla
 	if(keyStatus == CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR){
-		sendResponseToEsi(esiSocket, FALLA);
+		//TODO descomentar esto
+		//sendResponseToEsi(esiSocket, FALLA);
 		//TODO hay que logear que no pudo operar por clave bloqueada...
 		//OJO! vamos a estar repitiendo los free y posiblemente nos olvidemos alguno
 		return 0;
 	}
+
+	//TODO validar que estos casos estan ok. que pasa si hay doble get?
+	/*if((esGet && noEstaTomada) || (!esGet && tieneMismoQuePide)){
+
+	}*/
 
 	EsiRequest esiRequest;
 	esiRequest.id = esiId;
@@ -360,8 +367,7 @@ int recieveStentenceToProcess(int esiSocket){
 	free(operation);
 	//TODO descomentar cuando se hagan los malloc's
 	//free(stringToLog);
-	//lo pide la consigna
-	//sleep(delay);
+	sleep(delay);
 	return 0;
 }
 
