@@ -27,6 +27,7 @@
 	int finish();
 
 	void biMapInitialize(int entraces);
+	void emptyBiMap(int entraces);
 	void biMapUpdate(int valueStart, int entriesForValue);
 
 	int set(char *key, char *value);

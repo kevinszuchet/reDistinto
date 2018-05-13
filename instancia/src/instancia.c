@@ -89,6 +89,10 @@ int finish() {
 void biMapInitialize(int entraces) {
 
 	biMap = malloc(entraces * sizeof(int));
+	emptyBiMap(entraces);
+}
+
+void emptyBiMap(int entraces) {
 
 	for (int i = 0; i < entraces; i++) {
 		biMap[i] = IS_EMPTY;
