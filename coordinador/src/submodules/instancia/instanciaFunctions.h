@@ -28,7 +28,7 @@
 	void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias);
 	int waitForInstanciaResponse(Instancia* chosenInstancia);
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
-	int createNewInstancia(int instanciaSocket, t_list* instancias);
+	int createNewInstancia(int instanciaSocket, t_list* instancias, t_list* fallenInstancias);
 	Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, t_list* storedKeys);
 	void destroyInstancia(Instancia* instancia);
 

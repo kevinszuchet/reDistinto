@@ -86,12 +86,15 @@ int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInsta
 	return 0;
 }
 
-int createNewInstancia(int instanciaSocket, t_list* instancias){
+int createNewInstancia(int instanciaSocket, t_list* instancias, t_list* fallenInstancias){
 	Instancia* instanciaWithGreatestId;
 	int greatestId = 0;
+	int greatestIdFromAlives, greatestIdFromFallen = 0;
 
-	if(list_size(instancias) != 0){
-		greatestId = ((Instancia*) list_get(instancias, list_size(instancias) - 1))->id;
+	if(list_size(instancias) != 0 || list_size(fallenInstancias) != 0){
+		greatestIdFromAlives = list_size(instancias) != 0 ? ((Instancia*) list_get(instancias, list_size(instancias) - 1))->id : 0;
+		greatestIdFromFallen = list_size(fallenInstancias) != 0 ? ((Instancia*) list_get(fallenInstancias, list_size(fallenInstancias) - 1))->id : 0;
+		greatestId = greatestIdFromAlives >= greatestIdFromFallen ? greatestIdFromAlives : greatestIdFromFallen;
 		greatestId++;
 	}
 

@@ -377,7 +377,7 @@ int handleInstancia(int instanciaSocket){
 
 	//TODO que pasa si una instancia se recupera? como la distinguimos?
 	//si seguimos este camino, se va a crear una nueva y no queremos
-	createNewInstancia(instanciaSocket, instancias);
+	createNewInstancia(instanciaSocket, instancias, fallenInstancias);
 
 	showInstancias(instancias);
 
