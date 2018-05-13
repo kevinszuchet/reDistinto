@@ -254,6 +254,7 @@ int compact() {
 	}
 
 	strcpy(storage, auxStorage);
+	emptyBiMap(entryAmount);
 	biMapUpdate(0, totalSettedEntries);
 
 	free(auxStorage);
