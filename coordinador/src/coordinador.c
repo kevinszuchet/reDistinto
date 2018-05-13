@@ -6,6 +6,14 @@
  */
 
 #include "coordinador.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
 //TODO cambiar esta por la posta
 #define CLAVE_PROVISORIA_ERROR_A_PLANIFICADOR '30'
 #define CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR '31'
@@ -176,6 +184,7 @@ int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
 	if(chosenInstancia == NULL){
 		chosenInstancia = (Instancia*) fallenInstanciaThatHasKey(esiRequest->operation->key, fallenInstancias);
 		if(chosenInstancia){
+			//TODO si abajo se pone el removeKeyFromFallenInstancia, este de aca esta al pedo
 			removeKeyFromFallenInstancia(esiRequest->operation->key, chosenInstancia);
 			sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		}else{
@@ -187,17 +196,20 @@ int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
 
 	showInstancia(chosenInstancia);
 
+	//TODO esto hay que pasarlo al hilo de la instancia
 	int response;
 	response = instanciaDoOperation(chosenInstancia, esiRequest->operation);
 	//response = instanciaDoOperationDummy();
 
 	if(response < 0){
 		sprintf(*stringToLog, "ESI %d no puede hacer %s sobre %s. Instancia %d se cayo. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key, chosenInstancia->id);
-		//TODO aca tambien deberia llamarse a removeKeyFromFallenInstancia?
+		//TODO importante aca tambien deberia llamarse a removeKeyFromFallenInstancia?
 		instanciaHasFallen(chosenInstancia, instancias, fallenInstancias);
 		sendResponseToEsi(esiRequest, ABORT, stringToLog);
 		return -1;
 	}
+
+	//TODO segun otro todo de mas abajo, puede ser que aca haya que agregar la clave a la instancia elegida (y sacarla de esa lista provisoria)
 
 	sprintf(*stringToLog, "ESI %d hizo %s sobre la clave %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 
@@ -240,8 +252,8 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 
 	//la clave esta tomada por el o libre, nos fijamos si la clave esta en instancia caida
 
+	//segun respuesta de issue, esto debe quedar asi. no saco este comment aun
 	Instancia* chosenInstancia = (Instancia*) fallenInstanciaThatHasKey(esiRequest->operation->key, fallenInstancias);
-	//TODO fijarse si realmente queremos abortar a un esi por hacer un segundo get de una clave caida
 	if(chosenInstancia != NULL){
 		removeKeyFromFallenInstancia(esiRequest->operation->key, chosenInstancia);
 		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave inaccesible", esiRequest->id, esiRequest->operation->key);
@@ -259,6 +271,8 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 	}
 
 	if(keyExists == 0){
+		//segun la duda que plantee a adriano en un issue, podria ser que esto pase al SET...
+		//... y que aca solo se agregue a una lista provisoria de claves bloqueadas
 		addKeyToInstanciaStruct(chosenInstancia, esiRequest->operation->key);
 		printf("La clave no existe aun\n");
 	}
