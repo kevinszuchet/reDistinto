@@ -8,7 +8,8 @@
 #ifndef SRC_INSTANCIA_H_
 
 	#define SRC_INSTANCIA_H_
-	#define SENTINEL_VALUE "\0"
+	#define IS_EMPTY 0
+	#define IS_SET 1
 	#define ENTRY_START_ERROR -1
 
 	#include <our-commons/sockets/client.h>
@@ -23,18 +24,25 @@
 
 	//Functions
 	int initialize(int entraces, int entryStorage);
+	int finish();
+
+	void biMapInitialize(int entraces);
+	void biMapUpdate(int valueStart, int entriesForValue);
+
 	int set(char *key, char *value);
+	int updateKey(char *key, char *value);
+	int getStartEntryToSet(int amountOfEtries);
+	void storageSet(int initialEntry,  char * value);
+
+	int compact();
+	int getTotalSettedEntries();
+	void getValue(char ** value, int valueStart, int valueSize);
+	int getValueStartEntry(char * key);
+
 	int notifyCoodinador(char *key, char *value, char *operation);
 	int dump();
-	int compact();
-	int updateKey(char *key, char *value);
 	int store(char *key);
-	int finish();
-	void autoCompleteSentinelValue(int amount, char **s);
-	int getValueStartEntry(char * key);
-	int getStartEntryToSet(int amountOfEtries);
+
 	int wholeUpperDivision(int x, int y);
-	int getTotalSettedEntries();
-	void storageSet(int initialEntry,  char * value);
 
 #endif /* SRC_INSTANCIA_H_ */
