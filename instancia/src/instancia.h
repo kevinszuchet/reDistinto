@@ -6,8 +6,8 @@
  */
 
 #ifndef SRC_INSTANCIA_H_
+#define SRC_INSTANCIA_H_
 
-	#define SRC_INSTANCIA_H_
 	#define IS_EMPTY 0
 	#define IS_SET 1
 	#define ENTRY_START_ERROR -1
@@ -18,12 +18,18 @@
 	#include <commons/config.h>
 	#include <commons/log.h>
 	#include <commons/collections/dictionary.h>
-	#define  CFG_FILE "../instancia.cfg"
 	#include "tadEntryTable/tadEntryTable.h"
+	#include <our-commons/messages/operation_codes.h>
+
+	#define  CFG_FILE "../instancia.cfg"
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
 
-	//Functions
+	// Functions
+
+	void receiveCoordinadorConfiguration(int coordinadorSocket);
 	int initialize(int entraces, int entryStorage);
+	void waitForCoordinadorStatements(int coordinadorSocket);
+	void interpretateStatement(int statement);
 	int finish();
 
 	void biMapInitialize(int entraces);

@@ -42,8 +42,14 @@ int main(void) {
 	}
 
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
-	initialize(entryAmount, entrySize);
-	finish();
+
+	/*
+	 * Get the the configuration params from coordinador (entryAmoun, entrySize)
+	 * wait for statements
+	 * receiveCoordinadorConfiguration(coordinadorSocket);
+	 * waitForCoordinadorStatements(coordinadorSocket);
+	 * finish();
+	 */
 	return 0;
 }
 
@@ -57,6 +63,19 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	*path = config_get_string_value(config, "PATH");
 	*name = config_get_string_value(config, "NAME");
 	*dump = config_get_int_value(config, "DUMP");
+}
+
+// Functions
+
+void receiveCoordinadorConfiguration(int coordinadorSocket) {
+	int response, entraces = 0, entryStorage = 0;
+
+	if (recv(coordinadorSocket, &response, sizeof(int), MSG_WAITALL) <= 0) {
+		log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
+		exit(-1);
+	}
+
+	initialize(entraces, entryStorage);
 }
 
 int initialize(int entraces, int entryStorage){
@@ -73,6 +92,26 @@ int initialize(int entraces, int entryStorage){
 	log_info(logger, "Instancia was intialized correctly\n");
 
 	return 0;
+}
+
+void waitForCoordinadorStatements(int coordinadorSocket) {
+	int statement;
+
+	while (1) {
+		if (recv(coordinadorSocket, &statement, sizeof(int), MSG_WAITALL) <= 0) {
+			log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
+			exit(-1);
+		}
+
+		interpretateStatement(statement);
+	}
+}
+
+void interpretateStatement(int statement) {
+	/*
+	 * set: set(key, value)
+	 * store: store(key)
+	 * */
 }
 
 int finish() {
