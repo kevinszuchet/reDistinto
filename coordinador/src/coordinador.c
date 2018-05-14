@@ -119,8 +119,7 @@ int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 	if(send(esiRequest->socket, &response, sizeof(int), 0) < 0){
-		//TODO revisar este sprintf que esta rompiendo al matar al esi con ctrl c cuando esta ejecutando sin parar
-		sprintf(*stringToLog, "ESI %d hizo perdio conexion con el coordinador al intentar hacer %s", esiRequest->id, getOperationName(esiRequest->operation->operationCode));
+		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id, getOperationName(esiRequest->operation));
 		return -1;
 	}
 	return 0;
@@ -280,17 +279,17 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 	printf("Se usara la siguiente instancia para hacer el get\n");
 	showInstancia(chosenInstancia);
 
-	printf("A punto de enviar la respuesta de get ok al esi\n");
-	if(sendResponseToEsi(esiRequest, LOCK, stringToLog) < 0){
-		//se cayo la conexion con el esi. muere su hilo. el planificador deberia enterarse por su select
-		return -1;
-	}
 
 	if(keyStatus == LOCKED){
 		sprintf(*stringToLog, "ESI %d hace GET sobre la clave %s, la cual ya tenia", esiRequest->id, esiRequest->operation->key);
-		//TODO chequear con planificador si espera que en este caso tambien se le mande LOCK
+		if(sendResponseToEsi(esiRequest, SUCCESS, stringToLog) < 0){
+			return -1;
+		}
 	}else{
 		sprintf(*stringToLog, "ESI %d hizo GET sobre la clave %s", esiRequest->id, esiRequest->operation->key);
+		if(sendResponseToEsi(esiRequest, LOCK, stringToLog) < 0){
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -302,11 +301,10 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
-		if(recvResult == 0){
-			log_error(logger, "Planificador disconnected from coordinador, quitting...");
-			//TODO decidamos: de aca en mas hacemos exit si muere la conexion con el planificador?
-			exit(-1);
-		}
+		log_error(logger, "Planificador disconnected from coordinador, quitting...");
+		//TODO decidamos: de aca en mas hacemos exit si muere la conexion con el planificador?
+		exit(-1);
+
 	}
 	return response;
 }
@@ -319,7 +317,7 @@ void recieveOperationDummy(Operation* operation){
 	operation->key = "lio:messi";
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
-	operation->operationCode = OURSET;
+	operation->operationCode = OURGET;
 }
 
 void showOperation(Operation* operation){
@@ -334,6 +332,8 @@ int recieveStentenceToProcess(int esiSocket){
 
 	//TODO chequear esto para evitar alocar demas. por otro lado, evitar alocar por cada sentencia...
 	char* stringToLog = malloc(200);
+	//TODO al hacer este malloc, como sabemos que no queda el contenido anterior?
+	//*stringToLog = '\0';
 
 	Operation* operation = malloc(sizeof(Operation));
 	//TODO descomentar, esta asi para probar
