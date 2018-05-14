@@ -15,6 +15,7 @@ int instanciaDoOperation(Instancia* instancia, Operation* operation){
 	if(sendOperation(operation, instancia->socket) < 0){
 		return -1;
 	}
+	printf("Se pudo enviar el mensaje a la instancia\n");
 	return waitForInstanciaResponse(instancia);
 }
 
@@ -60,7 +61,7 @@ int addKeyToInstanciaStruct(Instancia* instancia, char* key){
 }
 
 //TODO testear esta funcion
-void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias){
+void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias, char* keyToBeRemoved){
 
 	int isFallenInstancia(Instancia* instancia){
 		return instancia == fallenInstancia ? 1 : 0;
@@ -68,6 +69,7 @@ void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* 
 
 	list_remove_by_condition(instancias, (void*) &isFallenInstancia);
 	list_add(fallenInstancias, fallenInstancia);
+	removeKeyFromFallenInstancia(keyToBeRemoved, fallenInstancia);
 }
 
 int waitForInstanciaResponse(Instancia* chosenInstancia){

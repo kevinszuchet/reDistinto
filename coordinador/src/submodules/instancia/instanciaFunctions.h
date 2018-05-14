@@ -25,7 +25,7 @@
 	Instancia* lookForKey(char* key, t_list* instanciasList);
 	Instancia* fallenInstanciaThatHasKey(char* key, t_list* fallenInstancias);
 	int addKeyToInstanciaStruct(Instancia* instancia, char* key);
-	void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias);
+	void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias, char* keyToBeRemoved);
 	int waitForInstanciaResponse(Instancia* chosenInstancia);
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
 	int createNewInstancia(int instanciaSocket, t_list* instancias, t_list* fallenInstancias);

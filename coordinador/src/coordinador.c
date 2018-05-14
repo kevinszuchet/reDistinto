@@ -147,18 +147,6 @@ void logOperation(char* stringToLog){
 	log_info(operationsLogger, stringToLog);
 }
 
-Instancia* lookForOrChoseInstancia(char* key, int* keyExists){
-	Instancia* chosenInstancia = lookForKey(key, instancias);
-
-	if(chosenInstancia == NULL){
-		chosenInstancia = chooseInstancia(key);
-	}else{
-		*keyExists = 1;
-	}
-
-	return chosenInstancia;
-}
-
 char* getOperationName(Operation* operation){
 	//ver si se puede evitar repetir este switch
 	switch(operation->operationCode){
@@ -177,38 +165,34 @@ char* getOperationName(Operation* operation){
 	}
 }
 
-//TODO cuidado en estos casos que el stringToLog no se limpia y es llamado mas de una vez
-int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
-	Instancia* chosenInstancia = lookForKey(esiRequest->operation->key, instancias);
-	if(chosenInstancia == NULL){
-		chosenInstancia = (Instancia*) fallenInstanciaThatHasKey(esiRequest->operation->key, fallenInstancias);
-		if(chosenInstancia){
-			//TODO si abajo se pone el removeKeyFromFallenInstancia, este de aca esta al pedo
-			removeKeyFromFallenInstancia(esiRequest->operation->key, chosenInstancia);
-			sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
-		}else{
-			sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave no identificada", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
-		}
+int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest, char** stringToLog){
+	if(keyStatus != LOCKED){
+		//ojo que la clave puede no existir, y no estamos mostrando ese error.
+		sprintf(*stringToLog, "ESI %d no puede hacer %s sobre la clave %s. Clave no bloqueada por el", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		sendResponseToEsi(esiRequest, ABORT, stringToLog);
 		return -1;
 	}
 
+	return 0;
+}
+
+//TODO cuidado en estos casos que el stringToLog no se limpia y es llamado mas de una vez
+int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenInstancia, char** stringToLog){
+	printf("Se usara la siguiente instancia para hacer %s\n", getOperationName(esiRequest->operation));
 	showInstancia(chosenInstancia);
 
 	//TODO esto hay que pasarlo al hilo de la instancia
 	int response;
+	//todo mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
 	response = instanciaDoOperation(chosenInstancia, esiRequest->operation);
 	//response = instanciaDoOperationDummy();
 
 	if(response < 0){
 		sprintf(*stringToLog, "ESI %d no puede hacer %s sobre %s. Instancia %d se cayo. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key, chosenInstancia->id);
-		//TODO importante aca tambien deberia llamarse a removeKeyFromFallenInstancia?
-		instanciaHasFallen(chosenInstancia, instancias, fallenInstancias);
+		instanciaHasFallen(chosenInstancia, instancias, fallenInstancias, esiRequest->operation->key);
 		sendResponseToEsi(esiRequest, ABORT, stringToLog);
 		return -1;
 	}
-
-	//TODO segun otro todo de mas abajo, puede ser que aca haya que agregar la clave a la instancia elegida (y sacarla de esa lista provisoria)
 
 	sprintf(*stringToLog, "ESI %d hizo %s sobre la clave %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 
@@ -216,12 +200,40 @@ int lookForKeyAndExecuteOperation(EsiRequest* esiRequest, char** stringToLog){
 }
 
 int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
-	if(keyStatus != LOCKED){
-		sprintf(*stringToLog, "ESI %d no puede hacer SET sobre la clave %s. Clave no bloqueada por el", esiRequest->id, esiRequest->operation->key);
+	if(keyIsOwnedByActualEsi(keyStatus, esiRequest, stringToLog) < 0){
 		return -1;
 	}
 
-	if(lookForKeyAndExecuteOperation(esiRequest, stringToLog) < 0){
+	int keyExists = 0;
+	Instancia* chosenInstancia = lookForKey(esiRequest->operation->key, instancias);
+
+	if(chosenInstancia == NULL){
+		chosenInstancia = (Instancia*) fallenInstanciaThatHasKey(esiRequest->operation->key, fallenInstancias);
+		if(chosenInstancia){
+			sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+			instanciaHasFallen(chosenInstancia, instancias, fallenInstancias, esiRequest->operation->key);
+			sendResponseToEsi(esiRequest, ABORT, stringToLog);
+			return -1;
+		}else{
+			chosenInstancia = chooseInstancia(esiRequest->operation->key);
+		}
+	}else{
+		keyExists = 1;
+	}
+
+	if(chosenInstancia == NULL){
+		sprintf(*stringToLog, "ESI %d es abortado al intentar SET por no existir la clave en ninguna instancia y no haber instancias disponibles", esiRequest->id);
+		sendResponseToEsi(esiRequest, ABORT, stringToLog);
+		return -1;
+	}
+
+	//estos 2 ifs van si o si asi, si se invierten puede haber inconsistencia de claves
+	if(keyExists == 0){
+		addKeyToInstanciaStruct(chosenInstancia, esiRequest->operation->key);
+		printf("La clave no existe aun\n");
+	}
+
+	if(tryToExecuteOperationOnInstancia(esiRequest, chosenInstancia, stringToLog) < 0){
 		return -1;
 	}
 
@@ -229,56 +241,50 @@ int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 }
 
 int doStore(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
-	if(keyStatus != LOCKED){
-		sprintf(*stringToLog, "ESI %d no puede hacer STORE sobre la clave %s. Clave no bloqueada por el", esiRequest->id, esiRequest->operation->key);
+	if(keyIsOwnedByActualEsi(keyStatus, esiRequest, stringToLog) < 0){
 		return -1;
 	}
 
-	if(lookForKeyAndExecuteOperation(esiRequest, stringToLog) < 0){
+	Instancia* chosenInstancia = lookForKey(esiRequest->operation->key, instancias);
+	if(chosenInstancia == NULL){
+		chosenInstancia = (Instancia*) fallenInstanciaThatHasKey(esiRequest->operation->key, fallenInstancias);
+		if(chosenInstancia){
+			sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+			instanciaHasFallen(chosenInstancia, instancias, fallenInstancias, esiRequest->operation->key);
+		}else{
+			//en issue respondieron que es error similar al 2 del anexo II (en este caso de intentar un store y que se haya hecho get pero no set)
+			//o sea la clave existe porque se hizo get pero no esta identificada por ninguna instancia
+			sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave no identificada", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+		}
+		sendResponseToEsi(esiRequest, ABORT, stringToLog);
+		return -1;
+	}
+
+	if(tryToExecuteOperationOnInstancia(esiRequest, chosenInstancia, stringToLog) < 0){
 		return -1;
 	}
 
 	return 0;
 }
 
-//doget, set y store deben devolver 0 si salio ok y -1 si muere el hilo del esi
 int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 	if(keyStatus == BLOCKED){
 		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave bloqueada", esiRequest->id, esiRequest->operation->key);
-		//no se mata al esi en caso de clave inaccesible por si luego se recupera la clave
+		//todo ojo en estos casos que no se esta abortando al esi porque se supone que el murio.
+		//esto es: hay que validar que el planificador se entere bien de esto para no cagarla
 		return sendResponseToEsi(esiRequest, BLOCK, stringToLog);
 	}
 
-	//la clave esta tomada por el o libre, nos fijamos si la clave esta en instancia caida
-
 	//segun respuesta de issue, esto debe quedar asi. no saco este comment aun
-	Instancia* chosenInstancia = (Instancia*) fallenInstanciaThatHasKey(esiRequest->operation->key, fallenInstancias);
-	if(chosenInstancia != NULL){
-		removeKeyFromFallenInstancia(esiRequest->operation->key, chosenInstancia);
+	Instancia* fallenInstancia = (Instancia*) fallenInstanciaThatHasKey(esiRequest->operation->key, fallenInstancias);
+	if(fallenInstancia != NULL){
+		removeKeyFromFallenInstancia(esiRequest->operation->key, fallenInstancia);
 		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave inaccesible", esiRequest->id, esiRequest->operation->key);
+		instanciaHasFallen(fallenInstancia, instancias, fallenInstancias, esiRequest->operation->key);
+		//TODO ojo que aca se esta pisando el stringToLog que se acaba de setear
 		sendResponseToEsi(esiRequest, ABORT, stringToLog);
 		return -1;
 	}
-
-	int keyExists = 0;
-	chosenInstancia = lookForOrChoseInstancia(esiRequest->operation->key, &keyExists);
-
-	if(chosenInstancia == NULL){
-		sprintf(*stringToLog, "ESI %d es abortado por no existir la clave en ninguna instancia y no haber instancias disponibles", esiRequest->id);
-		sendResponseToEsi(esiRequest, ABORT, stringToLog);
-		return -1;
-	}
-
-	if(keyExists == 0){
-		//segun la duda que plantee a adriano en un issue, podria ser que esto pase al SET...
-		//... y que aca solo se agregue a una lista provisoria de claves bloqueadas
-		addKeyToInstanciaStruct(chosenInstancia, esiRequest->operation->key);
-		printf("La clave no existe aun\n");
-	}
-
-	printf("Se usara la siguiente instancia para hacer el get\n");
-	showInstancia(chosenInstancia);
-
 
 	if(keyStatus == LOCKED){
 		sprintf(*stringToLog, "ESI %d hace GET sobre la clave %s, la cual ya tenia", esiRequest->id, esiRequest->operation->key);
@@ -317,7 +323,7 @@ void recieveOperationDummy(Operation* operation){
 	operation->key = "lio:messi";
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
-	operation->operationCode = OURGET;
+	operation->operationCode = OURSET;
 }
 
 void showOperation(Operation* operation){
