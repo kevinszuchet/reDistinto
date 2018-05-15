@@ -18,7 +18,6 @@ int sendInt(int value, int sendSocket);
 int recieveInt(int* value, int recvSocket);
 
 int sendString(char* value, int sendSocket);
-int recieveStringBySize(char* string, int sizeString, int recvSocket);
 int recieveString(char* string, int recvSocket);
 
 int sendOperation(Operation* operation, int sendSocket);

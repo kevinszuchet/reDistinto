@@ -85,7 +85,7 @@ int recieveStringBySize(char* string, int sizeString, int recvSocket) {
 int recieveString(char* string, int recvSocket) {
 	int sizeString;
 	return
-		recieveInt(&sizeString, recvSocket) *
+		recieveInt(&sizeString, recvSocket) &&
 		recieveStringBySize(string, sizeString, recvSocket);
 }
 
@@ -116,9 +116,9 @@ int recieveOperation(Operation* operation, int recvSocket) {
 	int sizeValue;
 
 	return
-		recv_all(recvSocket, &operation->operationCode, sizeof(char)) *
-		recv_all(recvSocket, &sizeKey, sizeof(int)) *
-		recv_all(recvSocket, &sizeValue, sizeof(int)) *
-		recv_all(recvSocket, operation->key, sizeKey) *
+		recv_all(recvSocket, &operation->operationCode, sizeof(char)) &&
+		recv_all(recvSocket, &sizeKey, sizeof(int)) &&
+		recv_all(recvSocket, &sizeValue, sizeof(int)) &&
+		recv_all(recvSocket, operation->key, sizeKey) &&
 		(sizeValue != 0) ? recv_all(recvSocket, operation->value, sizeValue) : 1;
 }
