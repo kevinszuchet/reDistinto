@@ -20,6 +20,7 @@
 	#include <commons/collections/dictionary.h>
 	#include "tadEntryTable/tadEntryTable.h"
 	#include <our-commons/messages/operation_codes.h>
+	#include <our-commons/tads/tads.h>
 
 	#define  CFG_FILE "../instancia.cfg"
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
@@ -29,7 +30,7 @@
 	void receiveCoordinadorConfiguration(int coordinadorSocket);
 	int initialize(int entraces, int entryStorage);
 	void waitForCoordinadorStatements(int coordinadorSocket);
-	void interpretateStatement(int statement);
+	void interpretateStatement(Operation * operation);
 	int finish();
 
 	void biMapInitialize(int entraces);

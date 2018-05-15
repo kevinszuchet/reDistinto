@@ -95,19 +95,19 @@ int initialize(int entraces, int entryStorage){
 }
 
 void waitForCoordinadorStatements(int coordinadorSocket) {
-	int statement;
+	Operation * operation;
 
 	while (1) {
-		if (recv(coordinadorSocket, &statement, sizeof(int), MSG_WAITALL) <= 0) {
-			log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
+		if (recieveOperation(operation, coordinadorSocket) == 1) {
+			log_error(logger, "recv failed on trying to recieve statement from coordinador\n");
 			exit(-1);
 		}
 
-		interpretateStatement(statement);
+		interpretateStatement(operation);
 	}
 }
 
-void interpretateStatement(int statement) {
+void interpretateStatement(Operation * operation) {
 	/*
 	 * set: set(key, value)
 	 * store: store(key)
