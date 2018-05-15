@@ -305,7 +305,6 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	//TODO mariano. (serializar y) enviar la clave al planificador (no la operacion)
 
-
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
@@ -334,8 +333,9 @@ void showOperation(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	//esiId = getActualEsiID();
-	esiId = getActualEsiIDDummy();
+	esiId = getActualEsiID();
+	//esiId = getActualEsiIDDummy();
+	printf("ESI ID: %d\n", esiId);
 
 	//TODO chequear esto para evitar alocar demas. por otro lado, evitar alocar por cada sentencia...
 	char* stringToLog = malloc(200);
