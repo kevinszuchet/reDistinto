@@ -34,11 +34,44 @@ int recv_all(int socket, void* package, int length)
 }
 
 int addToPackageGeneric(void* package, void* value, int size, int* offset) {
-		package = realloc(package, *offset + size);
-		memcpy(package + *offset, value, size);
-		*offset += size;
-		return 1;
+	package = realloc(package, *offset + size);
+	memcpy(package + *offset, value, size);
+	*offset += size;
+	return 1;
+}
+
+int sendInt(int value, int sendSocket) {
+	void* package = NULL;
+	int offset = 0;
+
+	int addToPackage(void* value, int size) {
+		return addToPackageGeneric(package, value, size, &offset);
 	}
+
+	addToPackage(&value, sizeof(value));
+
+	int result = send_all(sendSocket, package, offset);
+	free(package);
+	return result;
+}
+
+int sendString(char* value, int sendSocket) {
+	void* package = NULL;
+	int offset = 0;
+
+	int addToPackage(void* value, int size) {
+		return addToPackageGeneric(package, value, size, &offset);
+	}
+
+	int sizeValue = strlen(value) + 1;
+
+	addToPackage(&sizeValue, sizeof(sizeValue));
+	addToPackage(value, sizeValue);
+
+	int result = send_all(sendSocket, package, offset);
+	free(package);
+	return result;
+}
 
 int sendOperation(Operation* operation, int sendSocket) {
 	void* package = NULL;
@@ -54,15 +87,15 @@ int sendOperation(Operation* operation, int sendSocket) {
 	addToPackage(&operation->operationCode, sizeof(operation->operationCode));
 	addToPackage(&sizeKey, sizeof(sizeKey));
 	addToPackage(&sizeValue, sizeof(sizeValue));
-	addToPackage(&operation->key, sizeKey);
-	if (sizeValue != 0) {addToPackage(&operation->value, sizeValue);}
+	addToPackage(operation->key, sizeKey);
+	if (sizeValue != 0) {addToPackage(operation->value, sizeValue);}
 
 	int result = send_all(sendSocket, package, offset);
 	free(package);
 	return result;
 }
 
-int recieveOperation(Operation * operation, int recvSocket) {
+int recieveOperation(Operation* operation, int recvSocket) {
 	int sizeKey;
 	int sizeValue;
 
@@ -70,6 +103,6 @@ int recieveOperation(Operation * operation, int recvSocket) {
 		recv_all(recvSocket, &operation->operationCode, sizeof(char)) *
 		recv_all(recvSocket, &sizeKey, sizeof(int)) *
 		recv_all(recvSocket, &sizeValue, sizeof(int)) *
-		recv_all(recvSocket, &operation->key, sizeKey) *
-		(sizeValue != 0) ? recv_all(recvSocket, &operation->value, sizeValue) : 1;
+		recv_all(recvSocket, operation->key, sizeKey) *
+		(sizeValue != 0) ? recv_all(recvSocket, operation->value, sizeValue) : 1;
 }

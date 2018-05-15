@@ -305,6 +305,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	//TODO mariano. (serializar y) enviar la clave al planificador (no la operacion)
 
+
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");

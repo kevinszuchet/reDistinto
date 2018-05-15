@@ -12,11 +12,11 @@ int instanciaDoOperationDummy(){
 }
 
 int instanciaDoOperation(Instancia* instancia, Operation* operation){
-	if(sendOperation(operation, instancia->socket) == 1){
-		printf("Se pudo enviar el mensaje a la instancia\n");
-		return waitForInstanciaResponse(instancia);
+	if(sendOperation(operation, instancia->socket) == 0){
+		return -1;
 	}
-	return -1;
+	printf("Se pudo enviar el mensaje a la instancia\n");
+	return waitForInstanciaResponse(instancia);
 }
 
 int isLookedKeyGeneric(char* actualKey, char* key){
