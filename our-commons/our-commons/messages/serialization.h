@@ -14,8 +14,13 @@
 	#include "../sockets/sockets.h"
 	#include <string.h>
 
-int sendOperation(Operation* operation, int sendSocket);
+int sendInt(int value, int sendSocket);
+int recieveInt(int* value, int recvSocket);
 
+int sendString(char* value, int sendSocket);
+int recieveString(char* string, int recvSocket);
+
+int sendOperation(Operation* operation, int sendSocket);
 int recieveOperation(Operation * operation, int recvSocket);
 
 #endif /* SERIALIZATION_H_ */

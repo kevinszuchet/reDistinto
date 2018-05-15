@@ -55,6 +55,11 @@ int sendInt(int value, int sendSocket) {
 	return result;
 }
 
+int recieveInt(int* value, int recvSocket) {
+	return recv_all(recvSocket, &value, sizeof(int));
+}
+
+
 int sendString(char* value, int sendSocket) {
 	void* package = NULL;
 	int offset = 0;
@@ -71,6 +76,17 @@ int sendString(char* value, int sendSocket) {
 	int result = send_all(sendSocket, package, offset);
 	free(package);
 	return result;
+}
+
+int recieveStringBySize(char* string, int sizeString, int recvSocket) {
+	return recv_all(recvSocket, string, sizeString);
+}
+
+int recieveString(char* string, int recvSocket) {
+	int sizeString;
+	return
+		recieveInt(&sizeString, recvSocket) &&
+		recieveStringBySize(string, sizeString, recvSocket);
 }
 
 int sendOperation(Operation* operation, int sendSocket) {
@@ -100,9 +116,9 @@ int recieveOperation(Operation* operation, int recvSocket) {
 	int sizeValue;
 
 	return
-		recv_all(recvSocket, &operation->operationCode, sizeof(char)) *
-		recv_all(recvSocket, &sizeKey, sizeof(int)) *
-		recv_all(recvSocket, &sizeValue, sizeof(int)) *
-		recv_all(recvSocket, operation->key, sizeKey) *
+		recv_all(recvSocket, &operation->operationCode, sizeof(char)) &&
+		recv_all(recvSocket, &sizeKey, sizeof(int)) &&
+		recv_all(recvSocket, &sizeValue, sizeof(int)) &&
+		recv_all(recvSocket, operation->key, sizeKey) &&
 		(sizeValue != 0) ? recv_all(recvSocket, operation->value, sizeValue) : 1;
 }
