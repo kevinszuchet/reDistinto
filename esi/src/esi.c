@@ -134,7 +134,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 
 void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len) {
 
-	char coordinadorResponse, status;
+	char coordinadorResponse, status = NOTFINISHED;
 
 	/*
 	 *  Try to read the line that correspond to esiCP
@@ -166,8 +166,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 
 	// Create and send the operationResponse
 	OperationResponse operationResponse;
-	operationResponse.coordinadorResponse = coordinadorResponse;
-	operationResponse.esiStatus = status;
+	initializeOperationResponse(&operationResponse, coordinadorResponse, status);
 
 	if (send(planificadorSocket, &operationResponse, sizeof(int), 0) <= 0) {
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
@@ -183,29 +182,19 @@ void interpretateOperation(Operation * operation, char * line) {
 		exit(-1);
 	}
 
-	operation->value = "";
-
 	switch (parsedLine.keyword) {
 		case GET:
-			operation->operationCode = GET;
-			operation->key = malloc(strlen(parsedLine.argumentos.GET.clave) + 1);
-			strcpy(operation->key, parsedLine.argumentos.GET.clave);
+			initializeOperation(operation, GET, parsedLine.argumentos.GET.clave, "");
 			log_info(logger, "GET\tclave: <%s>\n", parsedLine.argumentos.GET.clave);
 			break;
 
 		case SET:
-			operation->operationCode = SET;
-			operation->key = malloc(strlen(parsedLine.argumentos.SET.clave) + 1);
-			operation->value = malloc(strlen(parsedLine.argumentos.SET.valor) + 1);
-			strcpy(operation->key, parsedLine.argumentos.SET.clave);
-			strcpy(operation->value, parsedLine.argumentos.SET.valor);
+			initializeOperation(operation, SET, parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
 			log_info(logger, "SET\tclave: <%s>\tvalor: <%s>\n", parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
 			break;
 
 		case STORE:
-			operation->operationCode = STORE;
-			operation->key = malloc(strlen(parsedLine.argumentos.STORE.clave) + 1);
-			strcpy(operation->key, parsedLine.argumentos.STORE.clave);
+			initializeOperation(operation, STORE, parsedLine.argumentos.STORE.clave, "");
 			log_info(logger, "STORE\tclave: <%s>\n", parsedLine.argumentos.STORE.clave);
 			break;
 
@@ -215,6 +204,21 @@ void interpretateOperation(Operation * operation, char * line) {
 	}
 
 	destruir_operacion(parsedLine);
+}
+
+void initializeOperation(Operation * operation, char operationCode, char * key, char * value) {
+	operation->operationCode = operationCode;
+
+	operation->key = malloc(strlen(key) + 1);
+	strcpy(operation->key, key);
+
+	operation->value = malloc(strlen(value) + 1);
+	strcpy(operation->value, value);
+}
+
+void initializeOperationResponse(OperationResponse * operationResponse, char coordinadorResponse, char status) {
+	operationResponse->coordinadorResponse = coordinadorResponse;
+	operationResponse->esiStatus = status;
 }
 
 void destroy_operation(Operation * operation) {

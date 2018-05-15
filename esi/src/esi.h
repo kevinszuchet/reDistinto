@@ -29,6 +29,8 @@
 	void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinadorSocket);
 	void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len);
 	void interpretateOperation(Operation * operation, char * line);
+	void initializeOperation(Operation * operation, char operationCode, char * key, char * value);
+	void initializeOperationResponse(OperationResponse * operationResponse, char coordinadorResponse, char status);
 	void destroy_operation(Operation * operation);
 
 	int empty_string(char * str) {
