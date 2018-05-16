@@ -160,6 +160,11 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 		exit(-1);
 	}
 
+	if (coordinadorResponse == ABORT) {
+		log_error(logger, "I can not keep running", line);
+		exit(-1);
+	}
+
 	*esiPC += (coordinadorResponse == SUCCESS ? 1 : 0);
 
 	status = (*esiPC == (len - 1) ? FINISHED : NOTFINISHED);
