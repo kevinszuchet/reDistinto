@@ -39,13 +39,15 @@ int main(void) {
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
+	takenResources=dictionary_create();
+
 	blockedEsiDic = dictionary_create();
 	addConfigurationLockedKeys(blockedKeys);
 	readyEsis = list_create();
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-	dictionary_create(takenResources);
+
 
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 	//int coordinadorSocket = ...    y cambiar lo que devuelve welcomeServer por el numero de socket
@@ -222,7 +224,7 @@ void sendKeyStatusToCoordinadorDummie(char status){
 
 }
 void sendMessageExecuteToEsi(Esi* nextEsi){
-	int socketEsi = nextEsi->id;
+	int socketEsi = nextEsi->socketConection;
 	int message = RUN;
     if (send(socketEsi, &message, sizeof(int), 0) < 0){
 	   log_error(logger, "Coultn't send message to ESI %d", nextEsi->id);
