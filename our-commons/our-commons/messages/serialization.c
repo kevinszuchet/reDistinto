@@ -117,8 +117,7 @@ int recieveOperation(Operation* operation, int recvSocket) {
 	int sizeKey;
 	int sizeValue;
 
-	//TODO avisar a los modulos antes de cambiar
-	//operation = malloc(sizeof(Operation));
+	operation = malloc(sizeof(Operation));
 
 	return
 		recv_all(recvSocket, &operation->operationCode, sizeof(char)) &&
