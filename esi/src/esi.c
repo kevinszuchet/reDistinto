@@ -172,6 +172,11 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
 		exit(-1);
 	}
+
+	if (coordinadorResponse == ABORT) {
+		log_error(logger, "I can not keep running", line);
+		exit(-1);
+	}
 }
 
 void interpretateOperation(Operation * operation, char * line) {

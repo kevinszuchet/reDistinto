@@ -50,14 +50,14 @@
 	//DUMMIE FUNCTIONS
 	void sendKeyStatusToCoordinadorDummie(char status);
 	void sendMessageExecuteToEsiDummie(Esi* nextEsi);
-	int waitEsiInformationDummie(int esiSocket);
+	char waitEsiInformationDummie(int esiSocket);
 	void sendEsiIdToCoordinador(int esiID);
 
 	void executionProcedure();
 
 	void handleEsiInformation(char esiExecutionInformation,Operation* keyOp);
 
-	int waitEsiInformation(int esiSocket);
+	char waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char status);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
 

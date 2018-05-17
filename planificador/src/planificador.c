@@ -39,13 +39,15 @@ int main(void) {
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
+	takenResources=dictionary_create();
+
 	blockedEsiDic = dictionary_create();
 	addConfigurationLockedKeys(blockedKeys);
 	readyEsis = list_create();
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-	dictionary_create(takenResources);
+
 
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 	//int coordinadorSocket = ...    y cambiar lo que devuelve welcomeServer por el numero de socket
@@ -124,7 +126,7 @@ int checkKeyBlocked(char* keyRecieved){
 
 void unlockEsi(char* key){
 	//Saca al esi del diccionario de bloqueados y lo pasa a listos
-	log_info(logger,"An ESI was unlocked from key %s\n",key);
+	log_info(logger,"An ESI was unlocked from key %s (NOT IMPLEMENTED)\n",key);
 }
 
 
@@ -132,6 +134,7 @@ void unlockEsi(char* key){
 void finishRunningEsi(){
 	//Pasa el esi a finalizados
 	//Elimina el esi de running
+	log_info(logger,"An ESI was moved to finish list (NOT IMPLEMENTED)\n");
 
 }
 
@@ -175,6 +178,7 @@ void handleEsiInformation(char esiExecutionInformation,Operation* keyOp){
 				//Pasar el esi a ready
 				//Sacar el esi de running
 			}
+			//Lockear la clave
 		break;
 		case BLOCK:
 			//ADD ESI TO BLOCKED DIC
@@ -185,6 +189,7 @@ void handleEsiInformation(char esiExecutionInformation,Operation* keyOp){
 				//Pasar el esi a ready
 				//Sacar el esi de running
 			}
+			//Liberar la clave
 		break;
 
 
@@ -193,20 +198,23 @@ void handleEsiInformation(char esiExecutionInformation,Operation* keyOp){
 
 
 
-int waitEsiInformation(int esiSocket){
+char waitEsiInformation(int esiSocket){
 
-	int finishInformation = 0;
+	char finishInformation = malloc(sizeof(char));
 	int resultRecv = recv(esiSocket, &finishInformation, sizeof(int), 0);
 	if(resultRecv <= 0){
 		log_error(logger, "recv failed on %s, while waiting ESI message %s\n", ESI, strerror(errno));
 		//Que pasa si recibo mal el mensaje del ESI?
 		return -1;
 	}else{
+
+		free(finishInformation);
+		log_info(logger,"Recieved esi finish information (%c)",finishInformation);
 		return finishInformation;
 	}
 }
 
-int waitEsiInformationDummie(int esiSocket){
+char waitEsiInformationDummie(int esiSocket){
 
 	return SUCCESS;
 }
@@ -222,7 +230,7 @@ void sendKeyStatusToCoordinadorDummie(char status){
 
 }
 void sendMessageExecuteToEsi(Esi* nextEsi){
-	int socketEsi = nextEsi->id;
+	int socketEsi = nextEsi->socketConection;
 	int message = RUN;
     if (send(socketEsi, &message, sizeof(int), 0) < 0){
 	   log_error(logger, "Coultn't send message to ESI %d", nextEsi->id);
@@ -243,15 +251,13 @@ void blockEsi(char* lockedResource, int esiBlocked){
 		queue_create(esiQueue);
 		queue_push(esiQueue,(void*)esiBlocked);
 		dictionary_put(blockedEsiDic,lockedResource,esiQueue);
+		log_info(logger,"Added ESI (%d) to blocked dictionary in new key (%s)",esiBlocked,lockedResource);
 
 	}else{
 		esiQueue = dictionary_get(blockedEsiDic,lockedResource);
-		dictionary_remove(blockedEsiDic,lockedResource);
 		queue_push(esiQueue,(void*)esiBlocked);
-		dictionary_put(blockedEsiDic,lockedResource,esiQueue);
-
+		log_info(logger,"Added ESI (%d) to blocked dictionary in existing key (%s)",esiBlocked,lockedResource);
 	}
-	log_info(logger, "Blocked esi %d in resource %s\n",esiBlocked,lockedResource);
 	free(esiQueue);
 
 }
@@ -260,8 +266,10 @@ void takeResource(char* key, int esiID){
 	if(esiID == CONSOLE_BLOCKED){
 		addLockedKey(key,runningEsi);
 		dictionary_put(takenResources,key,(void*)esiID);
+		log_info(logger,"Resource (%s) was taken by ESI (%d)",key,esiID);
 	}else{
 		dictionary_put(takenResources,key,(void*)CONSOLE_BLOCKED);
+		log_info(logger,"Resource (%s) was taken Console",key);
 	}
 
 }
