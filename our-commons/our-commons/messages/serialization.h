@@ -8,11 +8,12 @@
 #ifndef SERIALIZATION_H_
 #define SERIALIZATION_H_
 
-	#include "operation_codes.h"
-	#include "../tads/tads.h"
+#include "operation_codes.h"
+#include "../tads/tads.h"
 
-	#include "../sockets/sockets.h"
-	#include <string.h>
+#include "../sockets/sockets.h"
+#include <string.h>
+#include <stddef.h>
 
 int sendInt(int value, int sendSocket);
 int recieveInt(int** value, int recvSocket);

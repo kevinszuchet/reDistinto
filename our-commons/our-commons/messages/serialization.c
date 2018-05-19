@@ -87,10 +87,10 @@ int recieveStringBySize(char** stringRef, int sizeString, int recvSocket) {
 }
 
 int recieveString(char** stringRef, int recvSocket) {
-	int sizeString;
+	int* sizeString;
 	return
 		recieveInt(&sizeString, recvSocket) &&
-		recieveStringBySize(stringRef, sizeString, recvSocket);
+		recieveStringBySize(stringRef, *sizeString, recvSocket);
 }
 
 int sendOperation(Operation* operation, int sendSocket) {
