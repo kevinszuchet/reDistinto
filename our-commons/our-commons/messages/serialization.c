@@ -56,6 +56,7 @@ int sendInt(int value, int sendSocket) {
 }
 
 int recieveInt(int* value, int recvSocket) {
+	value = malloc(sizeof(int));
 	return recv_all(recvSocket, &value, sizeof(int));
 }
 
@@ -79,6 +80,7 @@ int sendString(char* value, int sendSocket) {
 }
 
 int recieveStringBySize(char* string, int sizeString, int recvSocket) {
+	string = malloc(sizeString);
 	return recv_all(recvSocket, string, sizeString);
 }
 
@@ -114,6 +116,8 @@ int sendOperation(Operation* operation, int sendSocket) {
 int recieveOperation(Operation* operation, int recvSocket) {
 	int sizeKey;
 	int sizeValue;
+
+	operation = malloc(sizeof(Operation));
 
 	return
 		recv_all(recvSocket, &operation->operationCode, sizeof(char)) &&
