@@ -118,10 +118,12 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
+
 	if(send(esiRequest->socket, &response, sizeof(int), 0) < 0){
 		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id, getOperationName(esiRequest->operation));
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -327,7 +329,7 @@ void recieveOperationDummy(Operation* operation){
 }
 
 void showOperation(Operation* operation){
-	printf("Operation key = %s\n", operation->key);
+	printf("Operation key = %s\n", getOperationName(operation));
 }
 
 int recieveStentenceToProcess(int esiSocket){
@@ -338,28 +340,28 @@ int recieveStentenceToProcess(int esiSocket){
 	printf("ESI ID: %d\n", esiId);
 
 	//TODO chequear esto para evitar alocar demas. por otro lado, evitar alocar por cada sentencia...
-	char* stringToLog = malloc(200);
-	//TODO al hacer este malloc, como sabemos que no queda el contenido anterior?
-	//*stringToLog = '\0';
+	char* stringToLog = calloc(200, sizeof(char));
 
-	Operation* operation = malloc(sizeof(Operation));
-	//TODO descomentar, esta asi para probar
-	/*if(recieveOperation(operation, esiSocket) < 1){
-		//TODO en este caso se mata al esi?
-		informPlanificador(operation, FALLA);
+	EsiRequest esiRequest;
+	esiRequest.id = esiId;
+	esiRequest.socket = esiSocket;
+	esiRequest.operation = malloc(sizeof(Operation));
+
+	//TODO mariano esto no esta andando bien. ademas, el esi dice que no me puede mandar la operacion
+	if(recieveOperation(esiRequest.operation, esiSocket) == 0){
+		//TODO testear esta partecita
+		esiRequest.operation = NULL;
+		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
+		return -1;
 	}
-	showOperation(operation);*/
-	recieveOperationDummy(operation);
+	printf("Voy a mostrar la operacion recibida\n");
+	showOperation(esiRequest.operation);
+	//recieveOperationDummy(esiRequest.operation);
 
 	char keyStatus;
 	//TODO descomentar
 	//keyStatus = checkKeyStatusFromPlanificador(esiId, operation->key);
 	keyStatus = checkKeyStatusFromPlanificadorDummy();
-
-	EsiRequest esiRequest;
-	esiRequest.id = esiId;
-	esiRequest.operation = operation;
-	esiRequest.socket = esiSocket;
 
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
@@ -378,14 +380,15 @@ int recieveStentenceToProcess(int esiSocket){
 			}
 			break;
 		default:
-			//deberiamos matar al esi?
-			//TODO se puede hacer informPlanificador con un error, pero hay que ver si esta esperando eso
+			sprintf(stringToLog, "El ESI %d envio una operacion invalida", esiId);
+			sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
+			operationResult = -1;
 			break;
 	}
 
-	logOperation(stringToLog);
+	if(*stringToLog) logOperation(stringToLog);
 
-	free(operation);
+	free(esiRequest.operation);
 	free(stringToLog);
 	sleep(delay);
 	return operationResult == 0 ? 1 : -1;
@@ -398,7 +401,10 @@ int handleInstancia(int instanciaSocket){
 
 	//TODO que pasa si una instancia se recupera? como la distinguimos?
 	//si seguimos este camino, se va a crear una nueva y no queremos
+
+	//TODO recibir el nombre de la instancia
 	createNewInstancia(instanciaSocket, instancias, fallenInstancias);
+	//TODO enviarle a la instancia su configuracion
 
 	showInstancias(instancias);
 
