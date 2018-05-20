@@ -98,7 +98,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 	Operation * operation;
 
 	while (1) {
-		if (recieveOperation(operation, coordinadorSocket) == 1) {
+		if (recieveOperation(&operation, coordinadorSocket) == 1) {
 			log_error(logger, "recv failed on trying to recieve statement from coordinador\n");
 			exit(-1);
 		}
@@ -149,30 +149,36 @@ void biMapUpdate(int valueStart, int entriesForValue) {
 int set(char *key, char *value){
 
 	int entriesForValue;
-	int valueStart = -1;
+	int valueStart = ENTRY_START_ERROR;
 	int valueSize = strlen(value);
 	entryTableInfo * entryInfo;
 
-	log_info(logger, "Size of value: %d", valueSize);
+	log_info(logger, "Size of value: %d\n", valueSize);
 
 	// Asks if the size of the value can be stored
 	if (valueSize > (entryAmount * entrySize)) {
-		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
+		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size\n", value);
 		return -1;
 	}
 
-	// If the key exists, the value is update
+	// If the key exists, the value is updated
 	if (dictionary_has_key(entryTable, key)) {
 		updateKey(key, value);
 	}
 
 	// Get the amount of entries that is needed to store the value
 	entriesForValue = wholeUpperDivision(valueSize, entrySize);
-	log_info(logger, "Total entries for value: %d", entriesForValue);
+	log_info(logger, "Total entries for value: %d\n", entriesForValue);
 
 	// Get the start position to store the value
 	valueStart = getStartEntryToSet(entriesForValue);
 
+	if (valueStart == ENTRY_START_ERROR) {
+
+		log_error(logger, "There was an error trying to set, no valid entry start was found");
+
+		return -1;
+	}
 	// Create the entry structure
 	entryInfo = malloc(sizeof(entryTableInfo));
 	createTableInfo(entryInfo, valueStart, valueSize);
@@ -187,7 +193,7 @@ int set(char *key, char *value){
 
 int getStartEntryToSet(int valueNeededEntries) {
 
-	int entryStart = -1;
+	int entryStart = ENTRY_START_ERROR;
 	int totalFreeEntries;
 	int validEntries = 0;
 
@@ -211,7 +217,7 @@ int getStartEntryToSet(int valueNeededEntries) {
 
 				if (validEntries == valueNeededEntries) {
 					entryStart = i;
-					log_info(logger, "Valid start entry to set was found. Entry Number: %d", entryStart);
+					log_info(logger, "Valid start entry to set was found. Entry Number: %d\n", entryStart);
 					break;
 				}
 
@@ -224,10 +230,11 @@ int getStartEntryToSet(int valueNeededEntries) {
 
 			if (valueNeededEntries > totalFreeEntries) {
 				// Delete any value considering the replacement algorithm
-				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm");
+				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm\n");
 			} else {
-				// compact();
-				log_info(logger, "There are not enough contiguous free entries to set the value, we are about to compact the storage");
+				// A compactation is needed, we notify coordinador so he can order to compact all instancias.
+				log_info(logger, "There are not enough contiguous free entries to set the value. A compactation is needed, we are about to notify coordinador\n");
+				break;
 			}
 		}
 	}

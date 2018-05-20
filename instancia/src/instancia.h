@@ -21,6 +21,7 @@
 	#include "tadEntryTable/tadEntryTable.h"
 	#include <our-commons/messages/operation_codes.h>
 	#include <our-commons/tads/tads.h>
+	#include <our-commons/messages/serialization.h>
 
 	#define  CFG_FILE "../instancia.cfg"
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
