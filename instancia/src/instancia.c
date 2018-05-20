@@ -8,15 +8,12 @@
 #include "instancia.h"
 
 t_log * logger;
-int entryAmount;
-int entrySize;
-t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
-char * storage;
-int ** biMap;
+
 
 int main(void) {
 
 	logger = log_create("../instancia.log", "tpSO", true, LOG_LEVEL_INFO);
+	replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
 
 	char* ipCoordinador;
 	int portCoordinador;
@@ -82,13 +79,14 @@ int initialize(int entraces, int entryStorage){
 
 	//Que casos de error puede haber?? Pensarlo.
 
-	entryAmount = entraces;
+	entriesAmount = entraces;
 	entrySize = entryStorage;
 	entryTable = dictionary_create();
 	// Se puede hacer dictioanry_resize()? Como se recorre el dictionary?
 	// Hace falta un +1 para el \0?
 	storage = malloc(entraces * entryStorage);
 	biMapInitialize(entraces);
+
 	log_info(logger, "Instancia was intialized correctly\n");
 
 	return 0;
@@ -156,7 +154,7 @@ int set(char *key, char *value){
 	log_info(logger, "Size of value: %d\n", valueSize);
 
 	// Asks if the size of the value can be stored
-	if (valueSize > (entryAmount * entrySize)) {
+	if (valueSize > (entriesAmount * entrySize)) {
 		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size\n", value);
 		return -1;
 	}
@@ -199,7 +197,7 @@ int getStartEntryToSet(int valueNeededEntries) {
 
 	while(entryStart == ENTRY_START_ERROR) {
 
-		for (int i = 0; i < entryAmount; i++) {
+		for (int i = 0; i < entriesAmount; i++) {
 
 			// If the entry value is empty (only a sentinel value)
 			if (!biMap[i]) {
@@ -209,7 +207,7 @@ int getStartEntryToSet(int valueNeededEntries) {
 				validEntries++;
 
 				// Get the valid entries (adjacent) and the total free entries
-				while (j < entryAmount && !biMap[j] && validEntries < valueNeededEntries) {
+				while (j < entriesAmount && !biMap[j] && validEntries < valueNeededEntries) {
 					totalFreeEntries++;
 					validEntries++;
 					j++;
@@ -300,7 +298,7 @@ int compact() {
 	}
 
 	strcpy(storage, auxStorage);
-	emptyBiMap(entryAmount);
+	emptyBiMap(entriesAmount);
 	biMapUpdate(0, totalSettedEntries);
 
 	free(auxStorage);
@@ -320,7 +318,7 @@ int getTotalSettedEntries() {
 
 	int totalEntries = 0;
 
-	for (int i = 0; i < entryAmount; i++) {
+	for (int i = 0; i < entriesAmount; i++) {
 		if (!biMap[i]) {
 			totalEntries++;
 		}

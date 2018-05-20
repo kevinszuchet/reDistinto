@@ -22,6 +22,7 @@
 	#include <our-commons/messages/operation_codes.h>
 	#include <our-commons/tads/tads.h>
 	#include <our-commons/messages/serialization.h>
+	#include "replaceAlgorithms/replaceAlgorithms.h"
 
 	#define  CFG_FILE "../instancia.cfg"
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
@@ -53,5 +54,15 @@
 	int store(char *key);
 
 	int wholeUpperDivision(int x, int y);
+
+	// global vars
+
+	int entriesAmount;
+	int entrySize;
+	t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
+	char * storage;
+	int ** biMap;
+	int ** usageBiMap;
+	t_log * replaceAlgorithmsLogger;
 
 #endif /* SRC_INSTANCIA_H_ */
