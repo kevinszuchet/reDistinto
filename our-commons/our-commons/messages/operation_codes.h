@@ -33,4 +33,10 @@ typedef struct OperationResponse {
 	char esiStatus;
 } __attribute__((packed)) OperationResponse;
 
+
+typedef struct InstanciaConfiguration {
+	int entriesAmount;
+	char entrySize;
+} __attribute__((packed)) InstanciaConfiguration;
+
 #endif /* OPERATION_CODES_H_ */

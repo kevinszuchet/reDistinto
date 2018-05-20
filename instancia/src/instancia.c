@@ -65,14 +65,15 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 // Functions
 
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
-	int response, entraces = 0, entryStorage = 0;
+	InstanciaConfiguration * instanciaConfiguration;
 
-	if (recv(coordinadorSocket, &response, sizeof(int), MSG_WAITALL) <= 0) {
+	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(int), MSG_WAITALL) <= 0) {
+		// REVIEW inicializacion de instanciaConfiguration y ver si ha yque pasarlo por referencia
 		log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
 		exit(-1);
 	}
 
-	initialize(entraces, entryStorage);
+	initialize(instanciaConfiguration->entriesAmount, instanciaConfiguration->entrySize);
 }
 
 int initialize(int entraces, int entryStorage){
