@@ -20,7 +20,7 @@
 #define COMPACT '7'
 #define OURSTORE '8'
 #define LOCK '9'
-#define ERROR_CLAVE_SIZE '0'
+#define ERROR_CLAVE_SIZE 'a'
 #define ERROR_CLAVE_NOT_IDENTIFIED 'q'
 #define ERROR_CLAVE_NON_EXISTENT 'w'
 #define ERROR_CLAVE_NOT_FOUND 'e'
