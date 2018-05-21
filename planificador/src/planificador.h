@@ -55,9 +55,9 @@
 
 	void executionProcedure();
 
-	void handleEsiInformation(char esiExecutionInformation,Operation* keyOp);
+	void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* keyOp);
 
-	char waitEsiInformation(int esiSocket);
+	OperationResponse *waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char status);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
 

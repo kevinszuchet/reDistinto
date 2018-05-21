@@ -93,17 +93,17 @@ void executionProcedure(){
 			sendMessageExecuteToEsi(nextEsi);
 			//sendMessageExecuteToEsiDummie(nextEsi);
 			Operation* operationRecieved = malloc(sizeof(Operation));
-			recieveOperation(operationRecieved,coordinadorSocket);
+			recieveOperation(&operationRecieved,coordinadorSocket);
 			//operationRecieved->key = "jugador";
 			//operationRecieved->operationCode = OURGET;
 			log_info(logger,"Key received = %s , Op received = %c\n",operationRecieved->key,operationRecieved->operationCode);
 			int keyStatus = isTakenResource(operationRecieved->key);
 			sendKeyStatusToCoordinador(keyStatus);
 			//sendKeyStatusToCoordinadorDummie(keyStatus);
-			int esiExecutionInformation = waitEsiInformation(nextEsi->socketConection);
+			OperationResponse* esiInformation = waitEsiInformation(nextEsi->socketConection);
 			//char esiExecutionInformation = waitEsiInformationDummie(nextEsi->socketConection);
-			log_info(logger,"Going to handle Esi execution info = %c",esiExecutionInformation);
-			handleEsiInformation(esiExecutionInformation,operationRecieved);
+			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%c) ,esiStatus = (%c)",esiInformation->coordinadorResponse,esiInformation->esiStatus);
+			handleEsiInformation(esiInformation,operationRecieved);
 			log_info(logger,"Finish executing ESI %d\n",nextEsi->id);
 			free(operationRecieved);
 
@@ -134,6 +134,7 @@ void unlockEsi(char* key){
 void finishRunningEsi(){
 	//Pasa el esi a finalizados
 	//Elimina el esi de running
+	//LIBERA TODOS SUS RECURSOS
 	log_info(logger,"An ESI was moved to finish list (NOT IMPLEMENTED)\n");
 
 }
@@ -161,35 +162,66 @@ void sendEsiIdToCoordinador(int id){
 	}
 }
 
-void handleEsiInformation(char esiExecutionInformation,Operation* keyOp){
-	switch(esiExecutionInformation){
+void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* keyOp){
+	switch(esiExecutionInformation->coordinadorResponse){
 		case SUCCESS:
 			//Se hizo un SET y salio bien
-			if(strcmp(algorithm,"SJF-CD")==0){
-				//Pasar el esi a ready
-				//Sacar el esi de running
+			log_info(logger,"Operation succeded, nothing to do");
+			switch(esiExecutionInformation->esiStatus){
+				case FINISHED:
+					finishRunningEsi();
+					log_info(logger,"Esi finished execution");
+				break;
+				case NOTFINISHED:
+					log_info(logger,"Esi didn't finish execution");
+					if(strcmp(algorithm,"SJF-CD")==0){
+						//todo Pasar el esi a ready
+						//todo Sacar el esi de running
+					}
+				break;
 			}
 		break;
-		case FINISHED:
-			finishRunningEsi();
-		break;
+
 		case LOCK:
-			if(strcmp(algorithm,"SJF-CD")==0){
-				//Pasar el esi a ready
-				//Sacar el esi de running
-			}
 			//Lockear la clave
+			log_info(logger,"Operation succeded, key (%c) locked",keyOp->key);
+			switch(esiExecutionInformation->esiStatus){
+				case FINISHED:
+					finishRunningEsi();
+					log_info(logger,"Esi finished execution");
+				break;
+				case NOTFINISHED:
+					log_info(logger,"Esi didn't finish execution");
+					if(strcmp(algorithm,"SJF-CD")==0){
+						//todo Pasar el esi a ready
+						//todo Sacar el esi de running
+					}
+				break;
+			}
+
 		break;
 		case BLOCK:
-			//ADD ESI TO BLOCKED DIC
-			//REMOVE ESI FROM RUNNING
+			log_info(logger,"Operation didn't succed, esi (%d) blocked in key (%c)",runningEsi->id,keyOp->key);
+			//todo ADD ESI TO BLOCKED DIC
+			//todo REMOVE ESI FROM RUNNING
+
 		break;
 		case FREE:
-			if(strcmp(algorithm,"SJF-CD")==0){
-				//Pasar el esi a ready
-				//Sacar el esi de running
-			}
 			//Liberar la clave
+			log_info(logger,"Operation succeded, key (%c) freed",keyOp->key);
+			switch(esiExecutionInformation->esiStatus){
+				case FINISHED:
+					finishRunningEsi();
+					log_info(logger,"Esi finished execution");
+				break;
+				case NOTFINISHED:
+					log_info(logger,"Esi didn't finish execution");
+					if(strcmp(algorithm,"SJF-CD")==0){
+						//todo Pasar el esi a ready
+						//todo Sacar el esi de running
+					}
+				break;
+			}
 		break;
 
 
@@ -198,18 +230,18 @@ void handleEsiInformation(char esiExecutionInformation,Operation* keyOp){
 
 
 
-char waitEsiInformation(int esiSocket){
+OperationResponse *waitEsiInformation(int esiSocket){
 
-	char finishInformation = malloc(sizeof(char));
+	OperationResponse* finishInformation = malloc(sizeof(OperationResponse));
 	int resultRecv = recv(esiSocket, &finishInformation, sizeof(int), 0);
 	if(resultRecv <= 0){
 		log_error(logger, "recv failed on %s, while waiting ESI message %s\n", ESI, strerror(errno));
 		//Que pasa si recibo mal el mensaje del ESI?
-		return -1;
+		exit(-1);
 	}else{
 
 		free(finishInformation);
-		log_info(logger,"Recieved esi finish information (%c)",finishInformation);
+		log_info(logger,"Recieved esi finish information. CoordinadorResponse = (%c). EsiStatus = (%c)",finishInformation->coordinadorResponse,finishInformation->esiStatus);
 		return finishInformation;
 	}
 }
