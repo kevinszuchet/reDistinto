@@ -22,14 +22,18 @@ int send_all(int socket, void* package, int length)
 
 int recv_all(int socket, void* package, int length)
 {
+	printf("voy a recibir una operacion del esi en el socket %d\n", socket);
     char *auxPointer = (char*) package;
     while (length > 0)
     {
+    	printf("esperando el recv...\n");
         int i = recv(socket, auxPointer, length, 0);
+        printf("Recibi algo\n");
         if (i < 1) return CUSTOM_SUCCESS;
         auxPointer += i;
         length -= i;
     }
+    printf("Sali del while\n");
     return CUSTOM_FAILURE;
 }
 

@@ -338,6 +338,7 @@ int recieveStentenceToProcess(int esiSocket){
 	esiId = getActualEsiID();
 	//esiId = getActualEsiIDDummy();
 	printf("ESI ID: %d\n", esiId);
+	printf("Esi socket: %d\n", esiSocket);
 
 	//TODO chequear esto para evitar alocar demas. por otro lado, evitar alocar por cada sentencia...
 	char* stringToLog = calloc(200, sizeof(char));
@@ -348,7 +349,7 @@ int recieveStentenceToProcess(int esiSocket){
 	esiRequest.operation = malloc(sizeof(Operation));
 
 	//TODO mariano esto no esta andando bien. ademas, el esi dice que no me puede mandar la operacion
-	if(recieveOperation(esiRequest.operation, esiSocket) == 0){
+	if(recieveOperation(&esiRequest.operation, esiSocket) == 0){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
 		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);

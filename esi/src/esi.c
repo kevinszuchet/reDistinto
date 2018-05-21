@@ -153,6 +153,11 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 		exit(-1);
 	}
 
+	int entero = 4;
+	send(coordinadorSocket, &entero, sizeof(int), 0);
+
+	printf("Pude enviar la operacion al coordinador en socket %d\n", coordinadorSocket);
+
 	destroy_operation(operation);
 
 	if (recv(coordinadorSocket, &coordinadorResponse, sizeof(int), MSG_WAITALL) <= 0) {
