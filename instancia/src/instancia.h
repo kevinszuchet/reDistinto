@@ -37,7 +37,7 @@
 
 	void biMapInitialize(int entraces);
 	void emptyBiMap(int entraces);
-	void biMapUpdate(int valueStart, int entriesForValue);
+	void biMapUpdate(int valueStart, int entriesForValue, int value);
 
 	int set(char *key, char *value);
 	int updateKey(char *key, char *value);
@@ -60,9 +60,11 @@
 	int entriesAmount;
 	int entrySize;
 	t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
+	t_dictionary * keyUsage; // Takes record of how many operation ago was used each key
 	char * storage;
 	int ** biMap;
-	int ** usageBiMap;
 	t_log * replaceAlgorithmsLogger;
+	char * algorithm;
+
 
 #endif /* SRC_INSTANCIA_H_ */

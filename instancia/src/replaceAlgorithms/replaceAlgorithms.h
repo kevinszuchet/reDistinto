@@ -9,13 +9,15 @@
 #define SRC_REPLACEALGORITHMS_H_
 
 	#include "../instancia.h"
+	#include "../tadEntryTable/tadEntryTable.h"
 
-	int roundAlgorithm();
-	int leastRecentlyUsed();
-	int biggestSpaceUsed();
+	int initializeAccordingToAlgorithm();
+	int updateAccodringToAlgorithm(char * key);
+	int deleteAccodringToAlgorithm();
 
 	// global vars
 
-	int entriesUsageBiMap;
+	t_hash_element * entryTableElement;
+	int entryTableIndex;
 
 #endif /* SRC_REPLACEALGORITHMS_H_ */
