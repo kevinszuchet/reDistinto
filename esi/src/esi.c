@@ -147,18 +147,11 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 
 	Operation * operation = malloc(sizeof(Operation));
 	interpretateOperation(operation, line);
-	operation->operationCode = OURGET;
-	operation->value = NULL;
 
 	if (sendOperation(operation, coordinadorSocket) == CUSTOM_FAILURE) {
 		log_error(logger, "ESI cannot send the serialized operation to coordinador", line);
 		exit(-1);
 	}
-
-	int entero = 4;
-	send(coordinadorSocket, &entero, sizeof(int), 0);
-
-	printf("Pude enviar la operacion al coordinador en socket %d\n", coordinadorSocket);
 
 	destroy_operation(operation);
 
@@ -224,8 +217,12 @@ void initializeOperation(Operation * operation, char operationCode, char * key, 
 	operation->key = malloc(strlen(key) + 1);
 	strcpy(operation->key, key);
 
-	operation->value = malloc(strlen(value) + 1);
-	strcpy(operation->value, value);
+	if (value != NULL) {
+		operation->value = malloc(strlen(value) + 1);
+		strcpy(operation->value, value);
+	} else {
+		operation->value = NULL;
+	}
 }
 
 void initializeOperationResponse(OperationResponse * operationResponse, char coordinadorResponse, char status) {
