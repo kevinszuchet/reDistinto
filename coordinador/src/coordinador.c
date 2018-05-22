@@ -344,12 +344,9 @@ int recieveStentenceToProcess(int esiSocket){
 	char* stringToLog = calloc(200, sizeof(char));
 
 	EsiRequest esiRequest;
-	esiRequest.id = esiId;
-	esiRequest.socket = esiSocket;
-	esiRequest.operation = malloc(sizeof(Operation));
 
 	//TODO mariano esto no esta andando bien. ademas, el esi dice que no me puede mandar la operacion
-	if(recieveOperation(&esiRequest.operation, esiSocket) == 0){
+	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
 		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);

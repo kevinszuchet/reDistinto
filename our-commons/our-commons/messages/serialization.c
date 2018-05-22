@@ -132,11 +132,12 @@ int recieveOperation(Operation** operationRef, int recvSocket) {
 
 	Operation* operation = malloc(sizeof(Operation));
 	*operationRef = operation;
+	operation->value = NULL;
 
 	return
 		recv_all(recvSocket, &operation->operationCode, sizeof(char)) &&
 		recv_all(recvSocket, &sizeKey, sizeof(int)) &&
 		recv_all(recvSocket, &sizeValue, sizeof(int)) &&
-		recv_all(recvSocket, operation->key, sizeKey) &&
-		(sizeValue != 0) ? recv_all(recvSocket, operation->value, sizeValue) : 1;
+		recieveStringBySize(&operation->key, sizeKey, recvSocket) &&
+		(sizeValue != 0) ? recieveStringBySize(&operation->value, sizeValue, recvSocket) : 1;
 }

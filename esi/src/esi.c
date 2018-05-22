@@ -147,6 +147,8 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 
 	Operation * operation = malloc(sizeof(Operation));
 	interpretateOperation(operation, line);
+	operation->operationCode = OURGET;
+	operation->value = NULL;
 
 	if (sendOperation(operation, coordinadorSocket) == CUSTOM_FAILURE) {
 		log_error(logger, "ESI cannot send the serialized operation to coordinador", line);
