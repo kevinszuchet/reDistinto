@@ -17,7 +17,7 @@ int main(void) {
 
 	char* ipCoordinador;
 	int portCoordinador;
-	char* algorithm, * path, * name;
+	char* path, * name;
 	int dump;
 
 	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dump);
@@ -137,10 +137,10 @@ void emptyBiMap(int entraces) {
 	}
 }
 
-void biMapUpdate(int valueStart, int entriesForValue) {
+void biMapUpdate(int valueStart, int entriesForValue, int value) {
 	for(int i = valueStart; i < (valueStart + entriesForValue); i++) {
 		// TODO resolver warning: assignment makes pointer from integer without a cast [-Wint-conversion]
-		*biMap[i] = IS_SET;
+		*biMap[i] = value;
 	}
 }
 
@@ -151,6 +151,7 @@ int set(char *key, char *value){
 	int valueStart = ENTRY_START_ERROR;
 	int valueSize = strlen(value);
 	entryTableInfo * entryInfo;
+	entryTableInfo * auxEntryInfo;
 
 	log_info(logger, "Size of value: %d\n", valueSize);
 
@@ -162,7 +163,20 @@ int set(char *key, char *value){
 
 	// If the key exists, the value is updated
 	if (dictionary_has_key(entryTable, key)) {
-		updateKey(key, value);
+
+		/*
+		 * Por las dudas guardo la información de la key que voy a borrar para hacerle update por si algo sale mal la reetablesco.
+		 * TODO revisarlo bien y pensar bien como y cuando chequear si no se pudo hacer el set para reetablecer la key.
+		 * */
+
+		auxEntryInfo = malloc(sizeof(entryTableInfo));
+		entryInfo = malloc(sizeof(entryTableInfo));
+		entryInfo = dictionary_get(entryTable, key);
+
+		createTableInfo(auxEntryInfo, entryInfo->valueStart, entryInfo->valueSize);
+		deleteKey(entryInfo);
+
+		free(entryInfo);
 	}
 
 	// Get the amount of entries that is needed to store the value
@@ -175,16 +189,16 @@ int set(char *key, char *value){
 	if (valueStart == ENTRY_START_ERROR) {
 
 		log_error(logger, "There was an error trying to set, no valid entry start was found");
-
 		return -1;
 	}
 	// Create the entry structure
+
 	entryInfo = malloc(sizeof(entryTableInfo));
 	createTableInfo(entryInfo, valueStart, valueSize);
 
 	dictionary_put(entryTable, key, entryInfo);
 	storageSet(valueStart, value);
-	biMapUpdate(valueStart, entriesForValue);
+	biMapUpdate(valueStart, entriesForValue, IS_SET);
 
 	log_info(logger, "Set operation for key: %s and value: %s, was successfully done\n", key, value);
 	return 0;
@@ -300,7 +314,7 @@ int compact() {
 
 	strcpy(storage, auxStorage);
 	emptyBiMap(entriesAmount);
-	biMapUpdate(0, totalSettedEntries);
+	biMapUpdate(0, totalSettedEntries, IS_SET);
 
 	free(auxStorage);
 	log_info(logger, "Compactation was successfully done\n");

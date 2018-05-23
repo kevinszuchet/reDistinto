@@ -20,10 +20,7 @@
 	#include <pthread.h>
 	#include "submodules/instancia/instanciaFunctions.h"
 
-	//RUN CONSOLA
 	#define  CFG_FILE "../coordinador.cfg"
-	//RUN ECLIPSE
-	//#define  CFG_FILE "coordinador.cfg"
 
 	//TODO revisar que hace esto aca
 	#define EXECUTION_ERROR -1

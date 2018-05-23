@@ -13,6 +13,8 @@
 typedef struct entryTableInfo{
 	int valueStart;
 	int valueSize;
+	int usage;
+
 }entryTableInfo;
 
 void createTableInfo(entryTableInfo * entryInfo, int valueEntryStart, int valueTotalSize);
@@ -20,5 +22,8 @@ int getValueStart(entryTableInfo *entryInfo);
 void setValueStart(entryTableInfo * entryInfo, int valueStart);
 int getValueSize(entryTableInfo *entryInfo);
 void destroyTableInfo(entryTableInfo * entryInfo);
+int getKeyUsage(entryTableInfo *entryInfo);
+void increaseKeyUsage(entryTableInfo *entryInfo);
+void setUsageToZero(entryTableInfo *entryInfo);
 
 #endif /* SRC_TADENTRYTABLE_TADENTRYTABLE_H_ */

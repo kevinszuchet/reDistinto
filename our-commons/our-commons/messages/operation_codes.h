@@ -8,8 +8,8 @@
 #ifndef OPERATION_CODES_H_
 #define OPERATION_CODES_H_
 
-#define CUSTOM_SUCCESS 0
-#define CUSTOM_FAILURE 1
+#define CUSTOM_SUCCESS 1
+#define CUSTOM_FAILURE 0
 
 #define SUCCESS '1'
 #define FINISHED '2'
@@ -20,7 +20,7 @@
 #define COMPACT '7'
 #define OURSTORE '8'
 #define LOCK '9'
-#define ERROR_CLAVE_SIZE '0'
+#define ERROR_CLAVE_SIZE 'a'
 #define ERROR_CLAVE_NOT_IDENTIFIED 'q'
 #define ERROR_CLAVE_NON_EXISTENT 'w'
 #define ERROR_CLAVE_NOT_FOUND 'e'
