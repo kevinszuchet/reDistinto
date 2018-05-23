@@ -217,8 +217,12 @@ void initializeOperation(Operation * operation, char operationCode, char * key, 
 	operation->key = malloc(strlen(key) + 1);
 	strcpy(operation->key, key);
 
-	operation->value = malloc(strlen(value) + 1);
-	strcpy(operation->value, value);
+	if (value != NULL) {
+		operation->value = malloc(strlen(value) + 1);
+		strcpy(operation->value, value);
+	} else {
+		operation->value = NULL;
+	}
 }
 
 void initializeOperationResponse(OperationResponse * operationResponse, char coordinadorResponse, char status) {

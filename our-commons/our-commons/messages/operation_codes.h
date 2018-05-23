@@ -8,8 +8,8 @@
 #ifndef OPERATION_CODES_H_
 #define OPERATION_CODES_H_
 
-#define CUSTOM_SUCCESS 0
-#define CUSTOM_FAILURE 1
+#define CUSTOM_SUCCESS 1
+#define CUSTOM_FAILURE 0
 
 #define SUCCESS '1'
 #define FINISHED '2'

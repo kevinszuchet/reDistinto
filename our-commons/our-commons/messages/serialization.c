@@ -13,29 +13,33 @@ int send_all(int socket, void* package, int length)
     while (length > 0)
     {
         int i = send(socket, auxPointer, length, 0);
-        if (i < 1) return CUSTOM_SUCCESS;
+        if (i < 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
-    return CUSTOM_FAILURE;
+    return CUSTOM_SUCCESS;
 }
 
 int recv_all(int socket, void* package, int length)
 {
+	printf("voy a recibir una operacion del esi en el socket %d\n", socket);
     char *auxPointer = (char*) package;
     while (length > 0)
     {
+    	printf("esperando el recv...\n");
         int i = recv(socket, auxPointer, length, 0);
-        if (i < 1) return CUSTOM_SUCCESS;
+        printf("Recibi algo\n");
+        if (i < 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
-    return CUSTOM_FAILURE;
+    printf("Sali del while\n");
+    return CUSTOM_SUCCESS;
 }
 
-int addToPackageGeneric(void* package, void* value, int size, int* offset) {
-	package = realloc(package, *offset + size);
-	memcpy(package + *offset, value, size);
+int addToPackageGeneric(void** package, void* value, int size, int* offset) {
+	*package = realloc(*package, *offset + size);
+	memcpy(*package + *offset, value, size);
 	*offset += size;
 	return 1;
 }
@@ -45,7 +49,7 @@ int sendInt(int value, int sendSocket) {
 	int offset = 0;
 
 	int addToPackage(void* value, int size) {
-		return addToPackageGeneric(package, value, size, &offset);
+		return addToPackageGeneric(&package, value, size, &offset);
 	}
 
 	addToPackage(&value, sizeof(value));
@@ -67,7 +71,7 @@ int sendString(char* value, int sendSocket) {
 	int offset = 0;
 
 	int addToPackage(void* value, int size) {
-		return addToPackageGeneric(package, value, size, &offset);
+		return addToPackageGeneric(&package, value, size, &offset);
 	}
 
 	int sizeValue = strlen(value) + 1;
@@ -98,7 +102,7 @@ int sendOperation(Operation* operation, int sendSocket) {
 	int offset = 0;
 
 	int addToPackage(void* value, int size) {
-		return addToPackageGeneric(package, value, size, &offset);
+		return addToPackageGeneric(&package, value, size, &offset);
 	}
 
 	int sizeKey = strlen(operation->key) + 1;
@@ -111,6 +115,13 @@ int sendOperation(Operation* operation, int sendSocket) {
 	if (sizeValue != 0) {addToPackage(operation->value, sizeValue);}
 
 	int result = send_all(sendSocket, package, offset);
+
+	char* aux = package;
+	int* a = &(aux[1]);
+	int* b = &(a[1]);
+	char* c = (char*)&(b[1]);
+	char* d = &(d[sizeKey]);
+
 	free(package);
 	return result;
 }
@@ -121,11 +132,12 @@ int recieveOperation(Operation** operationRef, int recvSocket) {
 
 	Operation* operation = malloc(sizeof(Operation));
 	*operationRef = operation;
+	operation->value = NULL;
 
 	return
 		recv_all(recvSocket, &operation->operationCode, sizeof(char)) &&
 		recv_all(recvSocket, &sizeKey, sizeof(int)) &&
 		recv_all(recvSocket, &sizeValue, sizeof(int)) &&
-		recv_all(recvSocket, operation->key, sizeKey) &&
-		(sizeValue != 0) ? recv_all(recvSocket, operation->value, sizeValue) : 1;
+		recieveStringBySize(&operation->key, sizeKey, recvSocket) &&
+		(sizeValue != 0) ? recieveStringBySize(&operation->value, sizeValue, recvSocket) : 1;
 }
