@@ -7,6 +7,8 @@
 
 #ifndef INSTANCIAFUNCTIONS_H_
 #define INSTANCIAFUNCTIONS_H_
+#define INSTANCIA_ALIVE 0
+#define INSTANCIA_FALLEN 1
 
 	#include "../../coordinador.h"
 
@@ -17,18 +19,18 @@
 		char firstLetter;
 		char lastLetter;
 		t_list* storedKeys;
+		int isFallen;
 	}Instancia;
 
-	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
 	int instanciaDoOperation(Instancia* instancia, Operation* operation);
 	int instanciaDoOperationDummy();
-	Instancia* lookForKey(char* key, t_list* instanciasList);
-	Instancia* fallenInstanciaThatHasKey(char* key, t_list* fallenInstancias);
-	int addKeyToInstanciaStruct(Instancia* instancia, char* key);
-	void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias, char* keyToBeRemoved);
+	Instancia* lookForKey(char* key, t_list* instancias);
+	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
+	void addKeyToInstanciaStruct(Instancia* instancia, char* key);
+	void instanciaHasFallen(Instancia* fallenInstancia);
 	int waitForInstanciaResponse(Instancia* chosenInstancia);
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
-	int createNewInstancia(int instanciaSocket, t_list* instancias, t_list* fallenInstancias);
+	int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId);
 	Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, t_list* storedKeys);
 	void destroyInstancia(Instancia* instancia);
 

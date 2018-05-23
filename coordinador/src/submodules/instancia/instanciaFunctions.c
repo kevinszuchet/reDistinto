@@ -26,7 +26,7 @@ int isLookedKeyGeneric(char* actualKey, char* key){
 	return 1;
 }
 
-Instancia* lookForKey(char* key, t_list* instanciasList){
+Instancia* lookForKey(char* key, t_list* instancias){
 	int isLookedKey(char* actualKey){
 		return isLookedKeyGeneric(actualKey, key);
 	}
@@ -38,38 +38,25 @@ Instancia* lookForKey(char* key, t_list* instanciasList){
 		return 0;
 	}
 
-	//TODO hay que castear el return del find? Supongo que no por el tipo de retorno de esta func
-	return list_find(instanciasList, (void*) &isKeyInInstancia);
+	return list_find(instancias, (void*) &isKeyInInstancia);
 }
 
-Instancia* fallenInstanciaThatHasKey(char* key, t_list* fallenInstancias){
-	return lookForKey(key, fallenInstancias);
-}
-
-//TODO testear
 void removeKeyFromFallenInstancia(char* key, Instancia* instancia){
 	int isLookedKey(char* actualKey){
 		return isLookedKeyGeneric(actualKey, key);
 	}
 
 	list_remove_by_condition(instancia->storedKeys, (void*) &isLookedKey);
-	showInstancia(instancia);
 }
 
-int addKeyToInstanciaStruct(Instancia* instancia, char* key){
+void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 	list_add(instancia->storedKeys, key);
 }
 
 //TODO testear esta funcion
-void instanciaHasFallen(Instancia* fallenInstancia, t_list* instancias, t_list* fallenInstancias, char* keyToBeRemoved){
-
-	int isFallenInstancia(Instancia* instancia){
-		return instancia == fallenInstancia ? 1 : 0;
-	}
-
-	list_remove_by_condition(instancias, (void*) &isFallenInstancia);
-	list_add(fallenInstancias, fallenInstancia);
-	removeKeyFromFallenInstancia(keyToBeRemoved, fallenInstancia);
+//TODO donde se use esta funcion, meter tambien mutex de la lista de instancias! (esta instancia es una de esa lista!)
+void instanciaHasFallen(Instancia* fallenInstancia){
+	fallenInstancia->isFallen = INSTANCIA_FALLEN;
 }
 
 int waitForInstanciaResponse(Instancia* chosenInstancia){
@@ -88,28 +75,19 @@ int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInsta
 	return 0;
 }
 
-int createNewInstancia(int instanciaSocket, t_list* instancias, t_list* fallenInstancias){
-	Instancia* instanciaWithGreatestId;
-	int greatestId = 0;
-	int greatestIdFromAlives, greatestIdFromFallen = 0;
-
-	if(list_size(instancias) != 0 || list_size(fallenInstancias) != 0){
-		greatestIdFromAlives = list_size(instancias) != 0 ? ((Instancia*) list_get(instancias, list_size(instancias) - 1))->id : 0;
-		greatestIdFromFallen = list_size(fallenInstancias) != 0 ? ((Instancia*) list_get(fallenInstancias, list_size(fallenInstancias) - 1))->id : 0;
-		greatestId = greatestIdFromAlives >= greatestIdFromFallen ? greatestIdFromAlives : greatestIdFromFallen;
-		greatestId++;
-	}
-
+//TODO pasa el ultimo id a variable global
+int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId){
 	//TODO evaluar como se va a recibir esta lista, tiene que estar copiada en la instancia
 	t_list* storedKeys = list_create();
-	instanciaWithGreatestId = createInstancia(greatestId, instanciaSocket, 0, 'a', 'z', storedKeys);
+	Instancia* newInstancia = createInstancia(*greatesInstanciaId, instanciaSocket, 0, 'a', 'z', storedKeys);
 
 	//TODO sacar esto, es para que no se ponga esta cadena en todas las instancias
-	if(greatestId == 0){
-		list_add(instanciaWithGreatestId->storedKeys, "lio:messi");
+	if(*greatesInstanciaId == 0){
+		list_add(newInstancia->storedKeys, "lio:messi");
 	}
 
-	list_add(instancias, instanciaWithGreatestId);
+	list_add(instancias, newInstancia);
+	(*greatesInstanciaId)++;
 
 	return 0;
 }
@@ -122,6 +100,7 @@ Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, 
 	instancia->firstLetter = firstLetter;
 	instancia->lastLetter = lastLetter;
 	instancia->storedKeys = storedKeys;
+	instancia->isFallen = INSTANCIA_ALIVE;
 	return instancia;
 }
 
@@ -153,6 +132,14 @@ void showStoredKeys(Instancia* instancia){
 	}
 }
 
+void showInstanciaState(Instancia* instancia){
+	if(instancia->isFallen == INSTANCIA_ALIVE){
+		printf("State: alive\n");
+	}else{
+		printf("State: fallen\n");
+	}
+}
+
 void showInstancia(Instancia* instancia){
 	if(instancia != NULL){
 		printf("ID = %d\n", instancia->id);
@@ -161,6 +148,7 @@ void showInstancia(Instancia* instancia){
 		printf("First letter = %c\n", instancia->firstLetter);
 		printf("Last letter = %c\n", instancia->lastLetter);
 		showStoredKeys(instancia);
+		showInstanciaState(instancia);
 		printf("----------\n");
 	}else{
 		printf("Instance cannot be showed\n");

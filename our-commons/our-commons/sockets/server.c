@@ -101,7 +101,6 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 
 	int serverToClientSocket = 0;
 	if((serverToClientSocket = openConnection(listenerPort, serverName, clientName, logger)) < 0){
-		//evalauar si se va a reintentar la conexion o que... idem luego del if de abajo
 		close(serverToClientSocket);
 		return -1;
 	}
@@ -110,12 +109,14 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 
 	if((clientSocket = acceptUnknownClient(serverToClientSocket, serverName, logger)) < 0){
 		close(clientSocket);
+		close(serverToClientSocket);
 		return -1;
 	}
 
 	int handshakeResult = handshakeWithClient(clientSocket, handshakeValue, serverName, clientName, logger);
 	if(handshakeResult < 0){
-		//que pasa si no se puede hacer handshake?
+		close(clientSocket);
+		close(serverToClientSocket);
 		return -1;
 	}
 
