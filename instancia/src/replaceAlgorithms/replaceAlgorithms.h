@@ -15,6 +15,19 @@
 	int updateAccodringToAlgorithm(char * key);
 	int deleteAccodringToAlgorithm();
 
+	void deleteKey(t_hash_element *elem);
+
+	void findNextValidPointer(t_hash_element * elem, int * index);
+	int initializePointer(t_hash_element * elem, int * index);
+
+	void pointToNextKey();
+	t_hash_element * getPointedKey();
+
+	void updateUsage(char * key);
+
+	t_hash_element * getLeastRecentlyUsedKey();
+	t_hash_element * getBiggestSpaceUsedKey();
+
 	// global vars
 
 	t_hash_element * entryTableElement;

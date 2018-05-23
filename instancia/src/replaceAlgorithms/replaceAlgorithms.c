@@ -9,9 +9,8 @@
 
 int initializeAccordingToAlgorithm() {
 
-
-		log_info(replaceAlgorithmsLogger, "Initiliaze: Round Algorithm");
-		initializePointer(entryTableElement, &entryTableIndex);
+	log_info(replaceAlgorithmsLogger, "Initiliaze: Round Algorithm");
+	initializePointer(entryTableElement, &entryTableIndex);
 
 	//BSU doesn't need initialization
 	//LRU doesn't need initialization
@@ -66,14 +65,10 @@ void deleteKey(t_hash_element *elem) {
 }
 
 void findNextValidPointer(t_hash_element * elem, int * index) {
-
 	while (entryTableElement == NULL && index < entryTable->table_max_size) {
-
 		index++;
 		elem = elem->next;
-
 	}
-
 }
 
 

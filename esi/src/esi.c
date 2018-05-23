@@ -174,7 +174,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	}
 
 	if (coordinadorResponse == ABORT) {
-		log_error(logger, "I can not keep running", line);
+		log_error(logger, "I cannot keep running", line);
 		exit(-1);
 	}
 }

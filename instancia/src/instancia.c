@@ -44,6 +44,7 @@ int main(void) {
 	 * Get the the configuration params from coordinador (entryAmoun, entrySize)
 	 * wait for statements
 	 * receiveCoordinadorConfiguration(coordinadorSocket);
+	 * sendMyNameToCoordinador(name)
 	 * waitForCoordinadorStatements(coordinadorSocket);
 	 * finish();
 	 */
@@ -91,6 +92,13 @@ int initialize(int entraces, int entryStorage){
 	log_info(logger, "Instancia was intialized correctly\n");
 
 	return 0;
+}
+
+void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
+	if (sendString(name, coordinadorSocket) == CUSTOM_FAILURE) {
+		log_error(logger, "I cannot send my name to coordinador\n");
+		exit(-1);
+	}
 }
 
 void waitForCoordinadorStatements(int coordinadorSocket) {
