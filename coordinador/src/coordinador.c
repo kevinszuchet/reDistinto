@@ -126,7 +126,6 @@ int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
-	//TODO mariano si el esi se desconecta, este send no esta tirando error!
 	if(send(esiRequest->socket, &response, sizeof(int), 0) < 0){
 		printf("Se van a pisar los strings\n");
 		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id, getOperationName(esiRequest->operation));
@@ -193,6 +192,7 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 
 	//TODO esto hay que pasarlo al hilo de la instancia
 	int response;
+	//MARIANO+MARIANO+MARIANO
 	//todo mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
 	response = instanciaDoOperation(chosenInstancia, esiRequest->operation);
 	//response = instanciaDoOperationDummy();
@@ -353,8 +353,9 @@ int recieveStentenceToProcess(int esiSocket){
 	char* stringToLog = calloc(200, sizeof(char));
 
 	EsiRequest esiRequest;
+	esiRequest.socket = esiSocket;
 
-	//TODO mariano esto no esta andando bien. ademas, el esi dice que no me puede mandar la operacion
+
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
@@ -363,7 +364,7 @@ int recieveStentenceToProcess(int esiSocket){
 	}
 	printf("Voy a mostrar la operacion recibida\n");
 	showOperation(esiRequest.operation);
-	recieveOperationDummy(esiRequest.operation);
+	//recieveOperationDummy(esiRequest.operation);
 
 	char keyStatus;
 	//TODO descomentar

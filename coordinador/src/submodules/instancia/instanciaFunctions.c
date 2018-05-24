@@ -12,7 +12,7 @@ int instanciaDoOperationDummy(){
 }
 
 int instanciaDoOperation(Instancia* instancia, Operation* operation){
-	if(sendOperation(operation, instancia->socket) == 0){
+	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		return -1;
 	}
 	printf("Se pudo enviar el mensaje a la instancia\n");
