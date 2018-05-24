@@ -362,7 +362,7 @@ int recieveStentenceToProcess(int esiSocket){
 		return -1;
 	}
 	printf("Voy a mostrar la operacion recibida\n");
-	showOperation(esiRequest.operation);*/
+	showOperation(esiRequest.operation);
 	recieveOperationDummy(esiRequest.operation);
 
 	char keyStatus;

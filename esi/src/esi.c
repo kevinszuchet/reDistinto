@@ -189,17 +189,17 @@ void interpretateOperation(Operation * operation, char * line) {
 
 	switch (parsedLine.keyword) {
 		case GET:
-			initializeOperation(operation, GET, parsedLine.argumentos.GET.clave, "");
+			initializeOperation(operation, OURGET, parsedLine.argumentos.GET.clave, NULL);
 			log_info(logger, "GET\tclave: <%s>\n", parsedLine.argumentos.GET.clave);
 			break;
 
 		case SET:
-			initializeOperation(operation, SET, parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
+			initializeOperation(operation, OURSET, parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
 			log_info(logger, "SET\tclave: <%s>\tvalor: <%s>\n", parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
 			break;
 
 		case STORE:
-			initializeOperation(operation, STORE, parsedLine.argumentos.STORE.clave, "");
+			initializeOperation(operation, OURSTORE, parsedLine.argumentos.STORE.clave, NULL);
 			log_info(logger, "STORE\tclave: <%s>\n", parsedLine.argumentos.STORE.clave);
 			break;
 
