@@ -24,6 +24,7 @@
 	#include "planif_algorithm/planif_algorithm.h" //Necessary to delegate planification algorithm stuff
 	#include <commons/log.h>
 	#include <our-commons/messages/serialization.h>
+	#include <our-commons/tads/tads.h>
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define CONSOLE_BLOCKED 0
