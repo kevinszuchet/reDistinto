@@ -58,7 +58,7 @@ int sendInt(int value, int sendSocket) {
 int recieveInt(int** valueRef, int recvSocket) {
 	int* value = malloc(sizeof(int));
 	*valueRef = value;
-	return recv_all(recvSocket, &value, sizeof(int));
+	return recv_all(recvSocket, value, sizeof(int));
 }
 
 
@@ -76,6 +76,7 @@ int sendString(char* value, int sendSocket) {
 	addToPackage(value, sizeValue);
 
 	int result = send_all(sendSocket, package, offset);
+
 	free(package);
 	return result;
 }
