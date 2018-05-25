@@ -59,8 +59,11 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 	t_config* config;
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
-	//TODO validar algoritmo valido
 	*algorithm = config_get_string_value(config, "ALGORITHM");
+	if(*algorithm != "EL" && *algorithm != "EL" && *algorithm != "EL"){
+		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion\n");
+		exit(-1);
+	}
 	*cantEntry = config_get_int_value(config, "CANT_ENTRY");
 	*entrySize = config_get_int_value(config, "ENTRY_SIZE");
 	*delay = config_get_int_value(config, "DELAY");
@@ -107,10 +110,6 @@ void setDistributionAlgorithm(char* algorithm){
 		distributionAlgorithm = &leastSpaceUsed;
 	}else if(strcmp(algorithm, "KE") == 0){
 		distributionAlgorithm = &keyExplicit;
-	}else{
-		printf("Couldn't determine the distribution algorithm\n");
-		log_error(operationsLogger, "No se pudo determinar ");
-		exit(-1);
 	}
 }
 
