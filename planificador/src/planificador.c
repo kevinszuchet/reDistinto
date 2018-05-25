@@ -92,20 +92,20 @@ void executionProcedure(){
 			removeFromReady(nextEsi);
 			sendMessageExecuteToEsi(nextEsi);
 			//sendMessageExecuteToEsiDummie(nextEsi);
-			Operation* operationRecieved = malloc(sizeof(Operation));
-			recieveOperation(&operationRecieved,coordinadorSocket);
+			char* keyRecieved;
+			recieveString(&keyRecieved,coordinadorSocket);
 			//operationRecieved->key = "jugador";
 			//operationRecieved->operationCode = OURGET;
-			log_info(logger,"Key received = %s , Op received = %c\n",operationRecieved->key,operationRecieved->operationCode);
-			int keyStatus = isTakenResource(operationRecieved->key);
+			log_info(logger,"Key received = %s\n",keyRecieved);
+			int keyStatus = isTakenResource(keyRecieved);
 			sendKeyStatusToCoordinador(keyStatus);
 			//sendKeyStatusToCoordinadorDummie(keyStatus);
 			OperationResponse* esiInformation = waitEsiInformation(nextEsi->socketConection);
 			//char esiExecutionInformation = waitEsiInformationDummie(nextEsi->socketConection);
 			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%c) ,esiStatus = (%c)",esiInformation->coordinadorResponse,esiInformation->esiStatus);
-			handleEsiInformation(esiInformation,operationRecieved);
+			handleEsiInformation(esiInformation,keyRecieved);
 			log_info(logger,"Finish executing ESI %d\n",nextEsi->id);
-			free(operationRecieved);
+
 
 
 		}
@@ -162,7 +162,7 @@ void sendEsiIdToCoordinador(int id){
 	}
 }
 
-void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* keyOp){
+void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 	switch(esiExecutionInformation->coordinadorResponse){
 		case SUCCESS:
 			//Se hizo un SET y salio bien
@@ -184,7 +184,7 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* 
 
 		case LOCK:
 			//Lockear la clave
-			log_info(logger,"Operation succeded, key (%c) locked",keyOp->key);
+			log_info(logger,"Operation succeded, key (%c) locked",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
@@ -201,14 +201,14 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* 
 
 		break;
 		case BLOCK:
-			log_info(logger,"Operation didn't succed, esi (%d) blocked in key (%c)",runningEsi->id,keyOp->key);
+			log_info(logger,"Operation didn't succed, esi (%d) blocked in key (%c)",runningEsi->id,key);
 			//todo ADD ESI TO BLOCKED DIC
 			//todo REMOVE ESI FROM RUNNING
 
 		break;
 		case FREE:
 			//Liberar la clave
-			log_info(logger,"Operation succeded, key (%c) freed",keyOp->key);
+			log_info(logger,"Operation succeded, key (%c) freed",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
