@@ -15,10 +15,10 @@
 	int updateAccodringToAlgorithm(char * key);
 	int deleteAccodringToAlgorithm();
 
-	void deleteKey(entryTableInfo * data, char * key);
+	void deleteKey(char * key);
 
-	void findNextValidPointer(t_hash_element * elem, int * index);
-	int initializePointer(t_hash_element * elem, int * index);
+	void findNextValidPointer(t_hash_element ** elem, int * index);
+	int initializePointer(t_hash_element ** elem, int * index);
 
 	void pointToNextKey();
 	t_hash_element * getPointedKey();

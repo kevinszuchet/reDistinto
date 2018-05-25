@@ -42,7 +42,7 @@ int main(void) {
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
-	waitForCoordinadorStatements(coordinadorSocket);
+	//waitForCoordinadorStatements(coordinadorSocket);
 	finish();
 	return 0;
 }
@@ -69,27 +69,28 @@ void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 }
 
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
-	InstanciaConfiguration * instanciaConfiguration;
+	InstanciaConfiguration instanciaConfiguration;
 
-	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(int), 0) <= 0) {
-		// REVIEW inicializacion de instanciaConfiguration y ver si ha yque pasarlo por referencia
+	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(InstanciaConfiguration), 0) <= 0) {
 		log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
 		exit(-1);
 	}
 
-	initialize(instanciaConfiguration->entriesAmount, instanciaConfiguration->entrySize);
+	initialize(instanciaConfiguration.entriesAmount, instanciaConfiguration.entrySize);
 }
 
 int initialize(int entraces, int entryStorage){
 
-	//Que casos de error puede haber?? Pensarlo.
+	// REVIEW Que casos de error puede haber?? Pensarlo.
 
 	entriesAmount = entraces;
 	entrySize = entryStorage;
 	entryTable = dictionary_create();
-	// Se puede hacer dictioanry_resize()? Como se recorre el dictionary?
-	// Hace falta un +1 para el \0?
+	// REVIEW Se puede hacer dictioanry_resize()? Como se recorre el dictionary?
+	// REVIEW Hace falta un +1 para el \0?
 	storage = malloc(entraces * entryStorage);
+	entryTableElement = NULL;
+	entryTableIndex = 0;
 	biMapInitialize(entraces);
 
 	log_info(logger, "Instancia was intialized correctly\n");
@@ -129,22 +130,18 @@ int finish() {
 
 /* BiMap */
 void biMapInitialize(int entraces) {
-
 	biMap = malloc(entraces * sizeof(int));
 	emptyBiMap(entraces);
 }
 
 void emptyBiMap(int entraces) {
-
-	for (int i = 0; i < entraces; i++) {
-		biMap[i] = IS_EMPTY;
-	}
+	biMapUpdate(0, entraces, IS_EMPTY);
 }
 
-void biMapUpdate(int valueStart, int entriesForValue, int value) {
-	for(int i = valueStart; i < (valueStart + entriesForValue); i++) {
+void biMapUpdate(int valueStart, int entriesForValue, int biMapValue) {
+	for (int i = valueStart; i < (valueStart + entriesForValue); i++) {
 		// TODO resolver warning: assignment makes pointer from integer without a cast [-Wint-conversion]
-		*biMap[i] = value;
+		biMap[i] = biMapValue;
 	}
 }
 
@@ -178,7 +175,7 @@ int set(char *key, char *value){
 		entryInfo = dictionary_get(entryTable, key);
 
 		createTableInfo(auxEntryInfo, entryInfo->valueStart, entryInfo->valueSize);
-		deleteKey(entryInfo, key);
+		deleteKey(key);
 
 		free(entryInfo);
 	}
@@ -211,7 +208,7 @@ int set(char *key, char *value){
 int getStartEntryToSet(int valueNeededEntries) {
 
 	int entryStart = ENTRY_START_ERROR;
-	int totalFreeEntries;
+	int totalFreeEntries = 0;
 	int validEntries = 0;
 
 	while(entryStart == ENTRY_START_ERROR) {
@@ -248,6 +245,7 @@ int getStartEntryToSet(int valueNeededEntries) {
 			if (valueNeededEntries > totalFreeEntries) {
 				// Delete any value considering the replacement algorithm
 				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm\n");
+				deleteAccodringToAlgorithm();
 			} else {
 				// A compactation is needed, we notify coordinador so he can order to compact all instancias.
 				log_info(logger, "There are not enough contiguous free entries to set the value. A compactation is needed, we are about to notify coordinador\n");
