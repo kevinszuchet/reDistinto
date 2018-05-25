@@ -60,7 +60,7 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
 	*algorithm = config_get_string_value(config, "ALGORITHM");
-	if(*algorithm != "EL" && *algorithm != "EL" && *algorithm != "EL"){
+	if(strcmp(*algorithm, "EL") != 0 && strcmp(*algorithm, "LSU") != 0 && strcmp(*algorithm, "KE") != 0){
 		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion\n");
 		exit(-1);
 	}
