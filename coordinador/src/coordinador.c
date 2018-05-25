@@ -412,32 +412,45 @@ int sendInstanciaConfiguration(int instanciaSocket) {
 	return 0;
 }
 
+//TODO mariano revisar el tema de estos char** y todos los *
+int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
+	if(recieveString(arrivedInstanciaName, instanciaSocket) != CUSTOM_SUCCESS){
+		log_error(operationsLogger, "No se pudo recibir el nombre de la instancia");
+		if(*arrivedInstanciaName){
+			free(*arrivedInstanciaName);
+		}
+		return -1;
+	}else if(!*arrivedInstanciaName){
+		log_error(operationsLogger, "La instancia no puede no tener nombre");
+		return -1;
+	}
+	return 0;
+}
+
+void recieveInstanciaNameDummy(char** arrivedInstanciaName){
+	*arrivedInstanciaName = "instanciaDePrueba";
+}
+
 int handleInstancia(int instanciaSocket){
 	log_info(logger, "An instancia thread was created\n");
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
 	char* arrivedInstanciaName = NULL;
-	if(recieveString(&arrivedInstanciaName, instanciaSocket) != CUSTOM_SUCCESS){
-		log_error(operationsLogger, "No se pudo recibir el nombre de la instancia");
-		if(arrivedInstanciaName){
-			free(arrivedInstanciaName);
-		}
+	/*if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket) < 0){
 		return -1;
-	}else if(!arrivedInstanciaName){
-		log_error(operationsLogger, "La instancia no puede no tener nombre");
-		return -1;
-	}
-
+	}*/
+	recieveInstanciaNameDummy(&arrivedInstanciaName);
 	printf("Nombre instancia que llego %s\n", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket) < 0){
 		free(arrivedInstanciaName);
 		return -1;
 	}
+	printf("Se envio la configuracion a la instancia\n");
 
-	Instancia* arrivedInstancia = existsInstanciaWithName(arrivedInstanciaName, instancias);
-	if(arrivedInstancia){
-		instanciaIsBack(arrivedInstancia);
+	Instancia* arrivedInstanciaExists = existsInstanciaWithName(arrivedInstanciaName, instancias);
+	if(arrivedInstanciaExists){
+		instanciaIsBack(arrivedInstanciaExists);
 	}else{
 		createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
 	}
