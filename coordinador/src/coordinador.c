@@ -424,16 +424,18 @@ int handleInstancia(int instanciaSocket){
 		}
 		return -1;
 	}
+
 	printf("Nombre instancia que llego %s\n", arrivedInstanciaName);
+
+	if(sendInstanciaConfiguration(instanciaSocket) < 0){
+		free(arrivedInstanciaName);
+		return -1;
+	}
 
 	Instancia* arrivedInstancia = existsInstanciaWithName(arrivedInstanciaName, instancias);
 	if(arrivedInstancia){
 		instanciaIsBack(arrivedInstancia);
 	}else{
-		if(sendInstanciaConfiguration(instanciaSocket) < 0){
-			free(arrivedInstanciaName);
-			return -1;
-		}
 		createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
 	}
 
