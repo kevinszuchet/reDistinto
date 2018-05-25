@@ -40,10 +40,7 @@ int main(void) {
 
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
 
-	printf("Hola coordinador yo soy...\n");
 	sendMyNameToCoordinador(name, coordinadorSocket);
-	printf("Ya te envie mi nombre coordinador, soy: %s\n", name);
-	printf("A recibir la configuracion desde el coordinador\n");
 	receiveCoordinadorConfiguration(coordinadorSocket);
 	waitForCoordinadorStatements(coordinadorSocket);
 	finish();
@@ -74,13 +71,11 @@ void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
 	InstanciaConfiguration * instanciaConfiguration;
 
-	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(int), MSG_WAITALL) <= 0) {
+	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(int), 0) <= 0) {
 		// REVIEW inicializacion de instanciaConfiguration y ver si ha yque pasarlo por referencia
 		log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
 		exit(-1);
 	}
-
-	printf("Entries amount: %d, entry size: %d\n", instanciaConfiguration->entriesAmount, instanciaConfiguration->entrySize);
 
 	initialize(instanciaConfiguration->entriesAmount, instanciaConfiguration->entrySize);
 }
@@ -183,7 +178,7 @@ int set(char *key, char *value){
 		entryInfo = dictionary_get(entryTable, key);
 
 		createTableInfo(auxEntryInfo, entryInfo->valueStart, entryInfo->valueSize);
-		deleteKey(entryInfo);
+		deleteKey(entryInfo, key);
 
 		free(entryInfo);
 	}
