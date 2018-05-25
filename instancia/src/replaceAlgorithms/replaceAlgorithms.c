@@ -36,38 +36,45 @@ int updateAccodringToAlgorithm(char * key) {
 int deleteAccodringToAlgorithm() {
 	t_hash_element * toBeDeletedElement;
 
+	if (entryTableElement == NULL) {
+
+		initializePointer(entryTableElement, &entryTableIndex);
+	}
+
 	if (strcmp(algorithm, "CIRC") == 0) {
 		toBeDeletedElement = getPointedKey();
 	}
 
-	else if (strcmp(algorithm, "LRU") == 0){
+	else if (strcmp(algorithm, "LRU") == 0) {
 		toBeDeletedElement = getLeastRecentlyUsedKey();
 	}
 
-	else{
+	else {
 		toBeDeletedElement = getBiggestSpaceUsedKey();
 	}
 
 
-	deleteKey(toBeDeletedElement);
+	deleteKey(toBeDeletedElement->data, toBeDeletedElement->key);
 
 	return 0;
 }
 
-void deleteKey(t_hash_element *elem) {
+void deleteKey(entryTableInfo * data, char * key) {
 
-	log_info(replaceAlgorithmsLogger, "the key %d is about to be deleted", elem->key);
+	log_info(replaceAlgorithmsLogger, "the key %d is about to be deleted", key);
 
-	biMapUpdate(getValueStart(elem->data), wholeUpperDivision(getValueSize(elem->data), entrySize), IS_EMPTY);
-	dictionary_remove_and_destroy(entryTable, elem->key, (void *) destroyTableInfo);
+	biMapUpdate(getValueStart(data), wholeUpperDivision(getValueSize(data), entrySize), IS_EMPTY);
+	dictionary_remove_and_destroy(entryTable, key, (void *) destroyTableInfo);
+	pointToNextKey();
 
 	log_info(replaceAlgorithmsLogger, "the key was successfully deleted");
 }
 
 void findNextValidPointer(t_hash_element * elem, int * index) {
-	while (entryTableElement == NULL && index < entryTable->table_max_size) {
-		index++;
-		elem = elem->next;
+
+	while (elem == NULL && (*index) < entryTable->table_max_size) {
+		elem = entryTable->elements[*index];
+		(*index)++;
 	}
 }
 
@@ -81,7 +88,6 @@ int initializePointer(t_hash_element * elem, int * index) {
 	}
 
 	index = 0;
-	elem = entryTable->elements[*index];
 
 	findNextValidPointer(elem, index);
 
@@ -95,8 +101,7 @@ void pointToNextKey() {
 
 	findNextValidPointer(entryTableElement, &entryTableIndex);
 
-	if (entryTableIndex == NULL) {
-
+	if (entryTableElement == NULL) {
 		initializePointer(entryTableElement, &entryTableIndex);
 	}
 
@@ -125,12 +130,13 @@ void updateUsage(char * key) {
 
 			if (strcmp(element->key,key) == 0) {
 
-				setUsageToZero(element);
+				setUsageToZero(element->data);
 				log_info(replaceAlgorithmsLogger, "");
 			}
 			else {
 
-				increaseKeyUsage(element);
+				increaseKeyUsage(element->data);
+
 			}
 			element = element->next;
 
@@ -140,8 +146,8 @@ void updateUsage(char * key) {
 
 t_hash_element * getLeastRecentlyUsedKey() {
 
-	t_hash_element * selectedElem;
-	t_hash_element * currentElem;
+	t_hash_element * selectedElem = NULL;
+	t_hash_element * currentElem = NULL;
 	int index;
 
 	initializePointer(currentElem, &index);
@@ -171,8 +177,8 @@ t_hash_element * getLeastRecentlyUsedKey() {
 /******************************************************Biggest Space Used Algorithm***********************************************/
 t_hash_element * getBiggestSpaceUsedKey() {
 
-	t_hash_element * selectedElem;
-	t_hash_element * currentElem;
+	t_hash_element * selectedElem = NULL;
+	t_hash_element * currentElem = NULL;
 	int index;
 
 	initializePointer(currentElem, &index);

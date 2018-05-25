@@ -40,14 +40,10 @@ int main(void) {
 
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
 
-	/*
-	 * Get the the configuration params from coordinador (entryAmoun, entrySize)
-	 * wait for statements
-	 * receiveCoordinadorConfiguration(coordinadorSocket);
-	 * sendMyNameToCoordinador(name)
-	 * waitForCoordinadorStatements(coordinadorSocket);
-	 * finish();
-	 */
+	sendMyNameToCoordinador(name, coordinadorSocket);
+	receiveCoordinadorConfiguration(coordinadorSocket);
+	waitForCoordinadorStatements(coordinadorSocket);
+	finish();
 	return 0;
 }
 
@@ -65,10 +61,17 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 
 // Functions
 
+void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
+	if (sendString(name, coordinadorSocket) == CUSTOM_FAILURE) {
+		log_error(logger, "I cannot send my name to coordinador\n");
+		exit(-1);
+	}
+}
+
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
 	InstanciaConfiguration * instanciaConfiguration;
 
-	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(int), MSG_WAITALL) <= 0) {
+	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(int), 0) <= 0) {
 		// REVIEW inicializacion de instanciaConfiguration y ver si ha yque pasarlo por referencia
 		log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
 		exit(-1);
@@ -92,13 +95,6 @@ int initialize(int entraces, int entryStorage){
 	log_info(logger, "Instancia was intialized correctly\n");
 
 	return 0;
-}
-
-void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
-	if (sendString(name, coordinadorSocket) == CUSTOM_FAILURE) {
-		log_error(logger, "I cannot send my name to coordinador\n");
-		exit(-1);
-	}
 }
 
 void waitForCoordinadorStatements(int coordinadorSocket) {
@@ -182,7 +178,7 @@ int set(char *key, char *value){
 		entryInfo = dictionary_get(entryTable, key);
 
 		createTableInfo(auxEntryInfo, entryInfo->valueStart, entryInfo->valueSize);
-		deleteKey(entryInfo);
+		deleteKey(entryInfo, key);
 
 		free(entryInfo);
 	}

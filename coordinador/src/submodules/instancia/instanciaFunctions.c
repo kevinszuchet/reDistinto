@@ -7,6 +7,18 @@
 
 #include "instanciaFunctions.h"
 
+Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias){
+	int instanciaHasName(Instancia* instancia){
+		return strcmp(instancia->name, arrivedInstanciaName) == 0;
+	}
+
+	return list_find(instancias, (void*) &instanciaHasName);
+}
+
+void instanciaIsBack(Instancia* instancia){
+	instancia->isFallen = INSTANCIA_ALIVE;
+}
+
 int instanciaDoOperationDummy(){
 	return 1;
 }
@@ -15,7 +27,7 @@ int instanciaDoOperation(Instancia* instancia, Operation* operation){
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		return -1;
 	}
-	printf("Se pudo enviar el mensaje a la instancia\n");
+	printf("Se pudo enviar la operacion a la instancia\n");
 	return waitForInstanciaResponse(instancia);
 }
 
@@ -76,10 +88,10 @@ int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInsta
 }
 
 //TODO pasa el ultimo id a variable global
-int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId){
+int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId, char* name){
 	//TODO evaluar como se va a recibir esta lista, tiene que estar copiada en la instancia
 	t_list* storedKeys = list_create();
-	Instancia* newInstancia = createInstancia(*greatesInstanciaId, instanciaSocket, 0, 'a', 'z', storedKeys);
+	Instancia* newInstancia = createInstancia(*greatesInstanciaId, instanciaSocket, 0, 'a', 'z', storedKeys, name);
 
 	//TODO sacar esto, es para que no se ponga esta cadena en todas las instancias
 	if(*greatesInstanciaId == 0){
@@ -92,7 +104,7 @@ int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInst
 	return 0;
 }
 
-Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, t_list* storedKeys){
+Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, t_list* storedKeys, char* name){
 	Instancia* instancia = malloc(sizeof(Instancia));
 	instancia->id = id;
 	instancia->socket = socket;
@@ -101,6 +113,7 @@ Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, 
 	instancia->lastLetter = lastLetter;
 	instancia->storedKeys = storedKeys;
 	instancia->isFallen = INSTANCIA_ALIVE;
+	instancia->name = name;
 	return instancia;
 }
 
@@ -115,9 +128,9 @@ void destroyInstancia(Instancia* instancia){
  * TEST FUNCTIONS
  */
 void initializeSomeInstancias(t_list* instancias){
-	list_add(instancias, createInstancia(0, 10, 0, 'a', 'z', NULL));
-	list_add(instancias, createInstancia(5, 10, 0, 'a', 'z', NULL));
-	list_add(instancias, createInstancia(9, 10, 0, 'a', 'z', NULL));
+	list_add(instancias, createInstancia(0, 10, 0, 'a', 'z', NULL, "instancia1"));
+	list_add(instancias, createInstancia(5, 10, 0, 'a', 'z', NULL, "instancia2"));
+	list_add(instancias, createInstancia(9, 10, 0, 'a', 'z', NULL, "instancia3"));
 }
 
 void showStoredKey(char* key){
@@ -149,6 +162,7 @@ void showInstancia(Instancia* instancia){
 		printf("Last letter = %c\n", instancia->lastLetter);
 		showStoredKeys(instancia);
 		showInstanciaState(instancia);
+		printf("Name = %s\n", instancia->name);
 		printf("----------\n");
 	}else{
 		printf("Instance cannot be showed\n");

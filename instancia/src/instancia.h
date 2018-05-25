@@ -28,7 +28,7 @@
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
 
 	// Functions
-
+	void sendMyNameToCoordinador(char * name, int coordinadorSocket);
 	void receiveCoordinadorConfiguration(int coordinadorSocket);
 	int initialize(int entraces, int entryStorage);
 	void waitForCoordinadorStatements(int coordinadorSocket);

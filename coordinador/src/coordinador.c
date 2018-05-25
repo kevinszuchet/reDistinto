@@ -14,10 +14,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-//TODO cambiar esta por la posta
-#define CLAVE_PROVISORIA_ERROR_A_PLANIFICADOR '30'
-#define CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR '31'
-
 t_log* logger;
 t_log* operationsLogger;
 
@@ -25,6 +21,8 @@ int planificadorSocket;
 void setDistributionAlgorithm(char* algorithm);
 Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
 t_list* instancias;
+int cantEntry;
+int entrySize;
 int delay;
 int lastInstanciaChosen = 0;
 int firstAlreadyPass = 0;
@@ -36,15 +34,8 @@ int main(void) {
 
 	int listeningPort;
 	char* algorithm;
-	int cantEntry;
-	int entrySize;
-	getConfig(&listeningPort, &algorithm, &cantEntry, &entrySize, &delay);
-
-	printf("Puerto = %d\n", listeningPort);
-	printf("Algoritmo = %s\n", algorithm);
-	printf("Cant entry = %d\n", cantEntry);
-	printf("Entry size= %d\n", entrySize);
-	printf("delay= %d\n", delay);
+	getConfig(&listeningPort, &algorithm);
+	showConfig(listeningPort, algorithm);
 
 	setDistributionAlgorithm(algorithm);
 
@@ -55,15 +46,26 @@ int main(void) {
 	return 0;
 }
 
-void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay){
+void showConfig(int listeningPort, char* algorithm){
+	printf("Puerto = %d\n", listeningPort);
+	printf("Algoritmo = %s\n", algorithm);
+	printf("Cant entry = %d\n", cantEntry);
+	printf("Entry size= %d\n", entrySize);
+	printf("delay= %d\n", delay);
+}
+
+void getConfig(int* listeningPort, char** algorithm){
 	t_config* config;
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
-	//TODO validar algoritmo valido
 	*algorithm = config_get_string_value(config, "ALGORITHM");
-	*cantEntry = config_get_int_value(config, "CANT_ENTRY");
-	*entrySize = config_get_int_value(config, "ENTRY_SIZE");
-	*delay = config_get_int_value(config, "DELAY");
+	if(strcmp(*algorithm, "EL") != 0 && strcmp(*algorithm, "LSU") != 0 && strcmp(*algorithm, "KE") != 0){
+		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion\n");
+		exit(-1);
+	}
+	cantEntry = config_get_int_value(config, "CANT_ENTRY");
+	entrySize = config_get_int_value(config, "ENTRY_SIZE");
+	delay = config_get_int_value(config, "DELAY");
 }
 
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
@@ -107,15 +109,10 @@ void setDistributionAlgorithm(char* algorithm){
 		distributionAlgorithm = &leastSpaceUsed;
 	}else if(strcmp(algorithm, "KE") == 0){
 		distributionAlgorithm = &keyExplicit;
-	}else{
-		printf("Couldn't determine the distribution algorithm\n");
-		log_error(operationsLogger, "No se pudo determinar ");
-		exit(-1);
 	}
 }
 
 Instancia* chooseInstancia(char* keyToBeBlocked){
-	//TODO este if podria estar demas
 	if(list_size(instancias) != 0){
 		return (*distributionAlgorithm)(keyToBeBlocked);
 	}
@@ -123,7 +120,7 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
-	//TODO aca tambien hay que reintentar hasta que se mande todo?
+	//TODO aca tambien hay que reintentar hasta que se mande todo? se podria usar sendInt
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
 	if(send(esiRequest->socket, &response, sizeof(int), 0) < 0){
@@ -158,7 +155,6 @@ void logOperation(char* stringToLog){
 }
 
 char* getOperationName(Operation* operation){
-	//ver si se puede evitar repetir este switch
 	switch(operation->operationCode){
 		case OURSET:
 			return "SET";
@@ -248,7 +244,6 @@ int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 		}
 	}
 
-	//estos 2 ifs van si o si asi, si se invierten puede haber inconsistencia de claves
 	if(keyExists == 0){
 		addKeyToInstanciaStruct(instanciaToBeUsed, esiRequest->operation->key);
 		printf("La clave no existe aun\n");
@@ -315,7 +310,11 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
 
-	//TODO mariano. (serializar y) enviar la clave al planificador (no la operacion)
+	//TODO probar esto
+	if(sendString(key, planificadorSocket) != CUSTOM_SUCCESS){
+		log_error(logger, "Planificador disconnected from coordinador, quitting...");
+		exit(-1);
+	}
 
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
@@ -344,12 +343,12 @@ void showOperation(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	//esiId = getActualEsiID();
-	esiId = getActualEsiIDDummy();
+	esiId = getActualEsiID();
+	//esiId = getActualEsiIDDummy();
 	printf("ESI ID: %d\n", esiId);
 	printf("Esi socket: %d\n", esiSocket);
 
-	//TODO chequear esto para evitar alocar demas. por otro lado, evitar alocar por cada sentencia...
+	//TODO chequear esto para evitar alocar demas. por otro lado, estaria bueno evitar alocar por cada sentencia...
 	char* stringToLog = calloc(200, sizeof(char));
 
 	EsiRequest esiRequest;
@@ -402,40 +401,66 @@ int recieveStentenceToProcess(int esiSocket){
 	return operationResult == 0 ? 1 : -1;
 }
 
+int sendInstanciaConfiguration(int instanciaSocket) {
+	InstanciaConfiguration config;
+	config.entriesAmount = cantEntry;
+	config.entrySize = entrySize;
+	if (send(instanciaSocket, &config, sizeof(InstanciaConfiguration), 0) < 0) {
+		log_error(operationsLogger,	"No se pudo enviar su configuracion a la instancia");
+		return -1;
+	}
+	return 0;
+}
+
+//TODO mariano revisar el tema de estos char** y todos los *
+int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
+	if(recieveString(arrivedInstanciaName, instanciaSocket) != CUSTOM_SUCCESS){
+		log_error(operationsLogger, "No se pudo recibir el nombre de la instancia");
+		if(*arrivedInstanciaName){
+			free(*arrivedInstanciaName);
+		}
+		return -1;
+	}else if(!*arrivedInstanciaName){
+		log_error(operationsLogger, "La instancia no puede no tener nombre");
+		return -1;
+	}
+	return 0;
+}
+
+void recieveInstanciaNameDummy(char** arrivedInstanciaName){
+	*arrivedInstanciaName = "instanciaDePrueba";
+}
+
 int handleInstancia(int instanciaSocket){
 	log_info(logger, "An instancia thread was created\n");
-	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos, y ademas para que solo se haga...
-	//... send/recv en el hilo que corresponda y no en cualquiera
+	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
-	//TODO que pasa si una instancia se recupera? como la distinguimos?
-	//si seguimos este camino, se va a crear una nueva y no queremos
+	char* arrivedInstanciaName = NULL;
+	/*if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket) < 0){
+		return -1;
+	}*/
+	recieveInstanciaNameDummy(&arrivedInstanciaName);
+	printf("Nombre instancia que llego %s\n", arrivedInstanciaName);
 
-	//TODO recibir el nombre de la instancia
-	createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId);
-	//TODO enviarle a la instancia su configuracion
+	if(sendInstanciaConfiguration(instanciaSocket) < 0){
+		free(arrivedInstanciaName);
+		return -1;
+	}
+	printf("Se envio la configuracion a la instancia\n");
+
+	Instancia* arrivedInstanciaExists = existsInstanciaWithName(arrivedInstanciaName, instancias);
+	if(arrivedInstanciaExists){
+		instanciaIsBack(arrivedInstanciaExists);
+	}else{
+		createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
+	}
 
 	showInstancias(instancias);
 
-	/*int recvResult = 0;
-	while(1){
-		int instanciaResponse = 0;
-		recvResult = recv(instanciaSocket, &instanciaResponse, sizeof(int), 0);
-		if(recvResult <= 0){
-			if(recvResult == 0){
-				printf("Instancia on socket %d has fallen\n", instanciaSocket);
+	//TODO semaforo binario para que la instancia se quede esperando
 
-				//handlear que pasa en este caso. podriamos guardar el id de la instancia caida, sacar la instancia de la lista...
-				//de instancias. Despues, cuando se reincorpore, levantarla de ahi
+	//TODO aca abajo van los send/recv que se tenga que hacer con el modulo instancia
 
-				close(instanciaSocket);
-
-				//si se cae la instancia, se cae su hilo
-				break;
-			}
-		}else{
-			//TODO handlear la respuesta normal de ejecucion en una instancia
-		}
-	}*/
 	return 0;
 }
 
