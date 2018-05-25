@@ -366,9 +366,8 @@ int recieveStentenceToProcess(int esiSocket){
 	//recieveOperationDummy(esiRequest.operation);
 
 	char keyStatus;
-	//TODO descomentar
-	//keyStatus = checkKeyStatusFromPlanificador(esiId, operation->key);
-	keyStatus = checkKeyStatusFromPlanificadorDummy();
+	keyStatus = checkKeyStatusFromPlanificador(esiId, esiRequest.operation->key);
+	//keyStatus = checkKeyStatusFromPlanificadorDummy();
 
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
