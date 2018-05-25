@@ -27,7 +27,7 @@ int instanciaDoOperation(Instancia* instancia, Operation* operation){
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		return -1;
 	}
-	printf("Se pudo enviar el mensaje a la instancia\n");
+	printf("Se pudo enviar la operacion a la instancia\n");
 	return waitForInstanciaResponse(instancia);
 }
 

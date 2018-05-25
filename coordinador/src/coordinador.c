@@ -423,6 +423,9 @@ int handleInstancia(int instanciaSocket){
 			free(arrivedInstanciaName);
 		}
 		return -1;
+	}else if(!arrivedInstanciaName){
+		log_error(operationsLogger, "La instancia no puede no tener nombre");
+		return -1;
 	}
 
 	printf("Nombre instancia que llego %s\n", arrivedInstanciaName);
