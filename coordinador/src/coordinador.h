@@ -32,6 +32,7 @@
 	}EsiRequest;
 
 	char* getOperationName(Operation* operation);
+	void showConfig(int listeningPort, char* algorithm, int cantEntry, int entrySize, int delay);
 	void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay);
 
 	int welcomePlanificador(int coordinadorSocket, int planificadorSocket);

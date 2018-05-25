@@ -14,10 +14,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-//TODO cambiar esta por la posta
-#define CLAVE_PROVISORIA_ERROR_A_PLANIFICADOR '30'
-#define CLAVE_PROVISORIA_CLABE_BLOQUEADA_DE_PLANIFICADOR '31'
-
 t_log* logger;
 t_log* operationsLogger;
 
@@ -39,12 +35,7 @@ int main(void) {
 	int cantEntry;
 	int entrySize;
 	getConfig(&listeningPort, &algorithm, &cantEntry, &entrySize, &delay);
-
-	printf("Puerto = %d\n", listeningPort);
-	printf("Algoritmo = %s\n", algorithm);
-	printf("Cant entry = %d\n", cantEntry);
-	printf("Entry size= %d\n", entrySize);
-	printf("delay= %d\n", delay);
+	showConfig(listeningPort, algorithm, cantEntry, entrySize, delay);
 
 	setDistributionAlgorithm(algorithm);
 
@@ -53,6 +44,14 @@ int main(void) {
 	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
 
 	return 0;
+}
+
+void showConfig(int listeningPort, char* algorithm, int cantEntry, int entrySize, int delay){
+	printf("Puerto = %d\n", listeningPort);
+	printf("Algoritmo = %s\n", algorithm);
+	printf("Cant entry = %d\n", cantEntry);
+	printf("Entry size= %d\n", entrySize);
+	printf("delay= %d\n", delay);
 }
 
 void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay){
@@ -114,7 +113,6 @@ void setDistributionAlgorithm(char* algorithm){
 }
 
 Instancia* chooseInstancia(char* keyToBeBlocked){
-	//TODO este if podria estar demas
 	if(list_size(instancias) != 0){
 		return (*distributionAlgorithm)(keyToBeBlocked);
 	}
@@ -122,7 +120,7 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
-	//TODO aca tambien hay que reintentar hasta que se mande todo?
+	//TODO aca tambien hay que reintentar hasta que se mande todo? se podria usar sendInt
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
 	if(send(esiRequest->socket, &response, sizeof(int), 0) < 0){
@@ -157,7 +155,6 @@ void logOperation(char* stringToLog){
 }
 
 char* getOperationName(Operation* operation){
-	//ver si se puede evitar repetir este switch
 	switch(operation->operationCode){
 		case OURSET:
 			return "SET";
@@ -247,7 +244,6 @@ int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 		}
 	}
 
-	//estos 2 ifs van si o si asi, si se invierten puede haber inconsistencia de claves
 	if(keyExists == 0){
 		addKeyToInstanciaStruct(instanciaToBeUsed, esiRequest->operation->key);
 		printf("La clave no existe aun\n");
@@ -314,7 +310,11 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
 
-	//TODO mariano. (serializar y) enviar la clave al planificador (no la operacion)
+	//TODO probar esto
+	if(sendString(key, planificadorSocket) != CUSTOM_SUCCESS){
+		log_error(logger, "Planificador disconnected from coordinador, quitting...");
+		exit(-1);
+	}
 
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
