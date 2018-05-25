@@ -142,7 +142,7 @@ void finishRunningEsi(){
 		freeResource(keyToFree,runningEsi);
 		log_info(logger,"Key (%s) was freed by Esi (%d)  \n",keyToFree, runningEsi->id);
 	}
-	list_clear(runningEsi->lockedKeys);
+	list_clean(runningEsi->lockedKeys);
 	runningEsi = NULL;
 	log_info(logger,"Esi (%d) succesfully finished \n",runningEsi->id);
 

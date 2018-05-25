@@ -64,7 +64,11 @@
 	void generateTestEsi();
 	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation,int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
+	void moveFromRunningToReady(Esi* esi);
+
+	void freeResource(char* key,Esi* esiTaker);
 	void takeResource(char* keyToLock, int esiTaker);
+
 	void blockEsi(char* lockedResource, int esiBlocked);
 	int checkKeyBlocked(char* keyRecieved);
 	int isTakenResource(char* key);
