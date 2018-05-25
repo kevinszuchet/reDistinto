@@ -21,6 +21,8 @@ int planificadorSocket;
 void setDistributionAlgorithm(char* algorithm);
 Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
 t_list* instancias;
+int cantEntry;
+int entrySize;
 int delay;
 int lastInstanciaChosen = 0;
 int firstAlreadyPass = 0;
@@ -32,10 +34,8 @@ int main(void) {
 
 	int listeningPort;
 	char* algorithm;
-	int cantEntry;
-	int entrySize;
-	getConfig(&listeningPort, &algorithm, &cantEntry, &entrySize, &delay);
-	showConfig(listeningPort, algorithm, cantEntry, entrySize, delay);
+	getConfig(&listeningPort, &algorithm);
+	showConfig(listeningPort, algorithm);
 
 	setDistributionAlgorithm(algorithm);
 
@@ -46,7 +46,7 @@ int main(void) {
 	return 0;
 }
 
-void showConfig(int listeningPort, char* algorithm, int cantEntry, int entrySize, int delay){
+void showConfig(int listeningPort, char* algorithm){
 	printf("Puerto = %d\n", listeningPort);
 	printf("Algoritmo = %s\n", algorithm);
 	printf("Cant entry = %d\n", cantEntry);
@@ -54,7 +54,7 @@ void showConfig(int listeningPort, char* algorithm, int cantEntry, int entrySize
 	printf("delay= %d\n", delay);
 }
 
-void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entrySize, int* delay){
+void getConfig(int* listeningPort, char** algorithm){
 	t_config* config;
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
@@ -63,9 +63,9 @@ void getConfig(int* listeningPort, char** algorithm, int* cantEntry, int* entryS
 		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion\n");
 		exit(-1);
 	}
-	*cantEntry = config_get_int_value(config, "CANT_ENTRY");
-	*entrySize = config_get_int_value(config, "ENTRY_SIZE");
-	*delay = config_get_int_value(config, "DELAY");
+	cantEntry = config_get_int_value(config, "CANT_ENTRY");
+	entrySize = config_get_int_value(config, "ENTRY_SIZE");
+	delay = config_get_int_value(config, "DELAY");
 }
 
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
@@ -401,6 +401,17 @@ int recieveStentenceToProcess(int esiSocket){
 	return operationResult == 0 ? 1 : -1;
 }
 
+int sendInstanciaConfiguration(int instanciaSocket) {
+	InstanciaConfiguration config;
+	config.entriesAmount = cantEntry;
+	config.entrySize = entrySize;
+	if (send(instanciaSocket, &config, sizeof(InstanciaConfiguration), 0) < 0) {
+		log_error(operationsLogger,	"No se pudo enviar su configuracion a la instancia");
+		return -1;
+	}
+	return 0;
+}
+
 int handleInstancia(int instanciaSocket){
 	log_info(logger, "An instancia thread was created\n");
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
@@ -413,13 +424,17 @@ int handleInstancia(int instanciaSocket){
 		}
 		return -1;
 	}
+	printf("Nombre instancia que llego %s\n", arrivedInstanciaName);
 
 	Instancia* arrivedInstancia = existsInstanciaWithName(arrivedInstanciaName, instancias);
 	if(arrivedInstancia){
 		instanciaIsBack(arrivedInstancia);
 	}else{
+		if(sendInstanciaConfiguration(instanciaSocket) < 0){
+			free(arrivedInstanciaName);
+			return -1;
+		}
 		createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
-		//TODO enviarle a la instancia su configuracion
 	}
 
 	showInstancias(instancias);
