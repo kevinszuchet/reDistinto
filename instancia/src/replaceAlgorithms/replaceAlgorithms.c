@@ -10,7 +10,7 @@
 int initializeAccordingToAlgorithm() {
 
 	log_info(replaceAlgorithmsLogger, "Initiliaze: Round Algorithm");
-	initializePointer(entryTableElement, &entryTableIndex);
+	initializePointer(&entryTableElement, &entryTableIndex);
 
 	//BSU doesn't need initialization
 	//LRU doesn't need initialization
@@ -37,8 +37,7 @@ int deleteAccodringToAlgorithm() {
 	t_hash_element * toBeDeletedElement;
 
 	if (entryTableElement == NULL) {
-
-		initializePointer(entryTableElement, &entryTableIndex);
+		initializePointer(&entryTableElement, &entryTableIndex);
 	}
 
 	if (strcmp(algorithm, "CIRC") == 0) {
@@ -53,33 +52,37 @@ int deleteAccodringToAlgorithm() {
 		toBeDeletedElement = getBiggestSpaceUsedKey();
 	}
 
-
-	deleteKey(toBeDeletedElement->data, toBeDeletedElement->key);
+	deleteKey(toBeDeletedElement->key);
 
 	return 0;
 }
 
-void deleteKey(entryTableInfo * data, char * key) {
+void deleteKey(char * key) {
 
-	log_info(replaceAlgorithmsLogger, "the key %d is about to be deleted", key);
+	log_info(replaceAlgorithmsLogger, "the key %s is about to be deleted", key);
+	entryTableInfo * entryInfo = dictionary_get(entryTable, key);
 
-	biMapUpdate(getValueStart(data), wholeUpperDivision(getValueSize(data), entrySize), IS_EMPTY);
+	biMapUpdate(entryInfo->valueStart, wholeUpperDivision(entryInfo->valueSize, entrySize), IS_EMPTY);
 	dictionary_remove_and_destroy(entryTable, key, (void *) destroyTableInfo);
 	pointToNextKey();
+
+	// REVIEW se libera cuando hago el remove?
 
 	log_info(replaceAlgorithmsLogger, "the key was successfully deleted");
 }
 
-void findNextValidPointer(t_hash_element * elem, int * index) {
+void findNextValidPointer(t_hash_element ** elem, int * index) {
+	int i = *index;
 
-	while (elem == NULL && (*index) < entryTable->table_max_size) {
-		elem = entryTable->elements[*index];
-		(*index)++;
+	while (*elem == NULL && i < entryTable->table_max_size) {
+		*elem = entryTable->elements[i];
+		i++;
 	}
+	*index = i;
 }
 
 
-int initializePointer(t_hash_element * elem, int * index) {
+int initializePointer(t_hash_element ** elem, int * index) {
 
 	if (entryTable->elements_amount == 0) {
 
@@ -87,7 +90,7 @@ int initializePointer(t_hash_element * elem, int * index) {
 		return -1;
 	}
 
-	index = 0;
+	*index = 0;
 
 	findNextValidPointer(elem, index);
 
@@ -99,10 +102,10 @@ int initializePointer(t_hash_element * elem, int * index) {
 
 void pointToNextKey() {
 
-	findNextValidPointer(entryTableElement, &entryTableIndex);
+	findNextValidPointer(&entryTableElement, &entryTableIndex);
 
 	if (entryTableElement == NULL) {
-		initializePointer(entryTableElement, &entryTableIndex);
+		initializePointer(&entryTableElement, &entryTableIndex);
 	}
 
 	/*
@@ -150,7 +153,7 @@ t_hash_element * getLeastRecentlyUsedKey() {
 	t_hash_element * currentElem = NULL;
 	int index;
 
-	initializePointer(currentElem, &index);
+	initializePointer(&currentElem, &index);
 	selectedElem = currentElem;
 
 	while (index < entryTable->table_max_size) {
@@ -181,7 +184,7 @@ t_hash_element * getBiggestSpaceUsedKey() {
 	t_hash_element * currentElem = NULL;
 	int index;
 
-	initializePointer(currentElem, &index);
+	initializePointer(&currentElem, &index);
 	selectedElem = currentElem;
 
 	while (index < entryTable->table_max_size) {
