@@ -66,6 +66,8 @@ void getConfig(int* listeningPort, char** algorithm){
 	cantEntry = config_get_int_value(config, "CANT_ENTRY");
 	entrySize = config_get_int_value(config, "ENTRY_SIZE");
 	delay = config_get_int_value(config, "DELAY");
+
+	config_destroy(config);
 }
 
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
