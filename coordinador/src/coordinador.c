@@ -343,12 +343,12 @@ void showOperation(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	//esiId = getActualEsiID();
-	esiId = getActualEsiIDDummy();
+	esiId = getActualEsiID();
+	//esiId = getActualEsiIDDummy();
 	printf("ESI ID: %d\n", esiId);
 	printf("Esi socket: %d\n", esiSocket);
 
-	//TODO chequear esto para evitar alocar demas. por otro lado, evitar alocar por cada sentencia...
+	//TODO chequear esto para evitar alocar demas. por otro lado, estaria bueno evitar alocar por cada sentencia...
 	char* stringToLog = calloc(200, sizeof(char));
 
 	EsiRequest esiRequest;
@@ -403,38 +403,31 @@ int recieveStentenceToProcess(int esiSocket){
 
 int handleInstancia(int instanciaSocket){
 	log_info(logger, "An instancia thread was created\n");
-	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos, y ademas para que solo se haga...
-	//... send/recv en el hilo que corresponda y no en cualquiera
+	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
-	//TODO que pasa si una instancia se recupera? como la distinguimos?
-	//si seguimos este camino, se va a crear una nueva y no queremos
+	char* arrivedInstanciaName = NULL;
+	if(recieveString(&arrivedInstanciaName, instanciaSocket) != CUSTOM_SUCCESS){
+		log_error(operationsLogger, "No se pudo recibir el nombre de la instancia");
+		if(arrivedInstanciaName){
+			free(arrivedInstanciaName);
+		}
+		return -1;
+	}
 
-	//TODO recibir el nombre de la instancia
-	createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId);
-	//TODO enviarle a la instancia su configuracion
+	Instancia* arrivedInstancia = existsInstanciaWithName(arrivedInstanciaName, instancias);
+	if(arrivedInstancia){
+		instanciaIsBack(arrivedInstancia);
+	}else{
+		createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
+		//TODO enviarle a la instancia su configuracion
+	}
 
 	showInstancias(instancias);
 
-	/*int recvResult = 0;
-	while(1){
-		int instanciaResponse = 0;
-		recvResult = recv(instanciaSocket, &instanciaResponse, sizeof(int), 0);
-		if(recvResult <= 0){
-			if(recvResult == 0){
-				printf("Instancia on socket %d has fallen\n", instanciaSocket);
+	//TODO semaforo binario para que la instancia se quede esperando
 
-				//handlear que pasa en este caso. podriamos guardar el id de la instancia caida, sacar la instancia de la lista...
-				//de instancias. Despues, cuando se reincorpore, levantarla de ahi
+	//TODO aca abajo van los send/recv que se tenga que hacer con el modulo instancia
 
-				close(instanciaSocket);
-
-				//si se cae la instancia, se cae su hilo
-				break;
-			}
-		}else{
-			//TODO handlear la respuesta normal de ejecucion en una instancia
-		}
-	}*/
 	return 0;
 }
 

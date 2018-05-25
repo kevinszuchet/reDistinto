@@ -20,18 +20,21 @@
 		char lastLetter;
 		t_list* storedKeys;
 		int isFallen;
+		char* name;
 	}Instancia;
 
-	int instanciaDoOperation(Instancia* instancia, Operation* operation);
+	Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias);
+	void instanciaIsBack(Instancia* instancia);
 	int instanciaDoOperationDummy();
+	int instanciaDoOperation(Instancia* instancia, Operation* operation);
 	Instancia* lookForKey(char* key, t_list* instancias);
 	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
 	void addKeyToInstanciaStruct(Instancia* instancia, char* key);
 	void instanciaHasFallen(Instancia* fallenInstancia);
 	int waitForInstanciaResponse(Instancia* chosenInstancia);
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
-	int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId);
-	Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, t_list* storedKeys);
+	int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId, char* name);
+	Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, t_list* storedKeys, char* name);
 	void destroyInstancia(Instancia* instancia);
 
 	/*-----------------------------------------------------*/
