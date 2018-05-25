@@ -40,14 +40,13 @@ int main(void) {
 
 	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
 
-	/*
-	 * Get the the configuration params from coordinador (entryAmoun, entrySize)
-	 * wait for statements
-	 * receiveCoordinadorConfiguration(coordinadorSocket);
-	 * sendMyNameToCoordinador(name)
-	 * waitForCoordinadorStatements(coordinadorSocket);
-	 * finish();
-	 */
+	printf("Hola coordinador yo soy...\n");
+	sendMyNameToCoordinador(name, coordinadorSocket);
+	printf("Ya te envie mi nombre coordinador, soy: %s\n", name);
+	printf("A recibir la configuracion desde el coordinador\n");
+	receiveCoordinadorConfiguration(coordinadorSocket);
+	waitForCoordinadorStatements(coordinadorSocket);
+	finish();
 	return 0;
 }
 
@@ -65,6 +64,13 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 
 // Functions
 
+void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
+	if (sendString(name, coordinadorSocket) == CUSTOM_FAILURE) {
+		log_error(logger, "I cannot send my name to coordinador\n");
+		exit(-1);
+	}
+}
+
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
 	InstanciaConfiguration * instanciaConfiguration;
 
@@ -73,6 +79,8 @@ void receiveCoordinadorConfiguration(int coordinadorSocket) {
 		log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
 		exit(-1);
 	}
+
+	printf("Entries amount: %d, entry size: %d\n", instanciaConfiguration->entriesAmount, instanciaConfiguration->entrySize);
 
 	initialize(instanciaConfiguration->entriesAmount, instanciaConfiguration->entrySize);
 }
@@ -92,13 +100,6 @@ int initialize(int entraces, int entryStorage){
 	log_info(logger, "Instancia was intialized correctly\n");
 
 	return 0;
-}
-
-void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
-	if (sendString(name, coordinadorSocket) == CUSTOM_FAILURE) {
-		log_error(logger, "I cannot send my name to coordinador\n");
-		exit(-1);
-	}
 }
 
 void waitForCoordinadorStatements(int coordinadorSocket) {

@@ -116,7 +116,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		 * Parser tries to understand each line, one by one (when planificador says)
 		 * */
 
-		if (recv(planificadorSocket, &response, sizeof(int), MSG_WAITALL) <= 0) {
+		if (recv(planificadorSocket, &response, sizeof(int), 0) <= 0) {
 			log_error(logger, "recv failed on trying to connect with planificador %s\n", strerror(errno));
 			exit(-1);
 		}
@@ -155,7 +155,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 
 	destroy_operation(operation);
 
-	if (recv(coordinadorSocket, &coordinadorResponse, sizeof(int), MSG_WAITALL) <= 0) {
+	if (recv(coordinadorSocket, &coordinadorResponse, sizeof(int), 0) <= 0) {
 		log_error(logger, "recv failed on try to get the coordinador operation response", line);
 		exit(-1);
 	}
