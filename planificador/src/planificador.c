@@ -93,6 +93,7 @@ void executionProcedure(){
 			sendMessageExecuteToEsi(nextEsi);
 			//sendMessageExecuteToEsiDummie(nextEsi);
 			char* keyRecieved;
+			log_info(logger,"Waiting coordinador request\n");
 			recieveString(&keyRecieved,coordinadorSocket);
 			//operationRecieved->key = "jugador";
 			//operationRecieved->operationCode = OURGET;
@@ -100,6 +101,7 @@ void executionProcedure(){
 			int keyStatus = isTakenResource(keyRecieved);
 			sendKeyStatusToCoordinador(keyStatus);
 			//sendKeyStatusToCoordinadorDummie(keyStatus);
+			log_info(logger,"Waiting esi information\n");
 			OperationResponse* esiInformation = waitEsiInformation(nextEsi->socketConection);
 			//char esiExecutionInformation = waitEsiInformationDummie(nextEsi->socketConection);
 			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%c) ,esiStatus = (%c)",esiInformation->coordinadorResponse,esiInformation->esiStatus);
@@ -133,9 +135,16 @@ void unlockEsi(char* key){
 
 void finishRunningEsi(){
 	//Pasa el esi a finalizados
-	//Elimina el esi de running
-	//LIBERA TODOS SUS RECURSOS
-	log_info(logger,"An ESI was moved to finish list (NOT IMPLEMENTED)\n");
+	log_info(logger,"Finishing esi (%d) \n",runningEsi->id);
+	list_add(finishedEsis,runningEsi);
+	for(int i = 0;i<list_size(runningEsi->lockedKeys);i++){
+		char* keyToFree = (char*)list_get(runningEsi->lockedKeys,i);
+		freeResource(keyToFree,runningEsi);
+		log_info(logger,"Key (%s) was freed by Esi (%d)  \n",keyToFree, runningEsi->id);
+	}
+	list_clear(runningEsi->lockedKeys);
+	runningEsi = NULL;
+	log_info(logger,"Esi (%d) succesfully finished \n",runningEsi->id);
 
 }
 
@@ -183,7 +192,8 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 		break;
 
 		case LOCK:
-			//Lockear la clave
+
+			takeResource(key,runningEsi->id);
 			log_info(logger,"Operation succeded, key (%c) locked",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
@@ -193,8 +203,7 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 				case NOTFINISHED:
 					log_info(logger,"Esi didn't finish execution");
 					if(strcmp(algorithm,"SJF-CD")==0){
-						//todo Pasar el esi a ready
-						//todo Sacar el esi de running
+						moveFromRunningToReady(runningEsi);
 					}
 				break;
 			}
@@ -228,7 +237,10 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 	}
 }
 
-
+void moveFromRunningToReady(Esi* esi){
+	addEsiToReady(runningEsi);
+	runningEsi = NULL;
+}
 
 OperationResponse *waitEsiInformation(int esiSocket){
 
