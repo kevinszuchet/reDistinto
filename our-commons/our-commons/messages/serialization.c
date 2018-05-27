@@ -13,7 +13,7 @@ int send_all(int socket, void* package, int length)
     while (length > 0)
     {
         int i = send(socket, auxPointer, length, 0);
-        if (i < 1) return CUSTOM_FAILURE;
+        if (i <= 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
@@ -26,7 +26,7 @@ int recv_all(int socket, void* package, int length)
     while (length > 0)
     {
         int i = recv(socket, auxPointer, length, 0);
-        if (i < 1) return CUSTOM_FAILURE;
+        if (i <= 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
@@ -112,12 +112,6 @@ int sendOperation(Operation* operation, int sendSocket) {
 	if (sizeValue != 0) {addToPackage(operation->value, sizeValue);}
 
 	int result = send_all(sendSocket, package, offset);
-
-	char* aux = package;
-	int* a = &(aux[1]);
-	int* b = &(a[1]);
-	char* c = (char*)&(b[1]);
-	char* d = &(d[sizeKey]);
 
 	free(package);
 	return result;
