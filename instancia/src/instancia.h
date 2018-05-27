@@ -12,17 +12,20 @@
 	#define IS_SET 1
 	#define ENTRY_START_ERROR -1
 
+	#define MAX_KEY_SIZE 40
+
 	#include <our-commons/sockets/client.h>
 	#include <our-commons/modules/names.h>
 	#include <commons/string.h>
 	#include <commons/config.h>
 	#include <commons/log.h>
-	#include <commons/collections/dictionary.h>
+	#include <commons/collections/list.h>
 	#include "tadEntryTable/tadEntryTable.h"
 	#include <our-commons/messages/operation_codes.h>
 	#include <our-commons/tads/tads.h>
 	#include <our-commons/messages/serialization.h>
 	#include "replaceAlgorithms/replaceAlgorithms.h"
+	#include "ourList/ourList.h"
 
 	#define  CFG_FILE "../instancia.cfg"
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
@@ -59,12 +62,11 @@
 
 	int entriesAmount;
 	int entrySize;
-	t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
-	t_dictionary * keyUsage; // Takes record of how many operation ago was used each key
+	t_list * entryTable; // Takes record of the key + how many entraces the value occupies
+	// REVIEW Esto donde se usa? t_dictionary * keyUsage; // Takes record of how many operation ago was used each key
 	char * storage;
 	int * biMap;
 	t_log * replaceAlgorithmsLogger;
 	char * algorithm;
-
 
 #endif /* SRC_INSTANCIA_H_ */

@@ -7,118 +7,56 @@
 
 #include "replaceAlgorithms.h"
 
-int initializeAccordingToAlgorithm() {
-
-	log_info(replaceAlgorithmsLogger, "Initiliaze: Round Algorithm");
-	initializePointer(&entryTableElement, &entryTableIndex);
-
-	//BSU doesn't need initialization
-	//LRU doesn't need initialization
-	//But they need the CIRC algorithm.
-	return 0;
-}
-
-int updateAccodringToAlgorithm(char * key) {
+void updateAccodringToAlgorithm(char * key) {
 
 	if (strcmp(algorithm, "LRU") == 0) {
-
 		log_info(replaceAlgorithmsLogger, "Update: Least Recently Used Algorithm");
 		updateUsage(key);
 	}
 
 	//CIRC doesn't need Updates
 	//BSU doesn't need Updates
-
-	return 0;
-
 }
 
-int deleteAccodringToAlgorithm() {
-	t_hash_element * toBeDeletedElement;
-
-	if (entryTableElement == NULL) {
-		initializePointer(&entryTableElement, &entryTableIndex);
-	}
+void deleteAccodringToAlgorithm() {
+	entryTableInfo * toBeDeletedElement;
 
 	if (strcmp(algorithm, "CIRC") == 0) {
 		toBeDeletedElement = getPointedKey();
 	}
 
+	// TODO passing argument 2 of ‘findKeyBy’ from incompatible pointer type [-Wincompatible-pointer-types]
+
 	else if (strcmp(algorithm, "LRU") == 0) {
-		toBeDeletedElement = getLeastRecentlyUsedKey();
+		findElementBy(&toBeDeletedElement, leastRecentlyUsedComparator);
 	}
 
 	else {
-		toBeDeletedElement = getBiggestSpaceUsedKey();
+		findElementBy(&toBeDeletedElement, biggestSpaceUsedComparator);
 	}
 
-	deleteKey(toBeDeletedElement->key);
-
-	return 0;
+	deleteKey(toBeDeletedElement);
 }
 
-void deleteKey(char * key) {
+void deleteKey(entryTableInfo * toBeDeletedEntryInfo) {
 
-	log_info(replaceAlgorithmsLogger, "the key %s is about to be deleted", key);
-	entryTableInfo * entryInfo = dictionary_get(entryTable, key);
+	log_info(replaceAlgorithmsLogger, "the key %s is about to be deleted", toBeDeletedEntryInfo->key);
 
-	biMapUpdate(entryInfo->valueStart, wholeUpperDivision(entryInfo->valueSize, entrySize), IS_EMPTY);
-	dictionary_remove_and_destroy(entryTable, key, (void *) destroyTableInfo);
-	pointToNextKey();
+	biMapUpdate(toBeDeletedEntryInfo->valueStart, wholeUpperDivision(toBeDeletedEntryInfo->valueSize, entrySize), IS_EMPTY);
+	list_remove_and_destroy_by_condition_with_param(entryTable, (void *) hasKey, (void *) destroyTableInfo, toBeDeletedEntryInfo->key);
 
 	// REVIEW se libera cuando hago el remove?
 
 	log_info(replaceAlgorithmsLogger, "the key was successfully deleted");
 }
 
-void findNextValidPointer(t_hash_element ** elem, int * index) {
-	int i = *index;
-
-	while (*elem == NULL && i < entryTable->table_max_size) {
-		*elem = entryTable->elements[i];
-		i++;
-	}
-	*index = i;
-}
-
-
-int initializePointer(t_hash_element ** elem, int * index) {
-
-	if (entryTable->elements_amount == 0) {
-
-		log_error(replaceAlgorithmsLogger, "There are no elements in the entryTable so the pointer can't be initialized\n");
-		return -1;
-	}
-
-	*index = 0;
-
-	findNextValidPointer(elem, index);
-
-	log_info(replaceAlgorithmsLogger, "The pointer was successfully initialized\n");
-	return 0;
-}
 
 /************************************************************Round Algorithm******************************************************/
-
-void pointToNextKey() {
-
-	findNextValidPointer(&entryTableElement, &entryTableIndex);
-
-	if (entryTableElement == NULL) {
-		initializePointer(&entryTableElement, &entryTableIndex);
-	}
-
-	/*
-	 * Lo que ví en el dictionary, debuggeandolo, es que no se agregan los elementos de forma contigua.
-	 * De repente tenes 1 elemento y despues vienen 3 Null y después el siguiente y así. Por eso está medio fea esta función
-	 *
-	 */
-}
-
-
-t_hash_element * getPointedKey() {
-
-	return entryTableElement;
+entryTableInfo * getPointedKey() {
+	t_list * atomicEntriesList = list_filter(entryTable, atomicEntry);
+	entryTableInfo * data = atomicEntriesList->head->data;
+	list_destroy(atomicEntriesList);
+	return data;
 }
 /************************************************************Round Algorithm******************************************************/
 
@@ -126,86 +64,47 @@ t_hash_element * getPointedKey() {
 
 void updateUsage(char * key) {
 
-	for (int i = 0; i < entryTable->table_max_size; i++) {
-		t_hash_element *element = entryTable->elements[i];
+	t_link_element *element = entryTable->head;
 
-		while (element != NULL) {
+	while (element != NULL) {
 
-			if (strcmp(element->key,key) == 0) {
+		if (strcmp(getKey(element->data), key) == 0) {
 
-				setUsageToZero(element->data);
-				log_info(replaceAlgorithmsLogger, "");
-			}
-			else {
-
-				increaseKeyUsage(element->data);
-
-			}
-			element = element->next;
-
+			setUsageToZero(element->data);
+			log_info(replaceAlgorithmsLogger, "");
 		}
+		else {
+			increaseKeyUsage(element->data);
+		}
+		element = element->next;
 	}
 }
 
-t_hash_element * getLeastRecentlyUsedKey() {
-
-	t_hash_element * selectedElem = NULL;
-	t_hash_element * currentElem = NULL;
-	int index;
-
-	initializePointer(&currentElem, &index);
-	selectedElem = currentElem;
-
-	while (index < entryTable->table_max_size) {
-
-		if (currentElem == NULL) {
-
-			currentElem = currentElem->next;
-		}
-		else if (getKeyUsage(currentElem->data) > getKeyUsage(selectedElem->data)) {
-
-			selectedElem = currentElem;
-			currentElem = currentElem->next;
-		}
-
-		index++;
-	}
-
-
-	return selectedElem;
+bool leastRecentlyUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData) {
+	return getKeyUsage(currentData) > getKeyUsage(selectedData) && bothEntriesAreAtomics(currentData, selectedData);
 }
 
 /*****************************************************Least Recently Used Algorithm***********************************************/
-//TODO CHEQUEAR EL TEMA DEL CODIGO REPETIDO EN LAS FUNCIONES getBiggestSpaceUsedKey(), getLeastRecentlyUsedKey()
+
 /******************************************************Biggest Space Used Algorithm***********************************************/
-t_hash_element * getBiggestSpaceUsedKey() {
 
-	t_hash_element * selectedElem = NULL;
-	t_hash_element * currentElem = NULL;
-	int index;
-
-	initializePointer(&currentElem, &index);
-	selectedElem = currentElem;
-
-	while (index < entryTable->table_max_size) {
-
-		if (currentElem == NULL) {
-
-			currentElem = currentElem->next;
-		}
-		else if (getValueSize(currentElem->data) > getValueSize(selectedElem->data)) {
-
-			selectedElem = currentElem;
-			currentElem = currentElem->next;
-		}
-
-		index++;
-	}
-
-
-	return selectedElem;
+bool biggestSpaceUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData) {
+	return getValueSize(currentData) > getValueSize(selectedData) && bothEntriesAreAtomics(currentData, selectedData);
 }
-
-
 /*****************************************************Biggest Space Used Algorithm************************************************/
 
+void findElementBy(entryTableInfo ** toBeDeletedElement, bool (*comparator)(void*, void*)) {
+	t_list * auxList = list_duplicate(entryTable);
+	list_sort(auxList, comparator);
+	*toBeDeletedElement = list_get(entryTable, 0);
+	// REVIEW hace falta destruir todos sus elementos o esto destruiria los elementos de la lista original?
+	list_destroy(auxList);
+}
+
+bool atomicEntry(entryTableInfo * entryInfo) {
+	return entryInfo->valueSize <= entrySize;
+}
+
+bool bothEntriesAreAtomics(entryTableInfo * oneEntryInfo, entryTableInfo * otherEntryInfo) {
+	return atomicEntry(oneEntryInfo) && atomicEntry(otherEntryInfo);
+}

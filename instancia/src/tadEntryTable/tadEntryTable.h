@@ -8,22 +8,36 @@
 #ifndef SRC_TADENTRYTABLE_TADENTRYTABLE_H_
 #define SRC_TADENTRYTABLE_TADENTRYTABLE_H_
 
-#include<stdlib.h>
+	#include <stdlib.h>
+	#include <string.h>
+	#include <stdio.h>
+	#include <stdbool.h>
 
-typedef struct entryTableInfo{
-	int valueStart;
-	int valueSize;
-	int usage;
 
-}entryTableInfo;
+	typedef struct entryTableInfo{
+		char * key;
+		int valueStart;
+		int valueSize;
+		int usage;
 
-void createTableInfo(entryTableInfo * entryInfo, int valueEntryStart, int valueTotalSize);
-int getValueStart(entryTableInfo *entryInfo);
-void setValueStart(entryTableInfo * entryInfo, int valueStart);
-int getValueSize(entryTableInfo *entryInfo);
-void destroyTableInfo(entryTableInfo * entryInfo);
-int getKeyUsage(entryTableInfo *entryInfo);
-void increaseKeyUsage(entryTableInfo *entryInfo);
-void setUsageToZero(entryTableInfo *entryInfo);
+	} entryTableInfo;
+
+	void createTableInfo(entryTableInfo * entryInfo, char * key, int valueEntryStart, int valueTotalSize);
+
+	char * getKey(entryTableInfo * entryInfo);
+	void setKey(entryTableInfo * entryInfo, char * key);
+
+	int getValueStart(entryTableInfo *entryInfo);
+	void setValueStart(entryTableInfo * entryInfo, int valueStart);
+
+	int getValueSize(entryTableInfo *entryInfo);
+
+	int getKeyUsage(entryTableInfo *entryInfo);
+	void increaseKeyUsage(entryTableInfo *entryInfo);
+	void setUsageToZero(entryTableInfo *entryInfo);
+
+	void destroyTableInfo(entryTableInfo * entryInfo);
+
+	bool hasKey(entryTableInfo * entryInfo, char * key);
 
 #endif /* SRC_TADENTRYTABLE_TADENTRYTABLE_H_ */
