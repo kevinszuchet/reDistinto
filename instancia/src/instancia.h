@@ -62,7 +62,7 @@
 	t_dictionary * entryTable; //Takes record of the key + how many entraces the value occupies
 	t_dictionary * keyUsage; // Takes record of how many operation ago was used each key
 	char * storage;
-	int ** biMap;
+	int * biMap;
 	t_log * replaceAlgorithmsLogger;
 	char * algorithm;
 
