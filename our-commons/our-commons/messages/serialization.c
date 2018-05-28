@@ -13,7 +13,7 @@ int send_all(int socket, void* package, int length)
     while (length > 0)
     {
         int i = send(socket, auxPointer, length, 0);
-        if (i <= 1) return CUSTOM_FAILURE;
+        if (i < 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
@@ -26,7 +26,7 @@ int recv_all(int socket, void* package, int length)
     while (length > 0)
     {
         int i = recv(socket, auxPointer, length, 0);
-        if (i <= 1) return CUSTOM_FAILURE;
+        if (i < 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
@@ -130,5 +130,5 @@ int recieveOperation(Operation** operationRef, int recvSocket) {
 		recv_all(recvSocket, &sizeKey, sizeof(int)) &&
 		recv_all(recvSocket, &sizeValue, sizeof(int)) &&
 		recieveStringBySize(&operation->key, sizeKey, recvSocket) &&
-		(sizeValue != 0) ? recieveStringBySize(&operation->value, sizeValue, recvSocket) : 1;
+		((sizeValue != 0) ? recieveStringBySize(&operation->value, sizeValue, recvSocket) : 1);
 }
