@@ -7,6 +7,17 @@
 
 #include "instanciaFunctions.h"
 
+int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize, t_log* logger){
+	InstanciaConfiguration config;
+	config.entriesAmount = cantEntry;
+	config.entrySize = entrySize;
+	if (send(instanciaSocket, &config, sizeof(InstanciaConfiguration), 0) < 0) {
+		log_error(logger,	"No se pudo enviar su configuracion a la instancia");
+		return -1;
+	}
+	return 0;
+}
+
 Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias){
 	int instanciaHasName(Instancia* instancia){
 		return strcmp(instancia->name, arrivedInstanciaName) == 0;
@@ -15,12 +26,17 @@ Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancia
 	return list_find(instancias, (void*) &instanciaHasName);
 }
 
-void instanciaIsBack(Instancia* instancia){
+void instanciaIsBack(Instancia* instancia, int instanciaSocket){
 	instancia->isFallen = INSTANCIA_ALIVE;
+	instancia->socket = instanciaSocket;
 }
 
 int instanciaDoOperationDummy(){
 	return 1;
+}
+
+void recieveInstanciaNameDummy(char** arrivedInstanciaName){
+	*arrivedInstanciaName = "instanciaDePrueba";
 }
 
 int instanciaDoOperation(Instancia* instancia, Operation* operation){
