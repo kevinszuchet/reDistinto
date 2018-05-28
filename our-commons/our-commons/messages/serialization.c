@@ -13,7 +13,7 @@ int send_all(int socket, void* package, int length)
     while (length > 0)
     {
         int i = send(socket, auxPointer, length, 0);
-        if (i < 1) return CUSTOM_FAILURE;
+        if (i <= 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
@@ -22,18 +22,14 @@ int send_all(int socket, void* package, int length)
 
 int recv_all(int socket, void* package, int length)
 {
-	printf("voy a recibir una operacion del esi en el socket %d\n", socket);
     char *auxPointer = (char*) package;
     while (length > 0)
     {
-    	printf("esperando el recv...\n");
         int i = recv(socket, auxPointer, length, 0);
-        printf("Recibi algo\n");
-        if (i < 1) return CUSTOM_FAILURE;
+        if (i <= 1) return CUSTOM_FAILURE;
         auxPointer += i;
         length -= i;
     }
-    printf("Sali del while\n");
     return CUSTOM_SUCCESS;
 }
 
@@ -62,7 +58,7 @@ int sendInt(int value, int sendSocket) {
 int recieveInt(int** valueRef, int recvSocket) {
 	int* value = malloc(sizeof(int));
 	*valueRef = value;
-	return recv_all(recvSocket, &value, sizeof(int));
+	return recv_all(recvSocket, value, sizeof(int));
 }
 
 
@@ -80,6 +76,7 @@ int sendString(char* value, int sendSocket) {
 	addToPackage(value, sizeValue);
 
 	int result = send_all(sendSocket, package, offset);
+
 	free(package);
 	return result;
 }
@@ -115,12 +112,6 @@ int sendOperation(Operation* operation, int sendSocket) {
 	if (sizeValue != 0) {addToPackage(operation->value, sizeValue);}
 
 	int result = send_all(sendSocket, package, offset);
-
-	char* aux = package;
-	int* a = &(aux[1]);
-	int* b = &(a[1]);
-	char* c = (char*)&(b[1]);
-	char* d = &(d[sizeKey]);
 
 	free(package);
 	return result;

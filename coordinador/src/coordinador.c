@@ -368,9 +368,8 @@ int recieveStentenceToProcess(int esiSocket){
 	//recieveOperationDummy(esiRequest.operation);
 
 	char keyStatus;
-	//TODO descomentar
-	//keyStatus = checkKeyStatusFromPlanificador(esiId, operation->key);
-	keyStatus = checkKeyStatusFromPlanificadorDummy();
+	keyStatus = checkKeyStatusFromPlanificador(esiId, esiRequest.operation->key);
+	//keyStatus = checkKeyStatusFromPlanificadorDummy();
 
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
@@ -438,10 +437,10 @@ int handleInstancia(int instanciaSocket){
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
 	char* arrivedInstanciaName = NULL;
-	/*if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket) < 0){
+	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket) < 0){
 		return -1;
-	}*/
-	recieveInstanciaNameDummy(&arrivedInstanciaName);
+	}
+	/*recieveInstanciaNameDummy(&arrivedInstanciaName);*/
 	printf("Nombre instancia que llego %s\n", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket) < 0){

@@ -92,20 +92,22 @@ void executionProcedure(){
 			removeFromReady(nextEsi);
 			sendMessageExecuteToEsi(nextEsi);
 			//sendMessageExecuteToEsiDummie(nextEsi);
-			Operation* operationRecieved = malloc(sizeof(Operation));
-			recieveOperation(&operationRecieved,coordinadorSocket);
+			char* keyRecieved;
+			log_info(logger,"Waiting coordinador request\n");
+			recieveString(&keyRecieved,coordinadorSocket);
 			//operationRecieved->key = "jugador";
 			//operationRecieved->operationCode = OURGET;
-			log_info(logger,"Key received = %s , Op received = %c\n",operationRecieved->key,operationRecieved->operationCode);
-			int keyStatus = isTakenResource(operationRecieved->key);
+			log_info(logger,"Key received = %s\n",keyRecieved);
+			int keyStatus = isTakenResource(keyRecieved);
 			sendKeyStatusToCoordinador(keyStatus);
 			//sendKeyStatusToCoordinadorDummie(keyStatus);
+			log_info(logger,"Waiting esi information\n");
 			OperationResponse* esiInformation = waitEsiInformation(nextEsi->socketConection);
 			//char esiExecutionInformation = waitEsiInformationDummie(nextEsi->socketConection);
 			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%c) ,esiStatus = (%c)",esiInformation->coordinadorResponse,esiInformation->esiStatus);
-			handleEsiInformation(esiInformation,operationRecieved);
+			handleEsiInformation(esiInformation,keyRecieved);
 			log_info(logger,"Finish executing ESI %d\n",nextEsi->id);
-			free(operationRecieved);
+
 
 
 		}
@@ -133,9 +135,16 @@ void unlockEsi(char* key){
 
 void finishRunningEsi(){
 	//Pasa el esi a finalizados
-	//Elimina el esi de running
-	//LIBERA TODOS SUS RECURSOS
-	log_info(logger,"An ESI was moved to finish list (NOT IMPLEMENTED)\n");
+	log_info(logger,"Finishing esi (%d) \n",runningEsi->id);
+	list_add(finishedEsis,runningEsi);
+	for(int i = 0;i<list_size(runningEsi->lockedKeys);i++){
+		char* keyToFree = (char*)list_get(runningEsi->lockedKeys,i);
+		freeResource(keyToFree,runningEsi);
+		log_info(logger,"Key (%s) was freed by Esi (%d)  \n",keyToFree, runningEsi->id);
+	}
+	list_clean(runningEsi->lockedKeys);
+	runningEsi = NULL;
+	log_info(logger,"Esi (%d) succesfully finished \n",runningEsi->id);
 
 }
 
@@ -162,7 +171,7 @@ void sendEsiIdToCoordinador(int id){
 	}
 }
 
-void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* keyOp){
+void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 	switch(esiExecutionInformation->coordinadorResponse){
 		case SUCCESS:
 			//Se hizo un SET y salio bien
@@ -183,8 +192,9 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* 
 		break;
 
 		case LOCK:
-			//Lockear la clave
-			log_info(logger,"Operation succeded, key (%c) locked",keyOp->key);
+
+			takeResource(key,runningEsi->id);
+			log_info(logger,"Operation succeded, key (%c) locked",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
@@ -193,22 +203,21 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* 
 				case NOTFINISHED:
 					log_info(logger,"Esi didn't finish execution");
 					if(strcmp(algorithm,"SJF-CD")==0){
-						//todo Pasar el esi a ready
-						//todo Sacar el esi de running
+						moveFromRunningToReady(runningEsi);
 					}
 				break;
 			}
 
 		break;
 		case BLOCK:
-			log_info(logger,"Operation didn't succed, esi (%d) blocked in key (%c)",runningEsi->id,keyOp->key);
+			log_info(logger,"Operation didn't succed, esi (%d) blocked in key (%c)",runningEsi->id,key);
 			//todo ADD ESI TO BLOCKED DIC
 			//todo REMOVE ESI FROM RUNNING
 
 		break;
 		case FREE:
 			//Liberar la clave
-			log_info(logger,"Operation succeded, key (%c) freed",keyOp->key);
+			log_info(logger,"Operation succeded, key (%c) freed",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
@@ -228,7 +237,10 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* 
 	}
 }
 
-
+void moveFromRunningToReady(Esi* esi){
+	addEsiToReady(runningEsi);
+	runningEsi = NULL;
+}
 
 OperationResponse *waitEsiInformation(int esiSocket){
 

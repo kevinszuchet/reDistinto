@@ -24,6 +24,7 @@
 	#include "planif_algorithm/planif_algorithm.h" //Necessary to delegate planification algorithm stuff
 	#include <commons/log.h>
 	#include <our-commons/messages/serialization.h>
+	#include <our-commons/tads/tads.h>
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define CONSOLE_BLOCKED 0
@@ -55,7 +56,7 @@
 
 	void executionProcedure();
 
-	void handleEsiInformation(OperationResponse* esiExecutionInformation,Operation* keyOp);
+	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
 
 	OperationResponse *waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char status);
@@ -64,7 +65,11 @@
 	void generateTestEsi();
 	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation,int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
+	void moveFromRunningToReady(Esi* esi);
+
+	void freeResource(char* key,Esi* esiTaker);
 	void takeResource(char* keyToLock, int esiTaker);
+
 	void blockEsi(char* lockedResource, int esiBlocked);
 	int checkKeyBlocked(char* keyRecieved);
 	int isTakenResource(char* key);
