@@ -60,12 +60,15 @@ void getConfig(int* listeningPort, char** algorithm){
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
 	*algorithm = config_get_string_value(config, "ALGORITHM");
 	if(strcmp(*algorithm, "EL") != 0 && strcmp(*algorithm, "LSU") != 0 && strcmp(*algorithm, "KE") != 0){
-		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion\n");
+		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion");
 		exit(-1);
 	}
 	cantEntry = config_get_int_value(config, "CANT_ENTRY");
 	entrySize = config_get_int_value(config, "ENTRY_SIZE");
 	delay = config_get_int_value(config, "DELAY");
+
+	//TODO mariano esto hay que matarlo en algun momento. Aca no porque, por algun motivo, el showConfig muestra mal
+	//config_destroy(config);
 }
 
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
@@ -183,7 +186,7 @@ int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest, char** stringT
 
 //TODO cuidado en estos casos que el stringToLog no se limpia y es llamado mas de una vez
 int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenInstancia, char** stringToLog){
-	printf("Se usara la siguiente instancia para hacer %s\n", getOperationName(esiRequest->operation));
+	log_info(logger, "Se usara la siguiente instancia para hacer %s", getOperationName(esiRequest->operation));
 	showInstancia(chosenInstancia);
 
 	//TODO esto hay que pasarlo al hilo de la instancia
@@ -246,7 +249,7 @@ int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 
 	if(keyExists == 0){
 		addKeyToInstanciaStruct(instanciaToBeUsed, esiRequest->operation->key);
-		printf("La clave no existe aun\n");
+		log_info(logger, "La clave %s no existe aun", esiRequest->operation->key);
 	}
 
 	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed, stringToLog) < 0){
@@ -310,11 +313,14 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
 
+	log_info(logger, "Voy a recibir el estado de la clave del planificador");
 	//TODO probar esto
 	if(sendString(key, planificadorSocket) != CUSTOM_SUCCESS){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
 	}
+
+	log_info(logger, "Le envie la clave de interes al planificador");
 
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
@@ -336,8 +342,28 @@ void recieveOperationDummy(Operation* operation){
 	operation->operationCode = OURSET;
 }
 
+//TODO mover a las commons junto con getOperationName
 void showOperation(Operation* operation){
 	printf("Operation key = %s\n", getOperationName(operation));
+}
+
+//TODO esto tambien, mover a las commons
+char* getKeyStatusName(char keyStatus){
+	log_info(logger, "Voy a mostrar el estado de la clave");
+	switch(keyStatus){
+		case LOCK:
+			return "LOCK";
+			break;
+		case NOTBLOCKED:
+			return "NOTBLOCKED";
+			break;
+		case BLOCKED:
+			return "BLOCKED";
+			break;
+		default:
+			return "UNKNOWN KEY STATUS";
+			break;
+	}
 }
 
 int recieveStentenceToProcess(int esiSocket){
@@ -345,8 +371,8 @@ int recieveStentenceToProcess(int esiSocket){
 	int esiId = 0;
 	esiId = getActualEsiID();
 	//esiId = getActualEsiIDDummy();
-	printf("ESI ID: %d\n", esiId);
-	printf("Esi socket: %d\n", esiSocket);
+
+	log_info(logger, "Llego el esi con id = %d", esiId);
 
 	//TODO chequear esto para evitar alocar demas. por otro lado, estaria bueno evitar alocar por cada sentencia...
 	char* stringToLog = calloc(200, sizeof(char));
@@ -354,20 +380,21 @@ int recieveStentenceToProcess(int esiSocket){
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
 
-
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
 		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
 		return -1;
 	}
-	printf("Voy a mostrar la operacion recibida\n");
-	showOperation(esiRequest.operation);
 	//recieveOperationDummy(esiRequest.operation);
+
+	log_info(logger, "El esi %d va a hacer:", esiId);
+	showOperation(esiRequest.operation);
 
 	char keyStatus;
 	keyStatus = checkKeyStatusFromPlanificador(esiId, esiRequest.operation->key);
 	//keyStatus = checkKeyStatusFromPlanificadorDummy();
+	log_info(logger, "El estado de la clave del esi %d es %s", esiId, getKeyStatusName(keyStatus));
 
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
@@ -400,18 +427,8 @@ int recieveStentenceToProcess(int esiSocket){
 	return operationResult == 0 ? 1 : -1;
 }
 
-int sendInstanciaConfiguration(int instanciaSocket) {
-	InstanciaConfiguration config;
-	config.entriesAmount = cantEntry;
-	config.entrySize = entrySize;
-	if (send(instanciaSocket, &config, sizeof(InstanciaConfiguration), 0) < 0) {
-		log_error(operationsLogger,	"No se pudo enviar su configuracion a la instancia");
-		return -1;
-	}
-	return 0;
-}
-
 //TODO mariano revisar el tema de estos char** y todos los *
+//TODO mover esta funcion a instanciaFunctions
 int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
 	if(recieveString(arrivedInstanciaName, instanciaSocket) != CUSTOM_SUCCESS){
 		log_error(operationsLogger, "No se pudo recibir el nombre de la instancia");
@@ -426,12 +443,8 @@ int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
 	return 0;
 }
 
-void recieveInstanciaNameDummy(char** arrivedInstanciaName){
-	*arrivedInstanciaName = "instanciaDePrueba";
-}
-
+//TODO mariano: esta asignando nuevos numeros de sockets cuando deberia volver a asignar los de instancias que cayeron
 int handleInstancia(int instanciaSocket){
-	log_info(logger, "An instancia thread was created\n");
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
 	char* arrivedInstanciaName = NULL;
@@ -439,19 +452,21 @@ int handleInstancia(int instanciaSocket){
 		return -1;
 	}
 	/*recieveInstanciaNameDummy(&arrivedInstanciaName);*/
-	printf("Nombre instancia que llego %s\n", arrivedInstanciaName);
+	log_info(logger, "Llego instancia: %s", arrivedInstanciaName);
 
-	if(sendInstanciaConfiguration(instanciaSocket) < 0){
+	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
 		free(arrivedInstanciaName);
 		return -1;
 	}
-	printf("Se envio la configuracion a la instancia\n");
+	log_info(logger, "Se envio la configuracion a la instancia %s", arrivedInstanciaName);
 
 	Instancia* arrivedInstanciaExists = existsInstanciaWithName(arrivedInstanciaName, instancias);
 	if(arrivedInstanciaExists){
-		instanciaIsBack(arrivedInstanciaExists);
+		instanciaIsBack(arrivedInstanciaExists, instanciaSocket);
+		log_info(logger, "La instancia %s esta reviviendo", arrivedInstanciaName);
 	}else{
 		createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
+		log_info(logger, "La instancia %s es nueva", arrivedInstanciaName);
 	}
 
 	showInstancias(instancias);
@@ -464,7 +479,6 @@ int handleInstancia(int instanciaSocket){
 }
 
 int handleEsi(int esiSocket){
-	log_info(logger,"An esi thread was created\n");
 	while(1){
 		if (recieveStentenceToProcess(esiSocket) < 0){
 			//va a matar al hilo porque sale de este while!
@@ -483,7 +497,7 @@ void pthreadInitialize(void* clientSocket){
 	}else if(id == 12){
 		handleEsi(castedClientSocket);
 	}else{
-		log_info(logger,"I received a strange\n");
+		log_info(logger, "I received a strange");
 	}
 
 	free(clientSocket);
@@ -494,12 +508,12 @@ int clientHandler(int clientSocket){
 	int* clientSocketPointer = malloc(sizeof(int));
 	*clientSocketPointer = clientSocket;
 	if(pthread_create(&clientThread, NULL, (void*) &pthreadInitialize, clientSocketPointer)){
-		log_error(logger, "Error creating thread\n");
+		log_error(logger, "Error creating thread");
 		return -1;
 	}
 
 	if(pthread_detach(clientThread) != 0){
-		log_error(logger,"Couldn't detach thread\n");
+		log_error(logger,"Couldn't detach thread");
 		return -1;
 	}
 
@@ -508,7 +522,6 @@ int clientHandler(int clientSocket){
 
 int welcomePlanificador(int coordinadorSocket, int newPlanificadorSocket){
 	planificadorSocket = newPlanificadorSocket;
-	log_info(logger, "%s recieved %s, so it'll now start listening esi/instancia connections\n", COORDINADOR, PLANIFICADOR);
 	while(1){
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);
 		clientHandler(clientSocket);

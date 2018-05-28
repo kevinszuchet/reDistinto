@@ -23,8 +23,10 @@
 		char* name;
 	}Instancia;
 
+	int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize, t_log* logger);
+	void recieveInstanciaNameDummy(char** arrivedInstanciaName);
 	Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias);
-	void instanciaIsBack(Instancia* instancia);
+	void instanciaIsBack(Instancia* instancia, int instanciaSocket);
 	int instanciaDoOperationDummy();
 	int instanciaDoOperation(Instancia* instancia, Operation* operation);
 	Instancia* lookForKey(char* key, t_list* instancias);
