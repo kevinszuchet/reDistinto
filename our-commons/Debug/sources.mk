@@ -15,4 +15,5 @@ C_DEPS :=
 SUBDIRS := \
 our-commons/messages \
 our-commons/sockets \
+our-commons/tads \
 

@@ -23,6 +23,7 @@
 		char* name;
 	}Instancia;
 
+	int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger);
 	int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize, t_log* logger);
 	void recieveInstanciaNameDummy(char** arrivedInstanciaName);
 	Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias);
