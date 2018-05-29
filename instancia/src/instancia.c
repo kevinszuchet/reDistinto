@@ -45,8 +45,6 @@ int main(void) {
 	receiveCoordinadorConfiguration(coordinadorSocket);
 	//waitForCoordinadorStatements(coordinadorSocket);
 
-	test();
-
 	finish();
 	return 0;
 }
