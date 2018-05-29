@@ -264,7 +264,7 @@ char waitEsiInformationDummie(int esiSocket){
 }
 
 void sendKeyStatusToCoordinador(char status){
-	if (send(coordinadorSocket, &status, sizeof(int), 0) < 0){
+	if (send(coordinadorSocket, &status, sizeof(char), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	}else{
 		log_info(logger,"Send key status (%d) to coordinador %d",status);
