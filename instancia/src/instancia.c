@@ -8,7 +8,8 @@
 #include "instancia.h"
 
 t_log * logger;
-
+void getConfigDebug(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump);
+void test();
 
 int main(void) {
 
@@ -43,8 +44,37 @@ int main(void) {
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
 	//waitForCoordinadorStatements(coordinadorSocket);
+
 	finish();
 	return 0;
+}
+
+void test() {
+
+	for (int i = 0; i < (entriesAmount * entrySize); i++) {
+		storage[i] = "5";
+	}
+
+	set("lionel", "andres messi cuccitini l10");
+	set("andres", "iniesta");
+	set("xavi", "hernandez");
+	set("matias", "kranevitter");
+	printf("Storage pre reemplazo: %s\n", storage);
+
+	set("gareth", "bale");
+
+	entryTableInfo * nodo;
+	for (int i = 0; i < 6; i++) {
+		nodo = list_get(entryTable, i);
+	}
+
+
+	set("jorge", "supital");
+	printf("Storage jorge: %s\n", storage);
+	set("marcela", "wilder");
+	printf("Storage marcela: %s\n", storage);
+	set("gabo", "anaconda ricardi");
+	printf("Storage gabo: %s\n", storage);
 }
 
 void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump) {
@@ -57,6 +87,16 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	*path = config_get_string_value(config, "PATH");
 	*name = config_get_string_value(config, "NAME");
 	*dump = config_get_int_value(config, "DUMP");
+}
+
+void getConfigDebug(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump) {
+
+	*ipCoordinador = "127.0.0.1";
+	*portCoordinador = 8080;
+	*algorithm = "CIRC";
+	*path = "/home/utnso/instancia1/";
+	*name = "Instancia1";
+	*dump = 10;
 }
 
 // Functions
@@ -85,12 +125,10 @@ int initialize(int entraces, int entryStorage){
 
 	entriesAmount = entraces;
 	entrySize = entryStorage;
-	entryTable = dictionary_create();
-	// REVIEW Se puede hacer dictioanry_resize()? Como se recorre el dictionary?
+	entryTable = list_create();
+
 	// REVIEW Hace falta un +1 para el \0?
-	storage = malloc(entraces * entryStorage);
-	entryTableElement = NULL;
-	entryTableIndex = 0;
+	storage = malloc((entraces * entryStorage) + 1);
 	biMapInitialize(entraces);
 
 	log_info(logger, "Instancia was intialized correctly\n");
@@ -120,7 +158,7 @@ void interpretateStatement(Operation * operation) {
 
 int finish() {
 
-	dictionary_destroy_and_destroy_elements(entryTable, (void *) destroyTableInfo);
+	list_destroy_and_destroy_elements(entryTable, (void *) destroyTableInfo);
 	free(storage);
 	free(biMap);
 	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!\n");
@@ -163,7 +201,7 @@ int set(char *key, char *value){
 	}
 
 	// If the key exists, the value is updated
-	if (dictionary_has_key(entryTable, key)) {
+	if (list_find_by_condition(entryTable, (void *) hasKey, key) != NULL) {
 
 		/*
 		 * Por las dudas guardo la información de la key que voy a borrar para hacerle update por si algo sale mal la reetablesco.
@@ -172,10 +210,10 @@ int set(char *key, char *value){
 
 		auxEntryInfo = malloc(sizeof(entryTableInfo));
 		entryInfo = malloc(sizeof(entryTableInfo));
-		entryInfo = dictionary_get(entryTable, key);
+		entryInfo = list_find_by_condition(entryTable, (void *) hasKey, key);
 
-		createTableInfo(auxEntryInfo, entryInfo->valueStart, entryInfo->valueSize);
-		deleteKey(key);
+		createTableInfo(auxEntryInfo, key, entryInfo->valueStart, entryInfo->valueSize);
+		deleteKey(entryInfo);
 
 		free(entryInfo);
 	}
@@ -188,16 +226,15 @@ int set(char *key, char *value){
 	valueStart = getStartEntryToSet(entriesForValue);
 
 	if (valueStart == ENTRY_START_ERROR) {
-
 		log_error(logger, "There was an error trying to set, no valid entry start was found");
 		return -1;
 	}
 	// Create the entry structure
 
 	entryInfo = malloc(sizeof(entryTableInfo));
-	createTableInfo(entryInfo, valueStart, valueSize);
+	createTableInfo(entryInfo, key, valueStart, valueSize);
 
-	dictionary_put(entryTable, key, entryInfo);
+	list_add(entryTable, entryInfo);
 	storageSet(valueStart, value);
 	biMapUpdate(valueStart, entriesForValue, IS_SET);
 
@@ -288,30 +325,28 @@ int compact() {
 	int valueSize, valueStart, j;
 
 	// Iterate all elements of the dictionary
-	for (int i = 0; i < entryTable->table_max_size; i++) {
-		t_hash_element *element = entryTable->elements[i];
+	t_link_element * element = entryTable->head;
 
-		while (element != NULL) {
+	while (element != NULL) {
 
-			 j = 0;
+		 j = 0;
 
-			 valueSize = getValueSize(element->data);
-			 valueStart = getValueStart(element->data);
-			 char * value = malloc(valueSize);
-			 getValue(&value, valueStart, valueSize);
+		 valueSize = getValueSize(element->data);
+		 valueStart = getValueStart(element->data);
+		 char * value = malloc(valueSize);
+		 getValue(&value, valueStart, valueSize);
 
-			 // Update ValueStart on dictionary(key) element
-			 setValueStart(element->data, auxIndex);
+		 // Update ValueStart on dictionary(key) element
+		 setValueStart(element->data, auxIndex);
 
-			 for (; auxIndex < totalUsedMemory; auxIndex++) {
-				 auxStorage[auxIndex] = value[j];
-				 j++;
-			 }
+		 for (; auxIndex < totalUsedMemory; auxIndex++) {
+			 auxStorage[auxIndex] = value[j];
+			 j++;
+		 }
 
-			 // Get the next able position to store values
-			 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
-			 free(value);
-		}
+		 // Get the next able position to store values
+		 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
+		 free(value);
 	}
 
 	strcpy(storage, auxStorage);
@@ -347,6 +382,7 @@ int getTotalSettedEntries() {
 int wholeUpperDivision(int x, int y) {
 	return (1 + ((x - 1) / y));
 }
+
 /*int notifyCoodinador(char *key, char *value, char *operation) {
 
 	log_info(logger, "%s operation, with key: %s and value: %s, was successfully notified to coordinador\n", operation, key, value);

@@ -10,6 +10,7 @@ RM := rm -rf
 -include sources.mk
 -include src/tadEntryTable/subdir.mk
 -include src/replaceAlgorithms/subdir.mk
+-include src/ourList/subdir.mk
 -include src/subdir.mk
 -include subdir.mk
 -include objects.mk

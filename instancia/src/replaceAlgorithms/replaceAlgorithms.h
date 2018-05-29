@@ -10,27 +10,23 @@
 
 	#include "../instancia.h"
 	#include "../tadEntryTable/tadEntryTable.h"
+	#include "../ourList/ourList.h"
 
-	int initializeAccordingToAlgorithm();
-	int updateAccodringToAlgorithm(char * key);
-	int deleteAccodringToAlgorithm();
+	void updateAccodringToAlgorithm(char * key);
+	void deleteAccodringToAlgorithm();
 
-	void deleteKey(char * key);
+	void deleteKey(entryTableInfo * toBeDeletedEntryInfo);
 
-	void findNextValidPointer(t_hash_element ** elem, int * index);
-	int initializePointer(t_hash_element ** elem, int * index);
-
-	void pointToNextKey();
-	t_hash_element * getPointedKey();
+	entryTableInfo * getPointedKey();
 
 	void updateUsage(char * key);
 
-	t_hash_element * getLeastRecentlyUsedKey();
-	t_hash_element * getBiggestSpaceUsedKey();
+	bool leastRecentlyUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData);
+	bool biggestSpaceUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData);
 
-	// global vars
+	void findElementBy(entryTableInfo ** toBeDeletedElement, bool (*comparator)(void*, void*));
 
-	t_hash_element * entryTableElement;
-	int entryTableIndex;
+	bool atomicEntry(entryTableInfo * entryInfo);
+	bool bothEntriesAreAtomics(entryTableInfo * currentData, entryTableInfo * selectedData);
 
 #endif /* SRC_REPLACEALGORITHMS_H_ */
