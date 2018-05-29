@@ -45,6 +45,8 @@ int main(void) {
 	receiveCoordinadorConfiguration(coordinadorSocket);
 	//waitForCoordinadorStatements(coordinadorSocket);
 
+	test();
+
 	finish();
 	return 0;
 }
@@ -201,7 +203,7 @@ int set(char *key, char *value){
 	}
 
 	// If the key exists, the value is updated
-	if (list_find_by_condition(entryTable, (void *) hasKey, key) != NULL) {
+	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
 
 		/*
 		 * Por las dudas guardo la información de la key que voy a borrar para hacerle update por si algo sale mal la reetablesco.
@@ -210,7 +212,7 @@ int set(char *key, char *value){
 
 		auxEntryInfo = malloc(sizeof(entryTableInfo));
 		entryInfo = malloc(sizeof(entryTableInfo));
-		entryInfo = list_find_by_condition(entryTable, (void *) hasKey, key);
+		entryInfo = list_find_with_param(entryTable, key, hasKey);
 
 		createTableInfo(auxEntryInfo, key, entryInfo->valueStart, entryInfo->valueSize);
 		deleteKey(entryInfo);

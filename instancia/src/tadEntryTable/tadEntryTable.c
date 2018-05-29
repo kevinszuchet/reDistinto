@@ -47,8 +47,8 @@ void setUsageToZero(entryTableInfo *entryInfo) {
 	entryInfo->usage = 0;
 }
 
-bool hasKey(entryTableInfo * entryInfo, char * key) {
-	return strcmp(getKey(entryInfo), key) == 0;
+bool hasKey(void * entryInfo, void * key) {
+	return strcmp(getKey((entryTableInfo *) entryInfo), (char *) key) == 0;
 }
 
 void destroyTableInfo(entryTableInfo * entryInfo) {

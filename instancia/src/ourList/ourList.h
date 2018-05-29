@@ -11,9 +11,9 @@
 	#include <commons/collections/list.h>
 	#include "../tadEntryTable/tadEntryTable.h"
 
-	void * list_find_by_condition(t_list * self, bool(*condition)(void*, void*), void* param);
+	void * list_find_with_param(t_list * self, void * param, bool(*condition)(void*, void*));
 
-	void* list_remove_by_condition_with_param(t_list *self, bool(*condition)(void*, void*), void * param);
-	void list_remove_and_destroy_by_condition_with_param(t_list *self, bool(*condition)(void*, void*), void(*element_destroyer)(void*), void * param);
+	void * list_remove_by_condition_with_param(t_list *self, void * param, bool(*condition)(void*, void*));
+	void list_remove_and_destroy_by_condition_with_param(t_list *self, void * param, bool(*condition)(void*, void*), void(*element_destroyer)(void*));
 
 #endif /* SRC_OURLIST_OURLIST_H_ */

@@ -17,16 +17,11 @@
 
 	void deleteKey(entryTableInfo * toBeDeletedEntryInfo);
 
-	entryTableInfo * getPointedKey();
-
 	void updateUsage(char * key);
 
-	bool leastRecentlyUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData);
-	bool biggestSpaceUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData);
+	bool leastRecentlyUsedComparator(void * currentData, void * selectedData);
+	bool biggestSpaceUsedComparator(void * currentData, void * selectedData);
 
-	void findElementBy(entryTableInfo ** toBeDeletedElement, bool (*comparator)(void*, void*));
-
-	bool atomicEntry(entryTableInfo * entryInfo);
-	bool bothEntriesAreAtomics(entryTableInfo * currentData, entryTableInfo * selectedData);
+	bool atomicEntry(void * entryInfo);
 
 #endif /* SRC_REPLACEALGORITHMS_H_ */
