@@ -8,7 +8,6 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include src/tests_functions/subdir.mk
 -include src/submodules/instancia/subdir.mk
 -include src/subdir.mk
 -include subdir.mk
@@ -28,7 +27,7 @@ endif
 all: coordinador
 
 dependents:
-	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) clean all
 
 # Tool invocations
 coordinador: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so
