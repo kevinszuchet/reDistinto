@@ -16,7 +16,7 @@
 #define ABORT '3'
 #define OURSET '4'
 #define OURGET '5'
-#define RUN '6'
+#define RUN 6
 #define COMPACT '7'
 #define OURSTORE '8'
 #define LOCK '9'

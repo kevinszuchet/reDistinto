@@ -94,7 +94,9 @@ void executionProcedure(){
 			//sendMessageExecuteToEsiDummie(nextEsi);
 			char* keyRecieved;
 			log_info(logger,"Waiting coordinador request\n");
-			recieveString(&keyRecieved,coordinadorSocket);
+			if(recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE){
+				log_error(logger,"Couldn't recieve key to check from coordinador");
+			}
 			//operationRecieved->key = "jugador";
 			//operationRecieved->operationCode = OURGET;
 			log_info(logger,"Key received = %s\n",keyRecieved);
@@ -115,14 +117,14 @@ void executionProcedure(){
 
 }
 
-//Returns 1 if key is blocked, otherwise return 0
+
 int checkKeyBlocked(char* keyRecieved){
 	t_queue* blockedEsis = dictionary_get(blockedEsiDic,keyRecieved);
 	if(queue_size(blockedEsis)==0){
 		log_info(logger,"Key %s free to use\n");
-		return 0;
+		return KEYFREE;
 	}else{
-		return 1;
+		return KEYBLOCKED;
 	}
 }
 
@@ -264,15 +266,15 @@ char waitEsiInformationDummie(int esiSocket){
 }
 
 void sendKeyStatusToCoordinador(char* key){
-	int keyCompare(void* takenKeys){
+	bool keyCompare(void* takenKeys){
 		if(strcmp((char*)takenKeys,key)==0){
-			return 1;
+			return true;
 		}
-		return 0;
+		return false;
 	}
 	char keyStatus = isTakenResource(key);
 	if(keyStatus==BLOCKED){
-		if(list_filter(runningEsi->lockedKeys,keyCompare)){
+		if(list_filter(runningEsi->lockedKeys,&keyCompare)){
 			keyStatus = LOCKED;
 		}
 	}

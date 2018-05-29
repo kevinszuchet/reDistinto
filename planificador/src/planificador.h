@@ -28,7 +28,8 @@
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define CONSOLE_BLOCKED 0
-
+	#define KEYFREE 1
+	#define KEYBLOCKED 0
 
 	t_dictionary* blockedEsiDic;
 	t_list* readyEsis;
@@ -59,7 +60,7 @@
 	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
 
 	OperationResponse *waitEsiInformation(int esiSocket);
-	void sendKeyStatusToCoordinador(char status);
+	void sendKeyStatusToCoordinador(char* key);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
 
 	void generateTestEsi();
