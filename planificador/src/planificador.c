@@ -92,20 +92,19 @@ void executionProcedure(){
 			removeFromReady(nextEsi);
 			sendMessageExecuteToEsi(nextEsi);
 			//sendMessageExecuteToEsiDummie(nextEsi);
-			char* keyRecieved;
+			char* keyRecieved = malloc(40);;
 			log_info(logger,"Waiting coordinador request\n");
+			log_info(logger,"...\n");
 			if(recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE){
 				log_error(logger,"Couldn't recieve key to check from coordinador");
 			}
-			//operationRecieved->key = "jugador";
-			//operationRecieved->operationCode = OURGET;
 			log_info(logger,"Key received = %s\n",keyRecieved);
 
 			sendKeyStatusToCoordinador(keyRecieved);
-			//sendKeyStatusToCoordinadorDummie(keyStatus);
+
 			log_info(logger,"Waiting esi information\n");
 			OperationResponse* esiInformation = waitEsiInformation(nextEsi->socketConection);
-			//char esiExecutionInformation = waitEsiInformationDummie(nextEsi->socketConection);
+
 			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%c) ,esiStatus = (%c)",esiInformation->coordinadorResponse,esiInformation->esiStatus);
 			handleEsiInformation(esiInformation,keyRecieved);
 			log_info(logger,"Finish executing ESI %d\n",nextEsi->id);
@@ -362,7 +361,6 @@ char isTakenResource(char* key){
 	if(dictionary_has_key(takenResources,key)){
 		return BLOCKED;
 	}else{
-		//soy nato: no se esta contemplando el caso de locked (tomada por el mismo esi)
 		return NOTBLOCKED;
 	}
 }
