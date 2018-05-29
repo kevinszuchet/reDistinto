@@ -123,10 +123,10 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
-	//TODO aca tambien hay que reintentar hasta que se mande todo? se podria usar sendInt
+	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
-	if(send(esiRequest->socket, &response, sizeof(int), 0) < 0){
+	if(sendInt(response, esiRequest->socket) == CUSTOM_FAILURE){
 		printf("Se van a pisar los strings\n");
 		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id, getOperationName(esiRequest->operation));
 		return -1;
@@ -191,7 +191,6 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 
 	//TODO esto hay que pasarlo al hilo de la instancia
 	int response;
-	//MARIANO+MARIANO+MARIANO
 	//todo mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
 	response = instanciaDoOperation(chosenInstancia, esiRequest->operation);
 	//response = instanciaDoOperationDummy();
@@ -315,7 +314,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	log_info(logger, "Voy a recibir el estado de la clave del planificador");
 	//TODO probar esto
-	if(sendString(key, planificadorSocket) != CUSTOM_SUCCESS){
+	if(sendString(key, planificadorSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
 	}
@@ -427,16 +426,13 @@ int recieveStentenceToProcess(int esiSocket){
 	return operationResult == 0 ? 1 : -1;
 }
 
-//TODO mariano revisar el tema de estos char** y todos los *
 //TODO mover esta funcion a instanciaFunctions
 int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
-	if(recieveString(arrivedInstanciaName, instanciaSocket) != CUSTOM_SUCCESS){
+	if(recieveString(arrivedInstanciaName, instanciaSocket) == CUSTOM_FAILURE){
 		log_error(operationsLogger, "No se pudo recibir el nombre de la instancia");
-		if(*arrivedInstanciaName){
-			free(*arrivedInstanciaName);
-		}
+		free(*arrivedInstanciaName);
 		return -1;
-	}else if(!*arrivedInstanciaName){
+	}else if(strlen(*arrivedInstanciaName) == 0){
 		log_error(operationsLogger, "La instancia no puede no tener nombre");
 		return -1;
 	}
@@ -488,18 +484,18 @@ int handleEsi(int esiSocket){
 	return 0;
 }
 
-void pthreadInitialize(void* clientSocket){
-	int castedClientSocket = *((int*) clientSocket);
-	int id = recieveClientId(castedClientSocket, COORDINADOR, logger);
+void pthreadInitialize(int* clientSocket){
+	int id = recieveClientId(*clientSocket, COORDINADOR, logger);
 
 	if (id == 11){
-		handleInstancia(castedClientSocket);
+		handleInstancia(*clientSocket);
 	}else if(id == 12){
-		handleEsi(castedClientSocket);
+		handleEsi(*clientSocket);
 	}else{
 		log_info(logger, "I received a strange");
 	}
 
+	close(*clientSocket);
 	free(clientSocket);
 }
 
