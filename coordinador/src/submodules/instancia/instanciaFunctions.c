@@ -7,6 +7,18 @@
 
 #include "instanciaFunctions.h"
 
+int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger){
+	if(recieveString(arrivedInstanciaName, instanciaSocket) == CUSTOM_FAILURE){
+		log_error(logger, "No se pudo recibir el nombre de la instancia");
+		free(*arrivedInstanciaName);
+		return -1;
+	}else if(strlen(*arrivedInstanciaName) == 0){
+		log_error(logger, "La instancia no puede no tener nombre");
+		return -1;
+	}
+	return 0;
+}
+
 int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize, t_log* logger){
 	InstanciaConfiguration config;
 	config.entriesAmount = cantEntry;

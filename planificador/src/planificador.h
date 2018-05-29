@@ -72,7 +72,7 @@
 
 	void blockEsi(char* lockedResource, int esiBlocked);
 	int checkKeyBlocked(char* keyRecieved);
-	int isTakenResource(char* key);
+	char isTakenResource(char* key);
 	void removeFromReady(Esi* esi);
 
 	void addEsiToReady(Esi* esi);

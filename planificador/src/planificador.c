@@ -98,7 +98,7 @@ void executionProcedure(){
 			//operationRecieved->key = "jugador";
 			//operationRecieved->operationCode = OURGET;
 			log_info(logger,"Key received = %s\n",keyRecieved);
-			int keyStatus = isTakenResource(keyRecieved);
+			char keyStatus = isTakenResource(keyRecieved);
 			sendKeyStatusToCoordinador(keyStatus);
 			//sendKeyStatusToCoordinadorDummie(keyStatus);
 			log_info(logger,"Waiting esi information\n");
@@ -167,7 +167,7 @@ void sendEsiIdToCoordinador(int id){
 	if (send(coordinadorSocket, &id, sizeof(int), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about ESI id");
 	}else{
-		log_info(logger,"Send esi ID = (%d) to coordinador %d",id);
+		log_info(logger,"Send esi ID = %d to coordinador",id);
 	}
 }
 
@@ -245,7 +245,7 @@ void moveFromRunningToReady(Esi* esi){
 OperationResponse *waitEsiInformation(int esiSocket){
 
 	OperationResponse* finishInformation = malloc(sizeof(OperationResponse));
-	int resultRecv = recv(esiSocket, &finishInformation, sizeof(int), 0);
+	int resultRecv = recv(esiSocket, &finishInformation, sizeof(OperationResponse), 0);
 	if(resultRecv <= 0){
 		log_error(logger, "recv failed on %s, while waiting ESI message %s\n", ESI, strerror(errno));
 		//Que pasa si recibo mal el mensaje del ESI?
@@ -267,7 +267,7 @@ void sendKeyStatusToCoordinador(char status){
 	if (send(coordinadorSocket, &status, sizeof(char), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	}else{
-		log_info(logger,"Send key status (%d) to coordinador %d",status);
+		log_info(logger,"Send key status to coordinador: %s", getKeyStatusName(status));
 	}
 }
 void sendKeyStatusToCoordinadorDummie(char status){
@@ -344,11 +344,12 @@ void freeResource(char* key,Esi* esiTaker){
 
 }
 
-int isTakenResource(char* key){
+char isTakenResource(char* key){
 	if(dictionary_has_key(takenResources,key)){
-		return 1;
+		return BLOCKED;
 	}else{
-		return 0;
+		//soy nato: no se esta contemplando el caso de locked (tomada por el mismo esi)
+		return NOTBLOCKED;
 	}
 }
 

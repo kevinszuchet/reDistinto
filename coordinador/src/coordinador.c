@@ -122,11 +122,11 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 	return NULL;
 }
 
-int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
+int sendResponseToEsi(EsiRequest* esiRequest, char response, char** stringToLog){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
-	if(sendInt(response, esiRequest->socket) == CUSTOM_FAILURE){
+	if(send(esiRequest->socket, &response, sizeof(response), 0) < 0){
 		printf("Se van a pisar los strings\n");
 		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s",
 				esiRequest->id, getOperationName(esiRequest->operation));
@@ -155,23 +155,6 @@ int getActualEsiIDDummy(){
 
 void logOperation(char* stringToLog){
 	log_info(operationsLogger, stringToLog);
-}
-
-char* getOperationName(Operation* operation){
-	switch(operation->operationCode){
-		case OURSET:
-			return "SET";
-			break;
-		case OURSTORE:
-			return "STORE";
-			break;
-		case OURGET:
-			return "GET";
-			break;
-		default:
-			return "UNKNOWN OPERATION";
-			break;
-	}
 }
 
 int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest, char** stringToLog){
@@ -288,7 +271,7 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave bloqueada", esiRequest->id, esiRequest->operation->key);
 		//todo ojo en estos casos que no se esta abortando al esi porque se supone que el murio.
 		//esto es: hay que validar que el planificador se entere bien de esto para no cagarla
-		return sendResponseToEsi(esiRequest, BLOCK, stringToLog);
+		return sendResponseToEsi(esiRequest, LOCK, stringToLog);
 	}
 
 	//TODO testear cuando la instancia se caiga y el coordinador se entere por ella (y no porque un esi quiere acceder, sino se borra la clave!)
@@ -333,43 +316,18 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 }
 
 char checkKeyStatusFromPlanificadorDummy(){
-	return LOCKED;
+	return BLOCKED;
 }
 
+//TODO esta funcion tira seg fault
 void recieveOperationDummy(Operation* operation){
 	log_info(logger, "Voy a guardar la clave en la operacion dummy");
-	operation->key = "lio:messi";
+	operation->key = malloc(31);
+	strncpy(operation->key, "lio:messi", 31);
 	log_info(logger, "Guarde la clave en la operacion dummy");
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
 	operation->operationCode = OURSET;
-}
-
-//TODO mover a las commons junto con getOperationName
-void showOperation(Operation* operation){
-	printf("Operation key = %s\n", getOperationName(operation));
-	printf("Key = %s\n", operation->key);
-	//TODO ver como se valida esto
-	//operation->value ? printf("Value = %s\n", operation->value);
-}
-
-//TODO esto tambien, mover a las commons
-char* getKeyStatusName(char keyStatus){
-	log_info(logger, "Voy a mostrar el estado de la clave");
-	switch(keyStatus){
-		case LOCK:
-			return "LOCK";
-			break;
-		case NOTBLOCKED:
-			return "NOTBLOCKED";
-			break;
-		case BLOCKED:
-			return "BLOCKED";
-			break;
-		default:
-			return "UNKNOWN KEY STATUS";
-			break;
-	}
 }
 
 int recieveStentenceToProcess(int esiSocket){
@@ -380,11 +338,12 @@ int recieveStentenceToProcess(int esiSocket){
 
 	log_info(logger, "Llego el esi con id = %d", esiId);
 
-	//TODO chequear esto para evitar alocar demas. por otro lado, estaria bueno evitar alocar por cada sentencia...
-	char* stringToLog = calloc(200, sizeof(char));
-
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
+	esiRequest.id = esiId;
+
+	//TODO chequear esto para evitar alocar demas. por otro lado, estaria bueno evitar alocar por cada sentencia...
+	char* stringToLog = calloc(200, sizeof(char));
 
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
@@ -392,15 +351,16 @@ int recieveStentenceToProcess(int esiSocket){
 		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
 		return -1;
 	}
-	/*recieveOperationDummy(esiRequest.operation);*/
+	//recieveOperationDummy(esiRequest.operation);
 
-	log_info(logger, "El esi %d va a hacer:", esiId);
+	log_info(logger, "El esi %d va a hacer:", esiRequest.id);
 	showOperation(esiRequest.operation);
 
 	char keyStatus;
+	//comento esto porque esta trayendo unknown key status
 	keyStatus = checkKeyStatusFromPlanificador(esiId, esiRequest.operation->key);
 	//keyStatus = checkKeyStatusFromPlanificadorDummy();
-	log_info(logger, "El estado de la clave del esi %d es %s", esiId, getKeyStatusName(keyStatus));
+	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
@@ -419,7 +379,7 @@ int recieveStentenceToProcess(int esiSocket){
 			}
 			break;
 		default:
-			sprintf(stringToLog, "El ESI %d envio una operacion invalida", esiId);
+			sprintf(stringToLog, "El ESI %d envio una operacion invalida", esiRequest.id);
 			sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
 			operationResult = -1;
 			break;
@@ -433,24 +393,11 @@ int recieveStentenceToProcess(int esiSocket){
 	return operationResult == 0 ? 1 : -1;
 }
 
-//TODO mover esta funcion a instanciaFunctions
-int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
-	if(recieveString(arrivedInstanciaName, instanciaSocket) == CUSTOM_FAILURE){
-		log_error(operationsLogger, "No se pudo recibir el nombre de la instancia");
-		free(*arrivedInstanciaName);
-		return -1;
-	}else if(strlen(*arrivedInstanciaName) == 0){
-		log_error(operationsLogger, "La instancia no puede no tener nombre");
-		return -1;
-	}
-	return 0;
-}
-
 int handleInstancia(int instanciaSocket){
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
 	char* arrivedInstanciaName = NULL;
-	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket) < 0){
+	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket, logger) < 0){
 		return -1;
 	}
 	/*recieveInstanciaNameDummy(&arrivedInstanciaName);*/

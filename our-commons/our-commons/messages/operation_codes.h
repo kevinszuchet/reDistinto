@@ -31,4 +31,6 @@
 #define BLOCKED 'i'
 #define LOCKED 'o'
 
+char* getCoordinadorResponseName(char coordinadorResponse);
+
 #endif /* OPERATION_CODES_H_ */
