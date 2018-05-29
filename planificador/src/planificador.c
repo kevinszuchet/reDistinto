@@ -98,8 +98,8 @@ void executionProcedure(){
 			//operationRecieved->key = "jugador";
 			//operationRecieved->operationCode = OURGET;
 			log_info(logger,"Key received = %s\n",keyRecieved);
-			char keyStatus = isTakenResource(keyRecieved);
-			sendKeyStatusToCoordinador(keyStatus);
+
+			sendKeyStatusToCoordinador(keyRecieved);
 			//sendKeyStatusToCoordinadorDummie(keyStatus);
 			log_info(logger,"Waiting esi information\n");
 			OperationResponse* esiInformation = waitEsiInformation(nextEsi->socketConection);
@@ -263,11 +263,23 @@ char waitEsiInformationDummie(int esiSocket){
 	return SUCCESS;
 }
 
-void sendKeyStatusToCoordinador(char status){
-	if (send(coordinadorSocket, &status, sizeof(char), 0) < 0){
+void sendKeyStatusToCoordinador(char* key){
+	int keyCompare(void* takenKeys){
+		if(strcmp((char*)takenKeys,key)==0){
+			return 1;
+		}
+		return 0;
+	}
+	char keyStatus = isTakenResource(key);
+	if(keyStatus==BLOCKED){
+		if(list_filter(runningEsi->lockedKeys,keyCompare)){
+			keyStatus = LOCKED;
+		}
+	}
+	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	}else{
-		log_info(logger,"Send key status to coordinador: %s", getKeyStatusName(status));
+		log_info(logger,"Send key status to coordinador: %s", getKeyStatusName(keyStatus));
 	}
 }
 void sendKeyStatusToCoordinadorDummie(char status){
