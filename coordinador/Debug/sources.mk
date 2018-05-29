@@ -15,5 +15,4 @@ C_DEPS :=
 SUBDIRS := \
 src \
 src/submodules/instancia \
-src/tests_functions \
 

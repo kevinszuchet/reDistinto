@@ -128,7 +128,8 @@ int sendResponseToEsi(EsiRequest* esiRequest, int response, char** stringToLog){
 
 	if(sendInt(response, esiRequest->socket) == CUSTOM_FAILURE){
 		printf("Se van a pisar los strings\n");
-		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id, getOperationName(esiRequest->operation));
+		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s",
+				esiRequest->id, getOperationName(esiRequest->operation));
 		return -1;
 	}
 
@@ -141,7 +142,6 @@ int getActualEsiID(){
 	int esiId = 0;
 	int recvResult = recv(planificadorSocket, &esiId, sizeof(int), 0);
 	if(recvResult <= 0){
-		if(recvResult == 0)
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
 	}
@@ -176,7 +176,8 @@ char* getOperationName(Operation* operation){
 
 int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest, char** stringToLog){
 	if(keyStatus != LOCKED){
-		sprintf(*stringToLog, "ESI %d no puede hacer %s sobre la clave %s. Clave no bloqueada por el", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+		sprintf(*stringToLog, "ESI %d no puede hacer %s sobre la clave %s. Clave no bloqueada por el",
+				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		sendResponseToEsi(esiRequest, ABORT, stringToLog);
 		return -1;
 	}
@@ -213,7 +214,8 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 Instancia* lookOrRemoveKeyIfInFallenInstancia(EsiRequest* esiRequest, char** stringToLog){
 	Instancia* instanciaToBeUsed = lookForKey(esiRequest->operation->key, instancias);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
-		sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+		sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible",
+				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		removeKeyFromFallenInstancia(esiRequest->operation->key, instanciaToBeUsed);
 		//TODO ojo que aca se esta pisando el stringToLog que se acaba de setear
 		sendResponseToEsi(esiRequest, ABORT, stringToLog);
@@ -312,7 +314,7 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
 
-	log_info(logger, "Voy a recibir el estado de la clave del planificador");
+	log_info(logger, "Voy a recibir el estado de la clave %s del planificador", key);
 	//TODO probar esto
 	if(sendString(key, planificadorSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
@@ -335,7 +337,9 @@ char checkKeyStatusFromPlanificadorDummy(){
 }
 
 void recieveOperationDummy(Operation* operation){
+	log_info(logger, "Voy a guardar la clave en la operacion dummy");
 	operation->key = "lio:messi";
+	log_info(logger, "Guarde la clave en la operacion dummy");
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
 	operation->operationCode = OURSET;
@@ -344,6 +348,9 @@ void recieveOperationDummy(Operation* operation){
 //TODO mover a las commons junto con getOperationName
 void showOperation(Operation* operation){
 	printf("Operation key = %s\n", getOperationName(operation));
+	printf("Key = %s\n", operation->key);
+	//TODO ver como se valida esto
+	//operation->value ? printf("Value = %s\n", operation->value);
 }
 
 //TODO esto tambien, mover a las commons
@@ -385,7 +392,7 @@ int recieveStentenceToProcess(int esiSocket){
 		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
 		return -1;
 	}
-	//recieveOperationDummy(esiRequest.operation);
+	/*recieveOperationDummy(esiRequest.operation);*/
 
 	log_info(logger, "El esi %d va a hacer:", esiId);
 	showOperation(esiRequest.operation);
@@ -439,7 +446,6 @@ int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
 	return 0;
 }
 
-//TODO mariano: esta asignando nuevos numeros de sockets cuando deberia volver a asignar los de instancias que cayeron
 int handleInstancia(int instanciaSocket){
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
 
