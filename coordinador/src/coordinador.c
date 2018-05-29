@@ -271,7 +271,7 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave bloqueada", esiRequest->id, esiRequest->operation->key);
 		//todo ojo en estos casos que no se esta abortando al esi porque se supone que el murio.
 		//esto es: hay que validar que el planificador se entere bien de esto para no cagarla
-		return sendResponseToEsi(esiRequest, LOCK, stringToLog);
+		return sendResponseToEsi(esiRequest, BLOCK, stringToLog);
 	}
 
 	//TODO testear cuando la instancia se caiga y el coordinador se entere por ella (y no porque un esi quiere acceder, sino se borra la clave!)
@@ -358,8 +358,8 @@ int recieveStentenceToProcess(int esiSocket){
 
 	char keyStatus;
 	//comento esto porque esta trayendo unknown key status
-	keyStatus = checkKeyStatusFromPlanificador(esiId, esiRequest.operation->key);
-	//keyStatus = checkKeyStatusFromPlanificadorDummy();
+	//keyStatus = checkKeyStatusFromPlanificador(esiId, esiRequest.operation->key);
+	keyStatus = checkKeyStatusFromPlanificadorDummy();
 	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	switch (esiRequest.operation->operationCode){

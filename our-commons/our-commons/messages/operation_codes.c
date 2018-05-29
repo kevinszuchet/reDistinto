@@ -9,6 +9,9 @@
 
 char* getCoordinadorResponseName(char coordinadorResponse){
 	switch(coordinadorResponse){
+		case BLOCK:
+			return "BLOCK";
+			break;
 		case LOCK:
 			return "LOCK";
 			break;
