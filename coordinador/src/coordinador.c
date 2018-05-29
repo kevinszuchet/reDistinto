@@ -313,7 +313,7 @@ int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
 
-	log_info(logger, "Voy a recibir el estado de la clave del planificador");
+	log_info(logger, "Voy a recibir el estado de la clave %s del planificador", key);
 	//TODO probar esto
 	if(sendString(key, planificadorSocket) != CUSTOM_SUCCESS){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
@@ -336,7 +336,9 @@ char checkKeyStatusFromPlanificadorDummy(){
 }
 
 void recieveOperationDummy(Operation* operation){
+	log_info(logger, "Voy a guardar la clave en la operacion dummy");
 	operation->key = "lio:messi";
+	log_info(logger, "Guarde la clave en la operacion dummy");
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
 	operation->operationCode = OURSET;
@@ -345,6 +347,9 @@ void recieveOperationDummy(Operation* operation){
 //TODO mover a las commons junto con getOperationName
 void showOperation(Operation* operation){
 	printf("Operation key = %s\n", getOperationName(operation));
+	printf("Key = %s\n", operation->key);
+	//TODO ver como se valida esto
+	//operation->value ? printf("Value = %s\n", operation->value);
 }
 
 //TODO esto tambien, mover a las commons
@@ -380,13 +385,13 @@ int recieveStentenceToProcess(int esiSocket){
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
 
-	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
+	/*if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
 		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
 		return -1;
-	}
-	//recieveOperationDummy(esiRequest.operation);
+	}*/
+	recieveOperationDummy(esiRequest.operation);
 
 	log_info(logger, "El esi %d va a hacer:", esiId);
 	showOperation(esiRequest.operation);

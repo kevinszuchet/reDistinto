@@ -60,7 +60,6 @@
 						<entry excluding="submodules|tests_functions" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 						<entry excluding="instancia" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/submodules"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/submodules/instancia"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/tests_functions"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -119,7 +118,6 @@
 						<entry excluding="submodules|tests_functions" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 						<entry excluding="instancia" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/submodules"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/submodules/instancia"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/tests_functions"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
