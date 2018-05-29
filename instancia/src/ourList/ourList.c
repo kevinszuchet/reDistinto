@@ -7,14 +7,12 @@
 
 #include "ourList.h"
 
-static t_link_element * list_find_element_with_param(t_list * self, void * param, bool(*condition)(void*, void*), int * index);
-
 void * list_find_with_param(t_list * self, void * param, bool(*condition)(void*, void*)) {
 	t_link_element * element = list_find_element_with_param(self, param, condition, NULL);
 	return element != NULL ? element : NULL;
 }
 
-static t_link_element * list_find_element_with_param(t_list * self, void * param, bool(*condition)(void*, void*), int * index) {
+t_link_element * list_find_element_with_param(t_list * self, void * param, bool(*condition)(void*, void*), int * index) {
 	t_link_element * element = self->head;
 	int position = 0;
 
