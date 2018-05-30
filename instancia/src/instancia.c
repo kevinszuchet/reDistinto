@@ -29,13 +29,13 @@ int main(void) {
 	printf("Path = %s\n", path);
 	printf("Name= %s\n", name);
 	printf("Dump= %d\n", dump);
-	log_info(logger, "trying to connect to coordinador...\n");
+	log_info(logger, "trying to connect to coordinador...");
 
 	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA, logger);
 
 	if (coordinadorSocket < 0) {
 		//reintentar conexion?
-		log_error(logger, "An error has occurred while trying to connect to coordinador\n socket number: %d\n", coordinadorSocket);
+		log_error(logger, "An error has occurred while trying to connect to coordinador\n socket number: %d", coordinadorSocket);
 		return -1;
 	}
 
@@ -44,6 +44,11 @@ int main(void) {
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
 	//waitForCoordinadorStatements(coordinadorSocket);
+
+	free(ipCoordinador);
+	free(algorithm);
+	free(path);
+	free(name);
 
 	finish();
 	return 0;
@@ -81,11 +86,11 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 
 	t_config* config;
 	config = config_create(CFG_FILE);
-	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
+	*ipCoordinador = strdup(config_get_string_value(config, "IP_COORDINADOR"));
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
-	*algorithm = config_get_string_value(config, "ALGORITHM");
-	*path = config_get_string_value(config, "PATH");
-	*name = config_get_string_value(config, "NAME");
+	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
+	*path = strdup(config_get_string_value(config, "PATH"));
+	*name = strdup(config_get_string_value(config, "NAME"));
 	*dump = config_get_int_value(config, "DUMP");
 	config_destroy(config);
 }
@@ -104,7 +109,7 @@ void getConfigDebug(char** ipCoordinador, int* portCoordinador, char** algorithm
 
 void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 	if (sendString(name, coordinadorSocket) == CUSTOM_FAILURE) {
-		log_error(logger, "I cannot send my name to coordinador\n");
+		log_error(logger, "I cannot send my name to coordinador");
 		exit(-1);
 	}
 }
@@ -113,7 +118,7 @@ void receiveCoordinadorConfiguration(int coordinadorSocket) {
 	InstanciaConfiguration instanciaConfiguration;
 
 	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(InstanciaConfiguration), 0) <= 0) {
-		log_error(logger, "recv failed on trying to connect with coordinador %s\n", strerror(errno));
+		log_error(logger, "recv failed on trying to connect with coordinador %s", strerror(errno));
 		exit(-1);
 	}
 
@@ -132,17 +137,17 @@ int initialize(int entraces, int entryStorage){
 	storage = malloc((entraces * entryStorage) + 1);
 	biMapInitialize(entraces);
 
-	log_info(logger, "Instancia was intialized correctly\n");
+	log_info(logger, "Instancia was intialized correctly");
 
 	return 0;
 }
 
 void waitForCoordinadorStatements(int coordinadorSocket) {
-	Operation * operation;
+	Operation * operation = NULL;
 
 	while (1) {
 		if (recieveOperation(&operation, coordinadorSocket) == CUSTOM_FAILURE) {
-			log_error(logger, "recv failed on trying to recieve statement from coordinador\n");
+			log_error(logger, "recv failed on trying to recieve statement from coordinador");
 			exit(-1);
 		}
 
@@ -151,10 +156,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 }
 
 void interpretateStatement(Operation * operation) {
-	/*
-	 * set: set(key, value)
-	 * store: store(key)
-	 * */
+	showOperation(operation);
 }
 
 int finish() {
@@ -162,7 +164,7 @@ int finish() {
 	list_destroy_and_destroy_elements(entryTable, (void *) destroyTableInfo);
 	free(storage);
 	free(biMap);
-	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!\n");
+	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
 
 	return 0;
 }
@@ -193,11 +195,11 @@ int set(char *key, char *value){
 	entryTableInfo * entryInfo;
 	entryTableInfo * auxEntryInfo;
 
-	log_info(logger, "Size of value: %d\n", valueSize);
+	log_info(logger, "Size of value: %d", valueSize);
 
 	// Asks if the size of the value can be stored
 	if (valueSize > (entriesAmount * entrySize)) {
-		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size\n", value);
+		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
 		return -1;
 	}
 
@@ -221,7 +223,7 @@ int set(char *key, char *value){
 
 	// Get the amount of entries that is needed to store the value
 	entriesForValue = wholeUpperDivision(valueSize, entrySize);
-	log_info(logger, "Total entries for value: %d\n", entriesForValue);
+	log_info(logger, "Total entries for value: %d", entriesForValue);
 
 	// Get the start position to store the value
 	valueStart = getStartEntryToSet(entriesForValue);
@@ -239,7 +241,7 @@ int set(char *key, char *value){
 	storageSet(valueStart, value);
 	biMapUpdate(valueStart, entriesForValue, IS_SET);
 
-	log_info(logger, "Set operation for key: %s and value: %s, was successfully done\n", key, value);
+	log_info(logger, "Set operation for key: %s and value: %s, was successfully done", key, value);
 	return 0;
 }
 
@@ -269,7 +271,7 @@ int getStartEntryToSet(int valueNeededEntries) {
 
 				if (validEntries == valueNeededEntries) {
 					entryStart = i;
-					log_info(logger, "Valid start entry to set was found. Entry Number: %d\n", entryStart);
+					log_info(logger, "Valid start entry to set was found. Entry Number: %d", entryStart);
 					break;
 				}
 
@@ -282,11 +284,11 @@ int getStartEntryToSet(int valueNeededEntries) {
 
 			if (valueNeededEntries > totalFreeEntries) {
 				// Delete any value considering the replacement algorithm
-				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm\n");
+				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm");
 				deleteAccodringToAlgorithm();
 			} else {
 				// A compactation is needed, we notify coordinador so he can order to compact all instancias.
-				log_info(logger, "There are not enough contiguous free entries to set the value. A compactation is needed, we are about to notify coordinador\n");
+				log_info(logger, "There are not enough contiguous free entries to set the value. A compactation is needed, we are about to notify coordinador");
 				break;
 			}
 		}
@@ -306,11 +308,11 @@ void storageSet(int initialEntry,  char * value) {
 
 int updateKey(char *key, char *value) {
 
-	log_info(logger, "The key: %s, already exists so it will be updated with value: %s\n", key, value);
+	log_info(logger, "The key: %s, already exists so it will be updated with value: %s", key, value);
 
 	//...
 
-	log_info(logger, "The key: %s, was successfully updated with the value: %s\n", key, value);
+	log_info(logger, "The key: %s, was successfully updated with the value: %s", key, value);
 
 	return 0;
 
@@ -355,7 +357,7 @@ int compact() {
 	biMapUpdate(0, totalSettedEntries, IS_SET);
 
 	free(auxStorage);
-	log_info(logger, "Compactation was successfully done\n");
+	log_info(logger, "Compactation was successfully done");
 	return 0;
 }
 
@@ -386,14 +388,14 @@ int wholeUpperDivision(int x, int y) {
 
 /*int notifyCoodinador(char *key, char *value, char *operation) {
 
-	log_info(logger, "%s operation, with key: %s and value: %s, was successfully notified to coordinador\n", operation, key, value);
+	log_info(logger, "%s operation, with key: %s and value: %s, was successfully notified to coordinador", operation, key, value);
 	return 0;
 
 }
 
 int dump() {
 
-	log_info(logger, "Dump was successfully done\n");
+	log_info(logger, "Dump was successfully done");
 	return 0;
 
 }
