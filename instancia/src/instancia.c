@@ -140,7 +140,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 	Operation * operation;
 
 	while (1) {
-		if (recieveOperation(&operation, coordinadorSocket) == 1) {
+		if (recieveOperation(&operation, coordinadorSocket) == CUSTOM_FAILURE) {
 			log_error(logger, "recv failed on trying to recieve statement from coordinador\n");
 			exit(-1);
 		}
