@@ -246,7 +246,7 @@ void moveFromRunningToReady(Esi* esi){
 OperationResponse *waitEsiInformation(int esiSocket){
 
 	OperationResponse* finishInformation = malloc(sizeof(OperationResponse));
-	int resultRecv = recv(esiSocket, &finishInformation, sizeof(OperationResponse), 0);
+	int resultRecv = recv(esiSocket, finishInformation, sizeof(OperationResponse), 0);
 	if(resultRecv <= 0){
 		log_error(logger, "recv failed on %s, while waiting ESI message %s\n", ESI, strerror(errno));
 		//Que pasa si recibo mal el mensaje del ESI?

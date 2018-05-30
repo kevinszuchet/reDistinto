@@ -116,7 +116,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		 * Parser tries to understand each line, one by one (when planificador says)
 		 * */
 
-		log_info(logger, "wait planificador order");
+		log_info(logger, "Waiting planificador order...");
 		if (recv(planificadorSocket, &response, sizeof(int), 0) <= 0) {
 			log_error(logger, "recv failed on trying to connect with planificador %s", strerror(errno));
 			exit(-1);
@@ -172,10 +172,12 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	OperationResponse operationResponse;
 	initializeOperationResponse(&operationResponse, coordinadorResponse, status);
 
+	log_info(logger, "I will send the coordinador response to planificador %s", getCoordinadorResponseName(coordinadorResponse));
 	if (send(planificadorSocket, &operationResponse, sizeof(OperationResponse), 0) <= 0) {
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
 		exit(-1);
 	}
+	log_info(logger, "I could send the response to planificador");
 
 	if (coordinadorResponse == ABORT) {
 		log_error(logger, "I cannot keep running", line);

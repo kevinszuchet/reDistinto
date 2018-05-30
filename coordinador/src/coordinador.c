@@ -316,7 +316,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 }
 
 char checkKeyStatusFromPlanificadorDummy(){
-	return BLOCKED;
+	return LOCKED;
 }
 
 //TODO esta funcion tira seg fault
@@ -358,8 +358,8 @@ int recieveStentenceToProcess(int esiSocket){
 
 	char keyStatus;
 	//comento esto porque esta trayendo unknown key status
-	//keyStatus = checkKeyStatusFromPlanificador(esiId, esiRequest.operation->key);
-	keyStatus = checkKeyStatusFromPlanificadorDummy();
+	keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
+	//keyStatus = checkKeyStatusFromPlanificadorDummy();
 	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	switch (esiRequest.operation->operationCode){
