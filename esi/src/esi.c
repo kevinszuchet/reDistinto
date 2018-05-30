@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
 	logger = log_create("../esi.log", "tpSO", true, LOG_LEVEL_INFO);
 
 	if (argc != 2) {
-		log_error(logger, "ESI cannot execute: you must enter a script file to read\n");
+		log_error(logger, "ESI cannot execute: you must enter a script file to read");
 		return -1;
 	}
 
@@ -58,19 +58,19 @@ int main(int argc, char* argv[]) {
 	struct stat sb;
 
 	if ((scriptFd = open(argv[1], O_RDONLY)) == -1) {
-		log_error(logger, "The script file cannot be opened\n");
+		log_error(logger, "The script file cannot be opened");
 		return -1;
 	}
 
 	if (fstat(scriptFd, &sb) == -1) {
-		log_error(logger, "It is not possible to determinate the script file size\n");
+		log_error(logger, "It is not possible to determinate the script file size");
 		return -1;
 	}
 
 	script = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, scriptFd, 0);
 
 	if (script == MAP_FAILED) {
-		log_error(logger, "mmap failed\n");
+		log_error(logger, "mmap failed");
 		return -1;
 	}
 
@@ -117,12 +117,12 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		 * */
 
 		if (recv(planificadorSocket, &response, sizeof(int), 0) <= 0) {
-			log_error(logger, "recv failed on trying to connect with planificador %s\n", strerror(errno));
+			log_error(logger, "recv failed on trying to connect with planificador %s", strerror(errno));
 			exit(-1);
 		}
 
 		if (response == RUN) {
-			log_info(logger, "recv an order from planificador\n");
+			log_info(logger, "recv an order from planificador");
 			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
 		}
 	}
@@ -192,23 +192,22 @@ void interpretateOperation(Operation * operation, char * line) {
 	switch (parsedLine.keyword) {
 		case GET:
 			initializeOperation(operation, OURGET, parsedLine.argumentos.GET.clave, NULL);
-			log_info(logger, "GET\tclave: <%s>\n", parsedLine.argumentos.GET.clave);
 			break;
 
 		case SET:
 			initializeOperation(operation, OURSET, parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
-			log_info(logger, "SET\tclave: <%s>\tvalor: <%s>\n", parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
 			break;
 
 		case STORE:
 			initializeOperation(operation, OURSTORE, parsedLine.argumentos.STORE.clave, NULL);
-			log_info(logger, "STORE\tclave: <%s>\n", parsedLine.argumentos.STORE.clave);
 			break;
 
 		default:
 			log_error(logger, "Parsi could not understand the keyowrd %s", line);
 			exit(-1);
 	}
+
+	showOperation(operation);
 
 	destruir_operacion(parsedLine);
 }
