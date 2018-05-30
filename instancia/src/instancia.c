@@ -87,6 +87,7 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	*path = config_get_string_value(config, "PATH");
 	*name = config_get_string_value(config, "NAME");
 	*dump = config_get_int_value(config, "DUMP");
+	config_destroy(config);
 }
 
 void getConfigDebug(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump) {
