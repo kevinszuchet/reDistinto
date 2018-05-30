@@ -116,10 +116,12 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		 * Parser tries to understand each line, one by one (when planificador says)
 		 * */
 
+		log_info(logger, "wait planificador order");
 		if (recv(planificadorSocket, &response, sizeof(int), 0) <= 0) {
 			log_error(logger, "recv failed on trying to connect with planificador %s", strerror(errno));
 			exit(-1);
 		}
+		log_info(logger, "I recieve the order from planificador and I will try to execute");
 
 		if (response == RUN) {
 			log_info(logger, "recv an order from planificador");
