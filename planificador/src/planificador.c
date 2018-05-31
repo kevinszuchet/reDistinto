@@ -1,5 +1,5 @@
 /*
- * coordinador.c
+ * planificador.c
  *
  *  Created on: 17 abr. 2018
  *      Author: utnso
@@ -47,20 +47,7 @@ int main(void) {
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-
-
-	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
-	//int coordinadorSocket = ...    y cambiar lo que devuelve welcomeServer por el numero de socket
-	//cambio lo que devuelve welcomeServer, para que quede como antes
 	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
-	//Te comento esto porque no se usa mas. mira la funcion welcomeNewClients
-	/*if (coordinadorSocket < 0){
-		//reintentar?
-	}*/
-
-	//Start planificador task
-	log_info(logger,"Start to execute ESIs\n");
-	executionProcedure();
 
 	return 0;
 }
@@ -95,11 +82,12 @@ void executionProcedure(){
 			char* keyRecieved = malloc(40);;
 			log_info(logger,"Waiting coordinador request\n");
 			log_info(logger,"...\n");
+
 			if(recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE){
-				log_error(logger,"Couldn't recieve key to check from coordinador");
+				log_error(logger,"Couldn't recieve key to check from coordinador, quitting...");
+				exit(-1);
 			}
 			log_info(logger,"Key received = %s\n",keyRecieved);
-
 			sendKeyStatusToCoordinador(keyRecieved);
 
 			log_info(logger,"Waiting esi information\n");
@@ -418,8 +406,16 @@ int clientHandler(int clientId, int clientSocket){
 
 	if (clientId == 12){
 		welcomeEsi(clientSocket);
+
+		//Start planificador task
+		log_info(logger,"Start to execute ESIs\n");
+		executionProcedure();
 	}else{
-		log_info(logger, "I received a strange\n");
+		log_info(logger, "I received a strange in socket %d", clientSocket);
+		//NICO aca esta el problema, esta llegando el 9 que es lock (lo que manda el esi)
+		printf("Lo que me llego es %c\n", clientId);
+		//TODO sacar este exit, esta para probar
+		exit(-1);
 	}
 
 	return 0;
@@ -437,21 +433,21 @@ int welcomeNewClients(int newCoordinadorSocket){
 	 *  Planificador console
 	 * */
 
-	handleConcurrence(listeningPort);
+	handleConcurrence();
 
 
 
 	return 0;
 }
 
-int handleConcurrence(int listenerPort){
+int handleConcurrence(){
 	fd_set master;
 	fd_set readfds;
 	int fdmax, i;
 	int clientId = 0, resultRecv = 0, serverSocket = 0, clientSocket = 0;
 
 	//revisar el hardcodeo
-	serverSocket = openConnection(listenerPort, PLANIFICADOR, "UNKNOWN_CLIENT", logger);
+	serverSocket = openConnection(listeningPort, PLANIFICADOR, "UNKNOWN_CLIENT", logger);
 	if(serverSocket < 0){
 		//no se pudo conectar!
 		return -1;
@@ -467,7 +463,7 @@ int handleConcurrence(int listenerPort){
 
 	while(1){
 		readfds = master; // copy it
-		if (select(fdmax+1, &readfds, NULL, NULL, NULL) == -1) {
+		if (select(fdmax+1, &readfds, NULL, NULL, NULL) == -1){
 			perror("select");
 		}
 
@@ -495,6 +491,7 @@ int handleConcurrence(int listenerPort){
 							log_error(logger, "The client disconnected from server %s\n", PLANIFICADOR);
 						}else{
 							log_error(logger, "Error in recv from %s select: %s\n", PLANIFICADOR, strerror(errno));
+							//TODO NICO sacar este exit, no deberia morir el planificador en este caso
 							exit(-1);
 						}
 
