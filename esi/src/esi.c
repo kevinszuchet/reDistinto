@@ -80,7 +80,10 @@ int main(int argc, char* argv[]) {
 	 * ESI wait to planificador, who will order to execute
 	 * */
 	waitPlanificadorOrders(planificadorSocket, script, coordinadorSocket);
-
+	
+	free(ipCoordinador);
+	free(ipPlanificador);
+	
 	return 0;
 }
 
@@ -91,10 +94,11 @@ void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador
 
 	t_config* config;
 	config = config_create(CFG_FILE);
-	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
-	*ipPlanificador = config_get_string_value(config, "IP_PLANIFICADOR");
+	*ipCoordinador = strdup(config_get_string_value(config, "IP_COORDINADOR"));
+	*ipPlanificador = strdup(config_get_string_value(config, "IP_PLANIFICADOR"));
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
 	*portPlanificador = config_get_int_value(config, "PORT_PLANIFICADOR");
+	config_destroy(config);
 }
 
 /*
