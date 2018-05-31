@@ -146,6 +146,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 	Operation * operation = NULL;
 
 	while (1) {
+		log_info(logger, "Wait coordinador statement to execute");
 		if (recieveOperation(&operation, coordinadorSocket) == CUSTOM_FAILURE) {
 			log_error(logger, "recv failed on trying to recieve statement from coordinador");
 			exit(-1);
@@ -157,6 +158,16 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 
 void interpretateStatement(Operation * operation) {
 	showOperation(operation);
+
+	switch (operation->operationCode) {
+		case OURSET:
+			set(operation->key, operation->value);
+			break;
+
+		case OURSTORE:
+			store(operation->key);
+			break;
+	}
 }
 
 int finish() {
@@ -386,6 +397,11 @@ int wholeUpperDivision(int x, int y) {
 	return (1 + ((x - 1) / y));
 }
 
+int store(char *key) {
+	log_info(logger, "The key: %s, was successfully stored/n", key);
+	return 0;
+}
+
 /*int notifyCoodinador(char *key, char *value, char *operation) {
 
 	log_info(logger, "%s operation, with key: %s and value: %s, was successfully notified to coordinador", operation, key, value);
@@ -396,14 +412,6 @@ int wholeUpperDivision(int x, int y) {
 int dump() {
 
 	log_info(logger, "Dump was successfully done");
-	return 0;
-
-}
-
-int store(char *key) {
-
-	log_info(logger, "The key: %s, was successfully stored/n", key);
-
 	return 0;
 
 }
