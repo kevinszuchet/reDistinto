@@ -43,7 +43,7 @@ int main(void) {
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
-	//waitForCoordinadorStatements(coordinadorSocket);
+	waitForCoordinadorStatements(coordinadorSocket);
 
 	free(ipCoordinador);
 	free(algorithm);

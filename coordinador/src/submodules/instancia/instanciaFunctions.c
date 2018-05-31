@@ -51,12 +51,12 @@ void recieveInstanciaNameDummy(char** arrivedInstanciaName){
 	*arrivedInstanciaName = "instanciaDePrueba";
 }
 
-int instanciaDoOperation(Instancia* instancia, Operation* operation){
+void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
-		return -1;
+		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
 	}
-	printf("Se pudo enviar la operacion a la instancia\n");
-	return waitForInstanciaResponse(instancia);
+	log_info(logger, "Se pudo enviar la operacion a la instancia\n");
+	instanciaResponseStatus = waitForInstanciaResponse(instancia);
 }
 
 int isLookedKeyGeneric(char* actualKey, char* key){
@@ -95,15 +95,17 @@ void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 
 //TODO testear esta funcion
 //TODO donde se use esta funcion, meter tambien mutex de la lista de instancias! (esta instancia es una de esa lista!)
+//ese caso podria darse cuando esten activos varios hilos de instancia (compactacion)
 void instanciaHasFallen(Instancia* fallenInstancia){
 	fallenInstancia->isFallen = INSTANCIA_FALLEN;
+	close(fallenInstancia->socket);
 }
 
-int waitForInstanciaResponse(Instancia* chosenInstancia){
-	int response = 0;
-	int recvResult = recv(chosenInstancia->socket, &response, sizeof(int), 0);
+char waitForInstanciaResponse(Instancia* chosenInstancia){
+	char response = 0;
+	int recvResult = recv(chosenInstancia->socket, &response, sizeof(char), 0);
 	if (recvResult <= 0){
-		return -1;
+		return INSTANCIA_RESPONSE_FALLEN;
 	}
 	return response;
 }
@@ -115,11 +117,12 @@ int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInsta
 	return 0;
 }
 
-//TODO pasa el ultimo id a variable global
-int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId, char* name){
-	//TODO evaluar como se va a recibir esta lista, tiene que estar copiada en la instancia
-	t_list* storedKeys = list_create();
-	Instancia* newInstancia = createInstancia(*greatesInstanciaId, instanciaSocket, 0, 'a', 'z', storedKeys, name);
+Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId, char* name){
+	Instancia* newInstancia = createInstancia(*greatesInstanciaId, instanciaSocket, 0, 'a', 'z', name);
+
+	if(!newInstancia){
+		return newInstancia;
+	}
 
 	//TODO sacar esto, es para que no se ponga esta cadena en todas las instancias
 	if(*greatesInstanciaId == 0){
@@ -129,24 +132,32 @@ int createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInst
 	list_add(instancias, newInstancia);
 	(*greatesInstanciaId)++;
 
-	return 0;
+	return newInstancia;
 }
 
-Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, t_list* storedKeys, char* name){
+Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, char* name){
 	Instancia* instancia = malloc(sizeof(Instancia));
 	instancia->id = id;
 	instancia->socket = socket;
 	instancia->spaceUsed = spaceUsed;
 	instancia->firstLetter = firstLetter;
 	instancia->lastLetter = lastLetter;
-	instancia->storedKeys = storedKeys;
+	instancia->storedKeys = list_create();
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->name = name;
+
+	sem_t* sem = malloc(sizeof(sem_t));
+	if(sem_init(sem, 0, 0) < 0){
+		return NULL;
+	}
+	instancia->semaphore = sem;
+
 	return instancia;
 }
 
 void destroyInstancia(Instancia* instancia){
 	//TODO liberar espacio de storedKeys
+	//y liberar el semaforo
 	free(instancia);
 }
 
@@ -156,9 +167,9 @@ void destroyInstancia(Instancia* instancia){
  * TEST FUNCTIONS
  */
 void initializeSomeInstancias(t_list* instancias){
-	list_add(instancias, createInstancia(0, 10, 0, 'a', 'z', NULL, "instancia1"));
-	list_add(instancias, createInstancia(5, 10, 0, 'a', 'z', NULL, "instancia2"));
-	list_add(instancias, createInstancia(9, 10, 0, 'a', 'z', NULL, "instancia3"));
+	list_add(instancias, createInstancia(0, 10, 0, 'a', 'z', "instancia1"));
+	list_add(instancias, createInstancia(5, 10, 0, 'a', 'z', "instancia2"));
+	list_add(instancias, createInstancia(9, 10, 0, 'a', 'z', "instancia3"));
 }
 
 void showStoredKey(char* key){

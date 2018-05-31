@@ -28,6 +28,9 @@ int lastInstanciaChosen = 0;
 int firstAlreadyPass = 0;
 int greatesInstanciaId = 0;
 
+EsiRequest* actualEsiRequest;
+sem_t* instanciaResponse;
+
 int main(void) {
 	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
 	operationsLogger = log_create("../logOperaciones.log", "tpSO", true, LOG_LEVEL_INFO);
@@ -40,6 +43,13 @@ int main(void) {
 	setDistributionAlgorithm(algorithm);
 
 	instancias = list_create();
+
+	instanciaResponse = malloc(sizeof(sem_t));
+	if(sem_init(instanciaResponse, 0, 0) < 0){
+		log_error(logger, "Couldn't create instanciaResponse semaphore");
+		//TODO tambien revisar si esta bien este exit
+		exit(-1);
+	}
 
 	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
 
@@ -122,14 +132,13 @@ Instancia* chooseInstancia(char* keyToBeBlocked){
 	return NULL;
 }
 
-int sendResponseToEsi(EsiRequest* esiRequest, char response, char** stringToLog){
+int sendResponseToEsi(EsiRequest* esiRequest, char response){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
 	if(send(esiRequest->socket, &response, sizeof(response), 0) < 0){
-		printf("Se van a pisar los strings\n");
-		sprintf(*stringToLog, "ESI %d perdio conexion con el coordinador al intentar hacer %s",
-				esiRequest->id, getOperationName(esiRequest->operation));
+		log_warning(operationsLogger, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id,
+				getOperationName(esiRequest->operation));
 		return -1;
 	}
 
@@ -153,15 +162,16 @@ int getActualEsiIDDummy(){
 	return 0;
 }
 
+//TODO deprecated. sacar
 void logOperation(char* stringToLog){
 	log_info(operationsLogger, stringToLog);
 }
 
-int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest, char** stringToLog){
+int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest){
 	if(keyStatus != LOCKED){
-		sprintf(*stringToLog, "ESI %d no puede hacer %s sobre la clave %s. Clave no bloqueada por el",
+		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre la clave %s. Clave no bloqueada por el",
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
-		sendResponseToEsi(esiRequest, ABORT, stringToLog);
+		sendResponseToEsi(esiRequest, ABORT);
 		return -1;
 	}
 
@@ -169,51 +179,50 @@ int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest, char** stringT
 }
 
 //TODO cuidado en estos casos que el stringToLog no se limpia y es llamado mas de una vez
-int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenInstancia, char** stringToLog){
+int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenInstancia){
 	log_info(logger, "Se usara la siguiente instancia para hacer %s", getOperationName(esiRequest->operation));
 	showInstancia(chosenInstancia);
 
-	//TODO esto hay que pasarlo al hilo de la instancia
-	int response;
-	//todo mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
-	response = instanciaDoOperation(chosenInstancia, esiRequest->operation);
-	//response = instanciaDoOperationDummy();
+	actualEsiRequest = esiRequest;
+	sem_post(chosenInstancia->semaphore);
+	sem_wait(instanciaResponse);
+
+	log_info(logger, "El hilo del esi va a procesar la respuesta de la instancia");
 
 	//TODO mariano fijate que al hacer este sleep, si matas (rapido) al esi, se hace el send igual
-	sleep(10);
-	if(response < 0){
-		sprintf(*stringToLog, "ESI %d no puede hacer %s sobre %s. Instancia %d se cayo. Clave inaccesible", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key, chosenInstancia->id);
+	//sleep(10);
+	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
+		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre %s. Instancia %d se cayo. Clave inaccesible", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->id);
 		instanciaHasFallen(chosenInstancia);
-		removeKeyFromFallenInstancia(esiRequest->operation->key, chosenInstancia);
-		sendResponseToEsi(esiRequest, ABORT, stringToLog);
+		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, chosenInstancia);
+		sendResponseToEsi(actualEsiRequest, ABORT);
 		return -1;
 	}
 
-	sprintf(*stringToLog, "ESI %d hizo %s sobre la clave %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+	log_info(operationsLogger, "ESI %d hizo %s sobre la clave %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 
-	return sendResponseToEsi(esiRequest, SUCCESS, stringToLog);
+	return sendResponseToEsi(esiRequest, SUCCESS);
 }
 
-Instancia* lookOrRemoveKeyIfInFallenInstancia(EsiRequest* esiRequest, char** stringToLog){
+Instancia* lookOrRemoveKeyIfInFallenInstancia(EsiRequest* esiRequest){
 	Instancia* instanciaToBeUsed = lookForKey(esiRequest->operation->key, instancias);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
-		sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible",
+		log_warning(operationsLogger, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible",
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		removeKeyFromFallenInstancia(esiRequest->operation->key, instanciaToBeUsed);
-		//TODO ojo que aca se esta pisando el stringToLog que se acaba de setear
-		sendResponseToEsi(esiRequest, ABORT, stringToLog);
+		sendResponseToEsi(esiRequest, ABORT);
 	}
 	return instanciaToBeUsed;
 }
 
-int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
-	if(keyIsOwnedByActualEsi(keyStatus, esiRequest, stringToLog) < 0){
+int doSet(EsiRequest* esiRequest, char keyStatus){
+	if(keyIsOwnedByActualEsi(keyStatus, esiRequest) < 0){
 		return -1;
 	}
 
 	int keyExists = 0;
 
-	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest, stringToLog);
+	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
 	showInstancia(instanciaToBeUsed);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
@@ -222,8 +231,8 @@ int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 		if(instanciaToBeUsed == NULL){
 			instanciaToBeUsed = chooseInstancia(esiRequest->operation->key);
 			if(instanciaToBeUsed == NULL){
-				sprintf(*stringToLog, "ESI %d es abortado al intentar SET por no existir la clave en ninguna instancia y no haber instancias disponibles", esiRequest->id);
-				sendResponseToEsi(esiRequest, ABORT, stringToLog);
+				log_warning(operationsLogger, "ESI %d es abortado al intentar SET por no existir la clave en ninguna instancia y no haber instancias disponibles", esiRequest->id);
+				sendResponseToEsi(esiRequest, ABORT);
 				return -1;
 			}
 		}else{
@@ -236,58 +245,58 @@ int doSet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
 		log_info(logger, "La clave %s no existe aun", esiRequest->operation->key);
 	}
 
-	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed, stringToLog) < 0){
+	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed) < 0){
 		return -1;
 	}
 
 	return 0;
 }
 
-int doStore(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
-	if(keyIsOwnedByActualEsi(keyStatus, esiRequest, stringToLog) < 0){
+int doStore(EsiRequest* esiRequest, char keyStatus){
+	if(keyIsOwnedByActualEsi(keyStatus, esiRequest) < 0){
 		return -1;
 	}
 
-	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest, stringToLog);
+	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
 	}else{
 		if(instanciaToBeUsed == NULL){
-			sprintf(*stringToLog, "ESI %d intenta hacer %s sobre la clave %s. Clave no identificada en instancias", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
-			sendResponseToEsi(esiRequest, ABORT, stringToLog);
+			log_warning(operationsLogger, "ESI %d intenta hacer %s sobre la clave %s. Clave no identificada en instancias", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+			sendResponseToEsi(esiRequest, ABORT);
 			return -1;
 		}
 	}
 
-	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed, stringToLog) < 0){
+	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed) < 0){
 		return -1;
 	}
 
 	return 0;
 }
 
-int doGet(EsiRequest* esiRequest, char keyStatus, char** stringToLog){
+int doGet(EsiRequest* esiRequest, char keyStatus){
 	if(keyStatus == BLOCKED){
-		sprintf(*stringToLog, "ESI %d intenta hacer GET sobre la clave %s. Clave bloqueada", esiRequest->id, esiRequest->operation->key);
+		log_info(operationsLogger, "ESI %d intenta hacer GET sobre la clave %s. Clave bloqueada", esiRequest->id, esiRequest->operation->key);
 		//todo ojo en estos casos que no se esta abortando al esi porque se supone que el murio.
 		//esto es: hay que validar que el planificador se entere bien de esto para no cagarla
-		return sendResponseToEsi(esiRequest, BLOCK, stringToLog);
+		return sendResponseToEsi(esiRequest, BLOCK);
 	}
 
 	//TODO testear cuando la instancia se caiga y el coordinador se entere por ella (y no porque un esi quiere acceder, sino se borra la clave!)
-	Instancia* instanciaWithKey = lookOrRemoveKeyIfInFallenInstancia(esiRequest, stringToLog);
+	Instancia* instanciaWithKey = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
 	if(instanciaWithKey != NULL && instanciaWithKey->isFallen){
 		return -1;
 	}
 
 	if(keyStatus == LOCKED){
-		sprintf(*stringToLog, "ESI %d hace GET sobre la clave %s, la cual ya tenia", esiRequest->id, esiRequest->operation->key);
-		if(sendResponseToEsi(esiRequest, SUCCESS, stringToLog) < 0){
+		log_info(operationsLogger, "ESI %d hace GET sobre la clave %s, la cual ya tenia", esiRequest->id, esiRequest->operation->key);
+		if(sendResponseToEsi(esiRequest, SUCCESS) < 0){
 			return -1;
 		}
 	}else{
-		sprintf(*stringToLog, "ESI %d hizo GET sobre la clave %s", esiRequest->id, esiRequest->operation->key);
-		if(sendResponseToEsi(esiRequest, LOCK, stringToLog) < 0){
+		log_info(operationsLogger, "ESI %d hizo GET sobre la clave %s", esiRequest->id, esiRequest->operation->key);
+		if(sendResponseToEsi(esiRequest, LOCK) < 0){
 			return -1;
 		}
 	}
@@ -319,12 +328,12 @@ char checkKeyStatusFromPlanificadorDummy(){
 	return LOCKED;
 }
 
-//TODO esta funcion tira seg fault
 void recieveOperationDummy(Operation* operation){
+	/*operation->key = malloc(31);
 	log_info(logger, "Voy a guardar la clave en la operacion dummy");
-	operation->key = malloc(31);
 	strncpy(operation->key, "lio:messi", 31);
-	log_info(logger, "Guarde la clave en la operacion dummy");
+	log_info(logger, "Guarde la clave en la operacion dummy");*/
+	operation->key = "lio:messi";
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
 	operation->operationCode = OURSET;
@@ -341,54 +350,55 @@ int recieveStentenceToProcess(int esiSocket){
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
 	esiRequest.id = esiId;
+	esiRequest.operation = malloc(sizeof(Operation));
 
 	//TODO chequear esto para evitar alocar demas. por otro lado, estaria bueno evitar alocar por cada sentencia...
-	char* stringToLog = calloc(200, sizeof(char));
+	//char* stringToLog = calloc(200, sizeof(char));
 
-	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
+	/*if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
 		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
 		return -1;
-	}
-	//recieveOperationDummy(esiRequest.operation);
+	}*/
+	recieveOperationDummy(esiRequest.operation);
 
 	log_info(logger, "El esi %d va a hacer:", esiRequest.id);
 	showOperation(esiRequest.operation);
 
 	char keyStatus;
 	//comento esto porque esta trayendo unknown key status
-	keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
-	//keyStatus = checkKeyStatusFromPlanificadorDummy();
+	//keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
+	keyStatus = checkKeyStatusFromPlanificadorDummy();
 	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
-			if(doSet(&esiRequest, keyStatus, &stringToLog) < 0){
+			if(doSet(&esiRequest, keyStatus) < 0){
 				operationResult = -1;
 			}
 			break;
 		case OURSTORE:
-			if(doStore(&esiRequest, keyStatus, &stringToLog)){
+			if(doStore(&esiRequest, keyStatus)){
 				operationResult = -1;
 			}
 			break;
 		case OURGET:
-			if (doGet(&esiRequest, keyStatus, &stringToLog) < 0){
+			if (doGet(&esiRequest, keyStatus) < 0){
 				operationResult = -1;
 			}
 			break;
 		default:
-			sprintf(stringToLog, "El ESI %d envio una operacion invalida", esiRequest.id);
-			sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
+			log_warning(operationsLogger, "El ESI %d envio una operacion invalida", esiRequest.id);
+			sendResponseToEsi(&esiRequest, ABORT);
 			operationResult = -1;
 			break;
 	}
 
-	if(*stringToLog) logOperation(stringToLog);
+	/*if(*stringToLog) logOperation(stringToLog);*/
+	//free(stringToLog);
 
 	free(esiRequest.operation);
-	free(stringToLog);
 	sleep(delay);
 	return operationResult == 0 ? 1 : -1;
 }
@@ -409,20 +419,34 @@ int handleInstancia(int instanciaSocket){
 	}
 	log_info(logger, "Se envio la configuracion a la instancia %s", arrivedInstanciaName);
 
-	Instancia* arrivedInstanciaExists = existsInstanciaWithName(arrivedInstanciaName, instancias);
-	if(arrivedInstanciaExists){
-		instanciaIsBack(arrivedInstanciaExists, instanciaSocket);
+	Instancia* arrivedInstancia = existsInstanciaWithName(arrivedInstanciaName, instancias);
+	if(arrivedInstancia){
+		instanciaIsBack(arrivedInstancia, instanciaSocket);
 		log_info(logger, "La instancia %s esta reviviendo", arrivedInstanciaName);
 	}else{
-		createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
+		arrivedInstancia = createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
+
+		if(!arrivedInstancia){
+			log_error(logger, "Couldn't initalize instancia semaphre");
+			//TODO que deberia pasar aca? mientras dejo este exit
+			exit(-1);
+		}
+
 		log_info(logger, "La instancia %s es nueva", arrivedInstanciaName);
 	}
 
+	//TODO deberia sacarse de la lista (y destruirse) si se cae la instancia
+
+
 	showInstancias(instancias);
 
-	//TODO semaforo binario para que la instancia se quede esperando
+	sem_wait(arrivedInstancia->semaphore);
+	log_info(logger, "Hilo de instancia va a encargarse de hacer el %s", getOperationName(actualEsiRequest->operation));
 
-	//TODO aca abajo van los send/recv que se tenga que hacer con el modulo instancia
+	//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
+	instanciaDoOperation(arrivedInstancia, actualEsiRequest->operation, logger);
+
+	sem_post(instanciaResponse);
 
 	return 0;
 }
