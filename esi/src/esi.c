@@ -168,7 +168,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	}
 	log_info(logger, "Recieved coordindador response: %s", getCoordinadorResponseName(coordinadorResponse));
 
-	*esiPC += (coordinadorResponse == SUCCESS ? 1 : 0);
+	*esiPC += (coordinadorResponse == SUCCESS || coordinadorResponse == LOCK ? 1 : 0);
 
 	status = (*esiPC == (len - 1) ? FINISHED : NOTFINISHED);
 
