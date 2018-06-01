@@ -47,7 +47,11 @@ int main(void) {
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
+	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
+	if(welcomeCoordinadorResult < 0){
+		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
+		exit(-1);
+	}
 
 	return 0;
 }
