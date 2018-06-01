@@ -76,9 +76,7 @@ int main(void) {
 	initSem(executionSemaphore,0,0);
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 
-	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
-
-	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
+	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
 	if(welcomeCoordinadorResult < 0){
 		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
 		exit(-1);
