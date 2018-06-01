@@ -56,6 +56,7 @@ int main(void) {
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
+<<<<<<< HEAD
 
 	if((executionSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
 		log_error(logger,"Couln't create semaphore");
@@ -76,6 +77,13 @@ int main(void) {
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 
 	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
+=======
+	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
+	if(welcomeCoordinadorResult < 0){
+		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
+		exit(-1);
+	}
+>>>>>>> 0f12d4d9af039c777da7d0fcfef0cacce305c0f2
 
 	return 0;
 }
