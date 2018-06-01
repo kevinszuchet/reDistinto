@@ -26,30 +26,6 @@ int main(int argc, char* argv[]) {
 	getConfig(&ipCoordinador, &ipPlanificador, &portCoordinador, &portPlanificador);
 
 	/*
-	 * Handshake between esi and planificador
-	 * */
-
-	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI, logger);
-	if (planificadorSocket < 0){
-		//reintentar conexion?
-		return -1;
-	}
-
-	sendMyIdToServer(planificadorSocket, 12, ESI, logger);
-
-	/*
-	 * Handshake between esi and coordinador
-	 * */
-
-	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI, logger);
-	if (coordinadorSocket < 0){
-		//reintentar conexion?
-		return -1;
-	}
-
-	sendMyIdToServer(coordinadorSocket, 12, ESI, logger);
-
-	/*
 	 * Script handle (with mmap)
 	 * */
 
@@ -75,6 +51,30 @@ int main(int argc, char* argv[]) {
 	}
 
 	close(scriptFd);
+
+	/*
+	 * Handshake between esi and planificador
+	 * */
+
+	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI, logger);
+	if (planificadorSocket < 0){
+		//reintentar conexion?
+		return -1;
+	}
+
+	sendMyIdToServer(planificadorSocket, 12, ESI, logger);
+
+	/*
+	 * Handshake between esi and coordinador
+	 * */
+
+	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI, logger);
+	if (coordinadorSocket < 0){
+		//reintentar conexion?
+		return -1;
+	}
+
+	sendMyIdToServer(coordinadorSocket, 12, ESI, logger);
 
 	/*
 	 * ESI wait to planificador, who will order to execute

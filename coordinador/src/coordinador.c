@@ -185,16 +185,14 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 
 	actualEsiRequest = esiRequest;
 	sem_post(chosenInstancia->semaphore);
+	log_info(logger, "Hilo del esi aviso al de instancia, esperando para continuar...");
 	sem_wait(instanciaResponse);
-
 	log_info(logger, "El hilo del esi va a procesar la respuesta de la instancia");
 
 	//TODO mariano fijate que al hacer este sleep, si matas (rapido) al esi, se hace el send igual
 	//sleep(10);
 	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
 		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre %s. Instancia %d se cayo. Clave inaccesible", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->id);
-		instanciaHasFallen(chosenInstancia);
-		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, chosenInstancia);
 		sendResponseToEsi(actualEsiRequest, ABORT);
 		return -1;
 	}
@@ -222,6 +220,7 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 
 	int keyExists = 0;
 
+	log_info(logger, "Se va a buscar la instancia para settear la clave %s:", esiRequest->operation->key);
 	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
 	showInstancia(instanciaToBeUsed);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
@@ -307,7 +306,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
 
 	log_info(logger, "Voy a recibir el estado de la clave %s del planificador", key);
-	//TODO probar esto
+
 	if(sendString(key, planificadorSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
@@ -329,10 +328,6 @@ char checkKeyStatusFromPlanificadorDummy(){
 }
 
 void recieveOperationDummy(Operation* operation){
-	/*operation->key = malloc(31);
-	log_info(logger, "Voy a guardar la clave en la operacion dummy");
-	strncpy(operation->key, "lio:messi", 31);
-	log_info(logger, "Guarde la clave en la operacion dummy");*/
 	operation->key = "lio:messi";
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
@@ -342,8 +337,8 @@ void recieveOperationDummy(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	esiId = getActualEsiID();
-	//esiId = getActualEsiIDDummy();
+	//esiId = getActualEsiID();
+	esiId = getActualEsiIDDummy();
 
 	log_info(logger, "Llego el esi con id = %d", esiId);
 
@@ -352,13 +347,10 @@ int recieveStentenceToProcess(int esiSocket){
 	esiRequest.id = esiId;
 	esiRequest.operation = malloc(sizeof(Operation));
 
-	//TODO chequear esto para evitar alocar demas. por otro lado, estaria bueno evitar alocar por cada sentencia...
-	//char* stringToLog = calloc(200, sizeof(char));
-
 	/*if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
-		sendResponseToEsi(&esiRequest, ABORT, &stringToLog);
+		sendResponseToEsi(&esiRequest, ABORT);
 		return -1;
 	}*/
 	recieveOperationDummy(esiRequest.operation);
@@ -367,7 +359,6 @@ int recieveStentenceToProcess(int esiSocket){
 	showOperation(esiRequest.operation);
 
 	char keyStatus;
-	//comento esto porque esta trayendo unknown key status
 	//keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
 	keyStatus = checkKeyStatusFromPlanificadorDummy();
 	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
@@ -395,27 +386,22 @@ int recieveStentenceToProcess(int esiSocket){
 			break;
 	}
 
-	/*if(*stringToLog) logOperation(stringToLog);*/
-	//free(stringToLog);
-
 	free(esiRequest.operation);
 	sleep(delay);
 	return operationResult == 0 ? 1 : -1;
 }
 
-int handleInstancia(int instanciaSocket){
-	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos
-
+Instancia* initialiceArrivedInstancia(int instanciaSocket){
 	char* arrivedInstanciaName = NULL;
 	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket, logger) < 0){
-		return -1;
+		return NULL;
 	}
 	/*recieveInstanciaNameDummy(&arrivedInstanciaName);*/
 	log_info(logger, "Llego instancia: %s", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
 		free(arrivedInstanciaName);
-		return -1;
+		return NULL;
 	}
 	log_info(logger, "Se envio la configuracion a la instancia %s", arrivedInstanciaName);
 
@@ -430,23 +416,51 @@ int handleInstancia(int instanciaSocket){
 			log_error(logger, "Couldn't initalize instancia semaphre");
 			//TODO que deberia pasar aca? mientras dejo este exit
 			exit(-1);
+			//si hay que matar al hilo, devolver NULL !!!
 		}
 
 		log_info(logger, "La instancia %s es nueva", arrivedInstanciaName);
 	}
 
-	//TODO deberia sacarse de la lista (y destruirse) si se cae la instancia
+	return arrivedInstancia;
+}
 
+int handleInstancia(int instanciaSocket){
+	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos cuando puede haber varios activos (compactacion)
 
+	Instancia* actualInstancia = initialiceArrivedInstancia(instanciaSocket);
+
+	if(!actualInstancia){
+		return -1;
+	}
 	showInstancias(instancias);
 
-	sem_wait(arrivedInstancia->semaphore);
-	log_info(logger, "Hilo de instancia va a encargarse de hacer el %s", getOperationName(actualEsiRequest->operation));
+	while(1){
+		sem_wait(actualInstancia->semaphore);
+		log_info(logger, "Hilo de %s va a encargarse de hacer %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
-	//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
-	instanciaDoOperation(arrivedInstancia, actualEsiRequest->operation, logger);
+		//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
+		//instanciaDoOperation(arrivedInstancia, actualEsiRequest->operation, logger);
+		instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
 
-	sem_post(instanciaResponse);
+		//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada
+		log_info(logger, "Se va a procesar la respuesta de la instancia");
+
+		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
+			log_error(logger, "La instancia %s no pudo hacer %s, su hilo muere, se le elimina la clave %s:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
+			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
+			instanciaHasFallen(actualInstancia);
+			showInstancia(actualInstancia);
+
+			sem_post(instanciaResponse);
+
+			return -1;
+		}
+
+		log_info(logger, "%s pudo hacer %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
+
+		sem_post(instanciaResponse);
+	}
 
 	return 0;
 }
@@ -454,6 +468,8 @@ int handleInstancia(int instanciaSocket){
 int handleEsi(int esiSocket){
 	while(1){
 		if (recieveStentenceToProcess(esiSocket) < 0){
+			//ya que la instancia cierra su socket cuando se cae
+			close(esiSocket);
 			//va a matar al hilo porque sale de este while!
 			break;
 		}
@@ -472,7 +488,6 @@ void pthreadInitialize(int* clientSocket){
 		log_info(logger, "I received a strange");
 	}
 
-	close(*clientSocket);
 	free(clientSocket);
 }
 

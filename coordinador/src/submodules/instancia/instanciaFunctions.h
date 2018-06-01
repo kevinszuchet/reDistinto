@@ -30,17 +30,17 @@
 	void recieveInstanciaNameDummy(char** arrivedInstanciaName);
 	Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias);
 	void instanciaIsBack(Instancia* instancia, int instanciaSocket);
-	int instanciaDoOperationDummy();
 	void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger);
+	void instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger);
 	Instancia* lookForKey(char* key, t_list* instancias);
 	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
 	void addKeyToInstanciaStruct(Instancia* instancia, char* key);
 	void instanciaHasFallen(Instancia* fallenInstancia);
 	char waitForInstanciaResponse(Instancia* chosenInstancia);
+	char waitForInstanciaResponseDummy();
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
 	Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId, char* name);
 	Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, char* name);
-	void destroyInstancia(Instancia* instancia);
 
 	/*-----------------------------------------------------*/
 

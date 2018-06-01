@@ -38,13 +38,21 @@ Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancia
 	return list_find(instancias, (void*) &instanciaHasName);
 }
 
+int addSemaphoreToInstancia(Instancia* instancia){
+	sem_t* sem = malloc(sizeof(sem_t));
+	if(sem_init(sem, 0, 0) < 0){
+		return -1;
+	}
+
+	instancia->semaphore = sem;
+
+	return 0;
+}
+
 void instanciaIsBack(Instancia* instancia, int instanciaSocket){
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->socket = instanciaSocket;
-}
-
-int instanciaDoOperationDummy(){
-	return 1;
+	addSemaphoreToInstancia(instancia);
 }
 
 void recieveInstanciaNameDummy(char** arrivedInstanciaName){
@@ -54,9 +62,19 @@ void recieveInstanciaNameDummy(char** arrivedInstanciaName){
 void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
+	}else{
+		log_info(logger, "Se pudo enviar la operacion a la instancia");
+		instanciaResponseStatus = waitForInstanciaResponse(instancia);
 	}
-	log_info(logger, "Se pudo enviar la operacion a la instancia\n");
-	instanciaResponseStatus = waitForInstanciaResponse(instancia);
+}
+
+void instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger){
+	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
+		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
+	}else{
+		log_info(logger, "Se pudo enviar la operacion a la instancia");
+		instanciaResponseStatus = waitForInstanciaResponseDummy(instancia);
+	}
 }
 
 int isLookedKeyGeneric(char* actualKey, char* key){
@@ -93,12 +111,17 @@ void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 	list_add(instancia->storedKeys, key);
 }
 
-//TODO testear esta funcion
+void freeInstanciaSemaphore(Instancia* instancia){
+	sem_destroy(instancia->semaphore);
+	free(instancia->semaphore);
+}
+
 //TODO donde se use esta funcion, meter tambien mutex de la lista de instancias! (esta instancia es una de esa lista!)
 //ese caso podria darse cuando esten activos varios hilos de instancia (compactacion)
 void instanciaHasFallen(Instancia* fallenInstancia){
 	fallenInstancia->isFallen = INSTANCIA_FALLEN;
 	close(fallenInstancia->socket);
+	freeInstanciaSemaphore(fallenInstancia);
 }
 
 char waitForInstanciaResponse(Instancia* chosenInstancia){
@@ -108,6 +131,10 @@ char waitForInstanciaResponse(Instancia* chosenInstancia){
 		return INSTANCIA_RESPONSE_FALLEN;
 	}
 	return response;
+}
+
+char waitForInstanciaResponseDummy(){
+	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
 int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia){
@@ -146,19 +173,11 @@ Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, 
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->name = name;
 
-	sem_t* sem = malloc(sizeof(sem_t));
-	if(sem_init(sem, 0, 0) < 0){
+	if(addSemaphoreToInstancia(instancia) < 0){
 		return NULL;
 	}
-	instancia->semaphore = sem;
 
 	return instancia;
-}
-
-void destroyInstancia(Instancia* instancia){
-	//TODO liberar espacio de storedKeys
-	//y liberar el semaforo
-	free(instancia);
 }
 
 /*-----------------------------------------------------*/
