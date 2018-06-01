@@ -56,7 +56,7 @@ int main(void) {
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-<<<<<<< HEAD
+
 
 	if((executionSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
 		log_error(logger,"Couln't create semaphore");
@@ -77,13 +77,14 @@ int main(void) {
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 
 	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
-=======
+
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
 	if(welcomeCoordinadorResult < 0){
 		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
 		exit(-1);
 	}
->>>>>>> 0f12d4d9af039c777da7d0fcfef0cacce305c0f2
+
+
 
 	return 0;
 }
@@ -260,9 +261,9 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 		break;
 
 		case LOCK:
-
+			log_info(logger,"Operation succeded");
 			takeResource(key,runningEsi->id);
-			log_info(logger,"Operation succeded, key (%s) locked",key);
+			log_info(logger,"Key (%s) locked",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
@@ -300,9 +301,21 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 				break;
 			}
 		break;
+		case ABORT:
+			log_info(logger,"Aborting esi");
+			abortEsi(runningEsi);
+			runningEsi = NULL;
+
+
+		break;
 
 
 	}
+}
+
+void abortEsi(Esi* esi){
+	//todo liberar todos sus recursos
+	//sacar el esi del select
 }
 
 void moveFromRunningToReady(Esi* esi){
@@ -339,6 +352,7 @@ void sendKeyStatusToCoordinador(char* key){
 	}
 	char keyStatus = isTakenResource(key);
 	if(keyStatus==BLOCKED){
+		log_info(logger,"Key is blocked, lets check if its taken by the ESI");
 		if(list_filter(runningEsi->lockedKeys,&keyCompare)){
 			keyStatus = LOCKED;
 		}
@@ -386,8 +400,10 @@ void blockEsi(char* lockedResource, int esiBlocked){
 }
 
 void takeResource(char* key, int esiID){
+	printf("log1\n");
 	if(esiID != CONSOLE_BLOCKED){
-		addLockedKey(key,runningEsi);
+		printf("Key (%s) runningEsiID (%d)\n",key,runningEsi->id);
+		addLockedKey(&key,&runningEsi);
 		dictionary_put(takenResources,key,(void*)esiID);
 		log_info(logger,"Resource (%s) was taken by ESI (%d)",key,esiID);
 	}else{

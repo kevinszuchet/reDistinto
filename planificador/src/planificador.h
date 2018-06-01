@@ -60,6 +60,8 @@
 
 	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
 
+	void abortEsi(Esi* esi);
+
 	OperationResponse *waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char* key);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
