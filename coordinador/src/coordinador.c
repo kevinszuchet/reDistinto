@@ -53,6 +53,8 @@ int main(void) {
 
 	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
 
+	free(algorithm);
+
 	return 0;
 }
 
@@ -68,7 +70,7 @@ void getConfig(int* listeningPort, char** algorithm){
 	t_config* config;
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
-	*algorithm = config_get_string_value(config, "ALGORITHM");
+	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	if(strcmp(*algorithm, "EL") != 0 && strcmp(*algorithm, "LSU") != 0 && strcmp(*algorithm, "KE") != 0){
 		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion");
 		exit(-1);
@@ -77,8 +79,7 @@ void getConfig(int* listeningPort, char** algorithm){
 	entrySize = config_get_int_value(config, "ENTRY_SIZE");
 	delay = config_get_int_value(config, "DELAY");
 
-	//TODO mariano esto hay que matarlo en algun momento. Aca no porque, por algun motivo, el showConfig muestra mal
-	//config_destroy(config);
+	config_destroy(config);
 }
 
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
