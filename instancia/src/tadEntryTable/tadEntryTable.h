@@ -38,6 +38,6 @@
 
 	void destroyTableInfo(entryTableInfo * entryInfo);
 
-	bool hasKey(entryTableInfo * entryInfo, char * key);
+	bool hasKey(void * entryInfo, void * key);
 
 #endif /* SRC_TADENTRYTABLE_TADENTRYTABLE_H_ */

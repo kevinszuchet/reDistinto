@@ -30,6 +30,7 @@
 #define NOTFINISHED 'y'
 #define BLOCKED 'i'
 #define LOCKED 'o'
+#define INSTANCIA_RESPONSE_FALLEN 'p'
 
 char* getCoordinadorResponseName(char coordinadorResponse);
 

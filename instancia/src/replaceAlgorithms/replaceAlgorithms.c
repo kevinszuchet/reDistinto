@@ -20,22 +20,29 @@ void updateAccodringToAlgorithm(char * key) {
 
 void deleteAccodringToAlgorithm() {
 	entryTableInfo * toBeDeletedElement;
+	t_list * atomicEntriesList = list_filter(entryTable, atomicEntry);
 
 	if (strcmp(algorithm, "CIRC") == 0) {
-		toBeDeletedElement = getPointedKey();
-	}
-
-	// TODO passing argument 2 of ‘findKeyBy’ from incompatible pointer type [-Wincompatible-pointer-types]
-
-	else if (strcmp(algorithm, "LRU") == 0) {
-		findElementBy(&toBeDeletedElement, leastRecentlyUsedComparator);
+		//toBeDeletedElement = atomicEntriesList->head->data;
 	}
 
 	else {
-		findElementBy(&toBeDeletedElement, biggestSpaceUsedComparator);
+
+		if (strcmp(algorithm, "LRU") == 0) {
+			list_sort(atomicEntriesList, leastRecentlyUsedComparator);
+		}
+
+		else {
+			list_sort(atomicEntriesList, biggestSpaceUsedComparator);
+		}
 	}
 
+	toBeDeletedElement = atomicEntriesList->head->data;
+
 	deleteKey(toBeDeletedElement);
+
+	// REVIEW hace falta destruir todos sus elementos o esto destruiria los elementos de la lista original?
+	list_destroy(atomicEntriesList);
 }
 
 void deleteKey(entryTableInfo * toBeDeletedEntryInfo) {
@@ -43,24 +50,12 @@ void deleteKey(entryTableInfo * toBeDeletedEntryInfo) {
 	log_info(replaceAlgorithmsLogger, "the key %s is about to be deleted", toBeDeletedEntryInfo->key);
 
 	biMapUpdate(toBeDeletedEntryInfo->valueStart, wholeUpperDivision(toBeDeletedEntryInfo->valueSize, entrySize), IS_EMPTY);
-	list_remove_and_destroy_by_condition_with_param(entryTable, (void *) hasKey, (void *) destroyTableInfo, toBeDeletedEntryInfo->key);
+	list_remove_and_destroy_by_condition_with_param(entryTable, toBeDeletedEntryInfo->key, (void *) hasKey, (void *) destroyTableInfo);
 
 	// REVIEW se libera cuando hago el remove?
 
 	log_info(replaceAlgorithmsLogger, "the key was successfully deleted");
 }
-
-
-/************************************************************Round Algorithm******************************************************/
-entryTableInfo * getPointedKey() {
-	t_list * atomicEntriesList = list_filter(entryTable, atomicEntry);
-	entryTableInfo * data = atomicEntriesList->head->data;
-	list_destroy(atomicEntriesList);
-	return data;
-}
-/************************************************************Round Algorithm******************************************************/
-
-/*****************************************************Least Recently Used Algorithm***********************************************/
 
 void updateUsage(char * key) {
 
@@ -80,31 +75,15 @@ void updateUsage(char * key) {
 	}
 }
 
-bool leastRecentlyUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData) {
-	return getKeyUsage(currentData) > getKeyUsage(selectedData) && bothEntriesAreAtomics(currentData, selectedData);
+bool leastRecentlyUsedComparator(void * currentData, void * selectedData) {
+	return getKeyUsage((entryTableInfo *) currentData) > getKeyUsage((entryTableInfo *) selectedData);
 }
 
-/*****************************************************Least Recently Used Algorithm***********************************************/
-
-/******************************************************Biggest Space Used Algorithm***********************************************/
-
-bool biggestSpaceUsedComparator(entryTableInfo * currentData, entryTableInfo * selectedData) {
-	return getValueSize(currentData) > getValueSize(selectedData) && bothEntriesAreAtomics(currentData, selectedData);
-}
-/*****************************************************Biggest Space Used Algorithm************************************************/
-
-void findElementBy(entryTableInfo ** toBeDeletedElement, bool (*comparator)(void*, void*)) {
-	t_list * auxList = list_duplicate(entryTable);
-	list_sort(auxList, comparator);
-	*toBeDeletedElement = list_get(entryTable, 0);
-	// REVIEW hace falta destruir todos sus elementos o esto destruiria los elementos de la lista original?
-	list_destroy(auxList);
+bool biggestSpaceUsedComparator(void * currentData, void * selectedData) {
+	return getValueSize((entryTableInfo *) currentData) > getValueSize((entryTableInfo *) selectedData);
 }
 
-bool atomicEntry(entryTableInfo * entryInfo) {
+bool atomicEntry(void * voidEntryInfo) {
+	entryTableInfo * entryInfo = (entryTableInfo *) voidEntryInfo;
 	return entryInfo->valueSize <= entrySize;
-}
-
-bool bothEntriesAreAtomics(entryTableInfo * oneEntryInfo, entryTableInfo * otherEntryInfo) {
-	return atomicEntry(oneEntryInfo) && atomicEntry(otherEntryInfo);
 }

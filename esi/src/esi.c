@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
 	logger = log_create("../esi.log", "tpSO", true, LOG_LEVEL_INFO);
 
 	if (argc != 2) {
-		log_error(logger, "ESI cannot execute: you must enter a script file to read\n");
+		log_error(logger, "ESI cannot execute: you must enter a script file to read");
 		return -1;
 	}
 
@@ -58,19 +58,19 @@ int main(int argc, char* argv[]) {
 	struct stat sb;
 
 	if ((scriptFd = open(argv[1], O_RDONLY)) == -1) {
-		log_error(logger, "The script file cannot be opened\n");
+		log_error(logger, "The script file cannot be opened");
 		return -1;
 	}
 
 	if (fstat(scriptFd, &sb) == -1) {
-		log_error(logger, "It is not possible to determinate the script file size\n");
+		log_error(logger, "It is not possible to determinate the script file size");
 		return -1;
 	}
 
 	script = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, scriptFd, 0);
 
 	if (script == MAP_FAILED) {
-		log_error(logger, "mmap failed\n");
+		log_error(logger, "mmap failed");
 		return -1;
 	}
 
@@ -80,7 +80,10 @@ int main(int argc, char* argv[]) {
 	 * ESI wait to planificador, who will order to execute
 	 * */
 	waitPlanificadorOrders(planificadorSocket, script, coordinadorSocket);
-
+	
+	free(ipCoordinador);
+	free(ipPlanificador);
+	
 	return 0;
 }
 
@@ -91,10 +94,11 @@ void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador
 
 	t_config* config;
 	config = config_create(CFG_FILE);
-	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
-	*ipPlanificador = config_get_string_value(config, "IP_PLANIFICADOR");
+	*ipCoordinador = strdup(config_get_string_value(config, "IP_COORDINADOR"));
+	*ipPlanificador = strdup(config_get_string_value(config, "IP_PLANIFICADOR"));
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
 	*portPlanificador = config_get_int_value(config, "PORT_PLANIFICADOR");
+	config_destroy(config);
 }
 
 /*
@@ -116,13 +120,15 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		 * Parser tries to understand each line, one by one (when planificador says)
 		 * */
 
+		log_info(logger, "Waiting planificador order...");
 		if (recv(planificadorSocket, &response, sizeof(int), 0) <= 0) {
-			log_error(logger, "recv failed on trying to connect with planificador %s\n", strerror(errno));
+			log_error(logger, "recv failed on trying to connect with planificador %s", strerror(errno));
 			exit(-1);
 		}
+		log_info(logger, "I recieve the order from planificador and I will try to execute");
 
 		if (response == RUN) {
-			log_info(logger, "recv an order from planificador\n");
+			log_info(logger, "recv an order from planificador");
 			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
 		}
 	}
@@ -162,7 +168,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	}
 	log_info(logger, "Recieved coordindador response: %s", getCoordinadorResponseName(coordinadorResponse));
 
-	*esiPC += (coordinadorResponse == SUCCESS ? 1 : 0);
+	*esiPC += (coordinadorResponse == SUCCESS || coordinadorResponse == LOCK ? 1 : 0);
 
 	status = (*esiPC == (len - 1) ? FINISHED : NOTFINISHED);
 
@@ -170,10 +176,12 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	OperationResponse operationResponse;
 	initializeOperationResponse(&operationResponse, coordinadorResponse, status);
 
+	log_info(logger, "I will send the coordinador response to planificador %s", getCoordinadorResponseName(coordinadorResponse));
 	if (send(planificadorSocket, &operationResponse, sizeof(OperationResponse), 0) <= 0) {
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
 		exit(-1);
 	}
+	log_info(logger, "I could send the response to planificador");
 
 	if (coordinadorResponse == ABORT) {
 		log_error(logger, "I cannot keep running", line);
@@ -192,23 +200,22 @@ void interpretateOperation(Operation * operation, char * line) {
 	switch (parsedLine.keyword) {
 		case GET:
 			initializeOperation(operation, OURGET, parsedLine.argumentos.GET.clave, NULL);
-			log_info(logger, "GET\tclave: <%s>\n", parsedLine.argumentos.GET.clave);
 			break;
 
 		case SET:
 			initializeOperation(operation, OURSET, parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
-			log_info(logger, "SET\tclave: <%s>\tvalor: <%s>\n", parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
 			break;
 
 		case STORE:
 			initializeOperation(operation, OURSTORE, parsedLine.argumentos.STORE.clave, NULL);
-			log_info(logger, "STORE\tclave: <%s>\n", parsedLine.argumentos.STORE.clave);
 			break;
 
 		default:
 			log_error(logger, "Parsi could not understand the keyowrd %s", line);
 			exit(-1);
 	}
+
+	showOperation(operation);
 
 	destruir_operacion(parsedLine);
 }
