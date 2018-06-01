@@ -26,3 +26,17 @@ char* getCoordinadorResponseName(char coordinadorResponse){
 			break;
 	}
 }
+
+char* getEsiInformationResponseName(char esiInformation){
+	switch(esiInformation){
+		case FINISHED:
+			return "FINISHED";
+			break;
+		case NOTFINISHED:
+			return "NOTFINISHED";
+			break;
+		default:
+			return "UNKNOWN ESI INFORMATION";
+			break;
+	}
+}

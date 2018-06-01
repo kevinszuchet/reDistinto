@@ -10,6 +10,7 @@ RM := rm -rf
 -include sources.mk
 -include our-commons/tads/subdir.mk
 -include our-commons/sockets/subdir.mk
+-include our-commons/semaphores/subdir.mk
 -include our-commons/messages/subdir.mk
 -include subdir.mk
 -include objects.mk

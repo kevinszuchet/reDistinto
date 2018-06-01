@@ -41,7 +41,7 @@ int main(void) {
 
 	instancias = list_create();
 
-	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
+	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomePlanificador, logger);
 
 	return 0;
 }
@@ -299,6 +299,11 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	log_info(logger, "Voy a recibir el estado de la clave %s del planificador", key);
 	//TODO probar esto
+	char message = KEYSTATUSMESSAGE;
+	if (send(planificadorSocket, &message, sizeof(char), 0) < 0){
+	   log_error(logger, "Coultn't send message to Planificador about type of message");
+	   exit(-1);
+	}
 	if(sendString(key, planificadorSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
@@ -438,11 +443,11 @@ int handleEsi(int esiSocket){
 }
 
 void pthreadInitialize(int* clientSocket){
-	int id = recieveClientId(*clientSocket, COORDINADOR, logger);
+	char id = recieveClientId(*clientSocket, COORDINADOR, logger);
 
-	if (id == 11){
+	if (id == INSTANCIAID){
 		handleInstancia(*clientSocket);
-	}else if(id == 12){
+	}else if(id == ESIID){
 		handleEsi(*clientSocket);
 	}else{
 		log_info(logger, "I received a strange");

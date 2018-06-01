@@ -39,7 +39,7 @@ int main(void) {
 		return -1;
 	}
 
-	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
+	sendMyIdToServer(coordinadorSocket, INSTANCIAID, INSTANCIA, logger);
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);

@@ -29,9 +29,18 @@ pthread_t threadExecution;
 pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
 
+int executionSemaphore;
+int keyRecievedFromCoordinadorSemaphore;
+int esiInformationRecievedSemaphore;
+int readyEsisSemaphore;
+
 int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
 int coordinadorSocket;
+
+char* keyRecieved;
+OperationResponse* esiInformation;
+Esi* nextEsi;
 
 int welcomeNewClients();
 
@@ -47,7 +56,26 @@ int main(void) {
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, 10, &welcomeNewClients, logger);
+
+	if((executionSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
+		log_error(logger,"Couln't create semaphore");
+	}
+	if((keyRecievedFromCoordinadorSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
+		log_error(logger,"Couln't create semaphore");
+	}
+	if((esiInformationRecievedSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
+		log_error(logger,"Couln't create semaphore");
+	}
+	if((readyEsisSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
+		log_error(logger,"Couln't create semaphore");
+	}
+	initSem(keyRecievedFromCoordinadorSemaphore,0,0);
+	initSem(esiInformationRecievedSemaphore,0,0);
+	initSem(readyEsisSemaphore,0,0);
+	initSem(executionSemaphore,0,0);
+	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
+
+	welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
 
 	return 0;
 }
@@ -56,8 +84,51 @@ int main(void) {
 
 //Core execute function
 void executionProcedure(){
+	log_info(logger,"Starting to check if an ESI is ready to run");
+
+	//NEW SELECT EXECUTION
+	while(1){
+		while(pauseState){
+			doWait(executionSemaphore,0); //POR AHORA ESTA CON UN MUTEX, PASARLO A SEMAFORO DE ESTADO
+			log_info(logger,"Time to execute\n");
 
 
+			if(runningEsi==NULL){
+				doWait(readyEsisSemaphore,0);
+				doSignal(readyEsisSemaphore,0);
+
+				log_info(logger,"At least an ESI is ready to run\n");
+				pthread_mutex_lock(&mutexReadyList);
+				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+				pthread_mutex_unlock(&mutexReadyList);
+				runningEsi = nextEsi;
+				removeFromReady(nextEsi);
+			}else{
+				log_info(logger,"Running ESI is ready to run\n");
+				nextEsi = runningEsi;
+			}
+			log_info(logger,"Esi %d was selected to execute\n",nextEsi->id);
+			sendEsiIdToCoordinador(nextEsi->id);
+
+			sendMessageExecuteToEsi(nextEsi);
+			log_info(logger,"Waiting coordinador request\n");
+			doWait(keyRecievedFromCoordinadorSemaphore,0);
+
+			log_info(logger,"Key received = %s\n",keyRecieved);
+			sendKeyStatusToCoordinador(keyRecieved);
+
+			log_info(logger,"Waiting esi information\n");
+			doWait(esiInformationRecievedSemaphore,0);
+			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)",getCoordinadorResponseName(esiInformation->coordinadorResponse),getEsiInformationResponseName(esiInformation->esiStatus));
+			handleEsiInformation(esiInformation,keyRecieved);
+			log_info(logger,"Finish executing one instruction from ESI %d\n",nextEsi->id);
+			doSignal(executionSemaphore,0);
+
+		}
+	}
+
+
+	/* OLD EXECUTION
 	while(pauseState){ //En vez de esto se puede hacer un semaforo?
 
 		//WAIT AT LEAST ONE ESI TO BE IN READY LIST
@@ -100,7 +171,7 @@ void executionProcedure(){
 
 
 		}
-	}
+	}*/
 
 }
 
@@ -120,8 +191,6 @@ void unlockEsi(char* key){
 	log_info(logger,"An ESI was unlocked from key %s (NOT IMPLEMENTED)\n",key);
 }
 
-
-
 void finishRunningEsi(){
 	//Pasa el esi a finalizados
 	log_info(logger,"Finishing esi (%d) \n",runningEsi->id);
@@ -138,7 +207,9 @@ void finishRunningEsi(){
 }
 
 void removeFromReady(Esi* esi){
+
 	pthread_mutex_lock(&mutexReadyList);
+	doWait(readyEsisSemaphore,0);
 	Esi* esiFromReady;
 	int idToRemove =-1;
 	for(int i = 0;i<list_size(readyEsis);i++){
@@ -183,7 +254,7 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 		case LOCK:
 
 			takeResource(key,runningEsi->id);
-			log_info(logger,"Operation succeded, key (%c) locked",key);
+			log_info(logger,"Operation succeded, key (%s) locked",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
@@ -241,8 +312,7 @@ OperationResponse *waitEsiInformation(int esiSocket){
 		exit(-1);
 	}else{
 
-		free(finishInformation);
-		log_info(logger,"Recieved esi finish information. CoordinadorResponse = (%c). EsiStatus = (%c)",finishInformation->coordinadorResponse,finishInformation->esiStatus);
+		//free(finishInformation);
 		return finishInformation;
 	}
 }
@@ -308,7 +378,7 @@ void blockEsi(char* lockedResource, int esiBlocked){
 }
 
 void takeResource(char* key, int esiID){
-	if(esiID == CONSOLE_BLOCKED){
+	if(esiID != CONSOLE_BLOCKED){
 		addLockedKey(key,runningEsi);
 		dictionary_put(takenResources,key,(void*)esiID);
 		log_info(logger,"Resource (%s) was taken by ESI (%d)",key,esiID);
@@ -359,6 +429,7 @@ void addEsiToReady(Esi* esi){
 	pthread_mutex_lock(&mutexReadyList);
 	list_add(readyEsis,(void*)esi);
 	pthread_mutex_unlock(&mutexReadyList);
+	doSignal(readyEsisSemaphore,0);
 	log_info(logger, "Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
 }
 
@@ -402,18 +473,34 @@ int welcomeEsi(int clientSocket){
 	return 0;
 }
 
-int clientHandler(int clientId, int clientSocket){
+int clientHandler(char clientMessage, int clientSocket){
 
-	if (clientId == 12){
+	if (clientMessage == ESIID){
 		welcomeEsi(clientSocket);
 
 		//Start planificador task
 		log_info(logger,"Start to execute ESIs\n");
-		executionProcedure();
+		//executionProcedure();
+	}else if(clientMessage == KEYSTATUSMESSAGE){
+		log_info(logger,"I recieved a key status message\n");
+		if(recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE){
+			log_error(logger,"Couldn't recieve key to check from coordinador, quitting...");
+			exit(-1);
+		}
+		doSignal(keyRecievedFromCoordinadorSemaphore,0);
+	}else if(clientMessage == ESIINFORMATIONMESSAGE){
+		log_info(logger,"I recieved a esi information message\n");
+
+		esiInformation = waitEsiInformation(nextEsi->socketConection);
+
+		doSignal(esiInformationRecievedSemaphore,0);
+	}else if(clientMessage == CORDINADORCONSOLERESPONSEMESSAGE){
+		log_info(logger,"I recieved a coordinador console response message\n");
+
 	}else{
 		log_info(logger, "I received a strange in socket %d", clientSocket);
 		//NICO aca esta el problema, esta llegando el 9 que es lock (lo que manda el esi)
-		printf("Lo que me llego es %c\n", clientId);
+		printf("Lo que me llego es %c\n", clientMessage);
 		//TODO sacar este exit, esta para probar
 		exit(-1);
 	}
@@ -425,6 +512,8 @@ int welcomeNewClients(int newCoordinadorSocket){
 
 	coordinadorSocket = newCoordinadorSocket;
 
+	log_info(logger,"Starting the execution");
+	doSignal(executionSemaphore,0);
 	/*
 	 * Planificador console
 	 * */
@@ -444,7 +533,8 @@ int handleConcurrence(){
 	fd_set master;
 	fd_set readfds;
 	int fdmax, i;
-	int clientId = 0, resultRecv = 0, serverSocket = 0, clientSocket = 0;
+	char clientMessage = 0;
+	int resultRecv = 0, serverSocket = 0, clientSocket = 0;
 
 	//revisar el hardcodeo
 	serverSocket = openConnection(listeningPort, PLANIFICADOR, "UNKNOWN_CLIENT", logger);
@@ -458,7 +548,7 @@ int handleConcurrence(){
 
 	// add the listener to the master set
 	FD_SET(serverSocket, &master);
-
+	FD_SET(coordinadorSocket, &master);
 	fdmax = serverSocket;
 
 	while(1){
@@ -485,7 +575,7 @@ int handleConcurrence(){
 				}else{
 					clientSocket = i;
 					// handle data from a client
-					resultRecv = recv(clientSocket, &clientId, sizeof(int), 0);
+					resultRecv = recv(clientSocket, &clientMessage, sizeof(char), 0);
 					if(resultRecv <= 0){
 						if(resultRecv == 0){
 							log_error(logger, "The client disconnected from server %s\n", PLANIFICADOR);
@@ -498,7 +588,7 @@ int handleConcurrence(){
 						close(clientSocket);
 						FD_CLR(clientSocket, &master);
 					}else{
-						clientHandler(clientId, clientSocket);
+						clientHandler(clientMessage, clientSocket);
 					}
 				}
 			}
