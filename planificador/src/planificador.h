@@ -25,6 +25,7 @@
 	#include <commons/log.h>
 	#include <our-commons/messages/serialization.h>
 	#include <our-commons/tads/tads.h>
+	#include <our-commons/semaphores/semaphores.h>
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define CONSOLE_BLOCKED 0
@@ -59,6 +60,8 @@
 
 	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
 
+	void abortEsi(Esi* esi);
+
 	OperationResponse *waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char* key);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
@@ -80,5 +83,5 @@
 	int welcomeEsi();
 	int welcomeNewClients();
 	void addConfigurationLockedKeys(char**);
-	int handleConcurrence(int listenerPort);
+	int handleConcurrence();
 #endif /* SRC_PLANIFICADOR_H_ */

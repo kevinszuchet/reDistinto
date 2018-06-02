@@ -64,21 +64,21 @@ int acceptUnknownClient(int serverSocket, const char* serverName, t_log* logger)
 	return clientSocket;
 }
 
-int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* serverName, const char* clientName, t_log* logger){
+int handshakeWithClient(int clientSocket, char clientHandshakeValue, const char* serverName, const char* clientName, t_log* logger){
 
 	if(clientSocket < 0){
 		log_error(logger, "The socket (%d) where %s is trying to connect to %s is not a valid one", clientSocket, serverName, clientName);
 		return -1;
 	}
 
-	if (send(clientSocket, &clientHandshakeValue, sizeof(int), 0) < 0){
+	if (send(clientSocket, &clientHandshakeValue, sizeof(char), 0) < 0){
 		log_error(logger, "The socket (%d) where %s is trying to connect to %s is not a valid one", clientSocket, serverName, clientName);
 		close(clientSocket);
 		return -1;
 	}
 
-	int response = 0;
-	int resultRecv = recv(clientSocket, &response, sizeof(int), 0);
+	char response;
+	int resultRecv = recv(clientSocket, &response, sizeof(char), 0);
 	if(resultRecv <= 0){
 		log_error(logger, "recv failed on %s, while trying to connect with client %s: %s", serverName, clientName, strerror(errno));
 		close(clientSocket);
@@ -96,7 +96,7 @@ int handshakeWithClient(int clientSocket, int clientHandshakeValue, const char* 
 	return 0;
 }
 
-int welcomeClient(int listenerPort, const char* serverName, const char* clientName, int handshakeValue,
+int welcomeClient(int listenerPort, const char* serverName, const char* clientName, char handshakeValue,
 	int (*welcomeProcedure)(int serverSocket, int clientSocket), t_log* logger){
 
 	int serverToClientSocket = 0;
@@ -128,9 +128,9 @@ int welcomeClient(int listenerPort, const char* serverName, const char* clientNa
 	return 0;
 }
 
-int recieveClientId(int clientSocket,  const char* serverName, t_log* logger){
-	int id = 0;
-	int resultRecv = recv(clientSocket, &id, sizeof(int), 0);
+char recieveClientId(int clientSocket,  const char* serverName, t_log* logger){
+	char id;
+	int resultRecv = recv(clientSocket, &id, sizeof(char), 0);
 	if(resultRecv <= 0){
 		log_error(logger, "%s couldn't receive client id, from client socket %d: %s", serverName, clientSocket, strerror(errno));
 		close(clientSocket);

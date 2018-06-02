@@ -26,6 +26,30 @@ int main(int argc, char* argv[]) {
 	getConfig(&ipCoordinador, &ipPlanificador, &portCoordinador, &portPlanificador);
 
 	/*
+	 * Handshake between esi and planificador
+	 * */
+
+	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI, logger);
+	if (planificadorSocket < 0){
+		//reintentar conexion?
+		return -1;
+	}
+
+	sendMyIdToServer(planificadorSocket, ESIID, ESI, logger);
+
+	/*
+	 * Handshake between esi and coordinador
+	 * */
+
+	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI, logger);
+	if (coordinadorSocket < 0){
+		//reintentar conexion?
+		return -1;
+	}
+
+	sendMyIdToServer(coordinadorSocket, ESIID, ESI, logger);
+
+	/*
 	 * Script handle (with mmap)
 	 * */
 
@@ -51,30 +75,6 @@ int main(int argc, char* argv[]) {
 	}
 
 	close(scriptFd);
-
-	/*
-	 * Handshake between esi and planificador
-	 * */
-
-	int planificadorSocket = connectToServer(ipPlanificador, portPlanificador, PLANIFICADOR, ESI, logger);
-	if (planificadorSocket < 0){
-		//reintentar conexion?
-		return -1;
-	}
-
-	sendMyIdToServer(planificadorSocket, 12, ESI, logger);
-
-	/*
-	 * Handshake between esi and coordinador
-	 * */
-
-	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, ESI, logger);
-	if (coordinadorSocket < 0){
-		//reintentar conexion?
-		return -1;
-	}
-
-	sendMyIdToServer(coordinadorSocket, 12, ESI, logger);
 
 	/*
 	 * ESI wait to planificador, who will order to execute
@@ -177,6 +177,11 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	initializeOperationResponse(&operationResponse, coordinadorResponse, status);
 
 	log_info(logger, "I will send the coordinador response to planificador %s", getCoordinadorResponseName(coordinadorResponse));
+	char message = ESIINFORMATIONMESSAGE;
+	if (send(planificadorSocket, &message, sizeof(char), 0) < 0){
+	   log_error(logger, "Coultn't send message to Planificador about type of message");
+	   exit(-1);
+	}
 	if (send(planificadorSocket, &operationResponse, sizeof(OperationResponse), 0) <= 0) {
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
 		exit(-1);

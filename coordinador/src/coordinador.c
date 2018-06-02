@@ -51,7 +51,7 @@ int main(void) {
 		exit(-1);
 	}
 
-	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, 10, &welcomePlanificador, logger);
+	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomePlanificador, logger);
 
 	free(algorithm);
 
@@ -308,6 +308,13 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	log_info(logger, "Voy a recibir el estado de la clave %s del planificador", key);
 
+	//TODO probar esto
+	char message = KEYSTATUSMESSAGE;
+	if (send(planificadorSocket, &message, sizeof(char), 0) < 0){
+	   log_error(logger, "Coultn't send message to Planificador about type of message");
+	   exit(-1);
+	}
+
 	if(sendString(key, planificadorSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
@@ -348,13 +355,13 @@ int recieveStentenceToProcess(int esiSocket){
 	esiRequest.id = esiId;
 	esiRequest.operation = malloc(sizeof(Operation));
 
-	/*if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
+	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
 		sendResponseToEsi(&esiRequest, ABORT);
 		return -1;
-	}*/
-	recieveOperationDummy(esiRequest.operation);
+	}
+	/*recieveOperationDummy(esiRequest.operation);*/
 
 	log_info(logger, "El esi %d va a hacer:", esiRequest.id);
 	showOperation(esiRequest.operation);
@@ -479,11 +486,11 @@ int handleEsi(int esiSocket){
 }
 
 void pthreadInitialize(int* clientSocket){
-	int id = recieveClientId(*clientSocket, COORDINADOR, logger);
+	char id = recieveClientId(*clientSocket, COORDINADOR, logger);
 
-	if (id == 11){
+	if (id == INSTANCIAID){
 		handleInstancia(*clientSocket);
-	}else if(id == 12){
+	}else if(id == ESIID){
 		handleEsi(*clientSocket);
 	}else{
 		log_info(logger, "I received a strange");

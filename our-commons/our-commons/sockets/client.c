@@ -31,9 +31,9 @@ int connectToServer(char* serverIP, int serverPort, const char* serverName, cons
 	return serverSocket;
 }
 
-int handshakeWithServer(int serverSocket, int handshakeValue, const char* serverName, const char* clientName, t_log* logger) {
-	int response = 0;
-	if(recv(serverSocket, &response, sizeof(int), 0) <= 0){
+int handshakeWithServer(int serverSocket, char handshakeValue, const char* serverName, const char* clientName, t_log* logger) {
+	char response;
+	if(recv(serverSocket, &response, sizeof(char), 0) <= 0){
 		log_error(logger, "recv failed on %s, while trying to connect with server %s: %s", clientName, serverName, strerror(errno));
 		return -1;
 	}
@@ -45,8 +45,8 @@ int handshakeWithServer(int serverSocket, int handshakeValue, const char* server
 		return -1;
 	}
 
-	int clientHandshakeValue = response;
-	if (send(serverSocket, &clientHandshakeValue, sizeof(int), 0) < 0){
+	char clientHandshakeValue = response;
+	if (send(serverSocket, &clientHandshakeValue, sizeof(char), 0) < 0){
 		log_error(logger, "Something was wrong with send: %s", strerror(errno));
 		return -1;
 	}
@@ -54,7 +54,7 @@ int handshakeWithServer(int serverSocket, int handshakeValue, const char* server
 	return 0;
 }
 
-int welcomeServer(const char* serverIp, int serverPort, const char* serverName, const char* clientName, int handshakeValue,
+int welcomeServer(const char* serverIp, int serverPort, const char* serverName, const char* clientName, char handshakeValue,
 		int (*welcomeProcedure)(int serverSocket), t_log* logger){
 
 	int serverSocket = connectToServer(serverIp, serverPort, serverName, clientName, logger);
@@ -74,8 +74,8 @@ int welcomeServer(const char* serverIp, int serverPort, const char* serverName, 
 	return 0;
 }
 
-int sendMyIdToServer(int serverSocket, int clientId, const char* clientName, t_log* logger){
-	if (send(serverSocket, &clientId, sizeof(int), 0) < 0){
+int sendMyIdToServer(int serverSocket, char clientId, const char* clientName, t_log* logger){
+	if (send(serverSocket, &clientId, sizeof(char), 0) < 0){
 		log_error(logger,"Something was wrong with send from %s: %s", clientName, strerror(errno));
 		return -1;
 	}

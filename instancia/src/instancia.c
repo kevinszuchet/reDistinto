@@ -39,7 +39,7 @@ int main(void) {
 		return -1;
 	}
 
-	sendMyIdToServer(coordinadorSocket, 11, INSTANCIA, logger);
+	sendMyIdToServer(coordinadorSocket, INSTANCIAID, INSTANCIA, logger);
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
@@ -57,6 +57,7 @@ int main(void) {
 void test() {
 
 	for (int i = 0; i < (entriesAmount * entrySize); i++) {
+		//TODO creo que deberian usar comillas simples aca ''
 		storage[i] = "5";
 	}
 

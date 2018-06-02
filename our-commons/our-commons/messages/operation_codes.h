@@ -33,6 +33,17 @@
 #define INSTANCIA_RESPONSE_FALLEN 'p'
 #define INSTANCIA_RESPONSE_SUCCESS 's'
 
+#define ESIID 'a'
+#define COORDINADORID 'c'
+#define PLANIFICADORID 'd'
+#define INSTANCIAID 'e'
+#define HANDSHAKEESIPLANIFICADOR 'b'
+
+#define KEYSTATUSMESSAGE 'f'
+#define ESIINFORMATIONMESSAGE 'g'
+#define CORDINADORCONSOLERESPONSEMESSAGE 'h'
+
 char* getCoordinadorResponseName(char coordinadorResponse);
+char* getEsiInformationResponseName(char esiInformation);
 
 #endif /* OPERATION_CODES_H_ */
