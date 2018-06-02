@@ -26,7 +26,7 @@ endif
 all: esi
 
 dependents:
-	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug && $(MAKE) clean all
 
 # Tool invocations
 esi: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug/libour-commons.so

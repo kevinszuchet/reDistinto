@@ -51,7 +51,11 @@ int main(void) {
 		exit(-1);
 	}
 
-	welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomePlanificador, logger);
+	int welcomePlanificadorResponse = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomePlanificador, logger);
+	if(welcomePlanificadorResponse < 0){
+		log_error(logger, "Couldn't handshake with planificador, quitting...");
+		exit(-1);
+	}
 
 	free(algorithm);
 
@@ -345,8 +349,8 @@ void recieveOperationDummy(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	//esiId = getActualEsiID();
-	esiId = getActualEsiIDDummy();
+	esiId = getActualEsiID();
+	//esiId = getActualEsiIDDummy();
 
 	log_info(logger, "Llego el esi con id = %d", esiId);
 
@@ -367,8 +371,8 @@ int recieveStentenceToProcess(int esiSocket){
 	showOperation(esiRequest.operation);
 
 	char keyStatus;
-	//keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
-	keyStatus = checkKeyStatusFromPlanificadorDummy();
+	keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
+	//keyStatus = checkKeyStatusFromPlanificadorDummy();
 	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	switch (esiRequest.operation->operationCode){
@@ -448,7 +452,7 @@ int handleInstancia(int instanciaSocket){
 		log_info(logger, "Hilo de %s va a encargarse de hacer %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
 		//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
-		//instanciaDoOperation(arrivedInstancia, actualEsiRequest->operation, logger);
+		//instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
 		instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
 
 		//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada

@@ -151,11 +151,6 @@ Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, int* grea
 		return newInstancia;
 	}
 
-	//TODO sacar esto, es para que no se ponga esta cadena en todas las instancias
-	if(*greatesInstanciaId == 0){
-		list_add(newInstancia->storedKeys, "lio:messi");
-	}
-
 	list_add(instancias, newInstancia);
 	(*greatesInstanciaId)++;
 
