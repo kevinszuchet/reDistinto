@@ -19,7 +19,8 @@ t_log* operationsLogger;
 
 int planificadorSocket;
 void setDistributionAlgorithm(char* algorithm);
-Instancia* (*distributionAlgorithm)(char* keyToBeBlocked);
+Instancia* (*distributionAlgorithm)(char* key);
+Instancia* (*distributionAlgorithmSimulation)(char* key);
 t_list* instancias;
 int cantEntry;
 int entrySize;
@@ -86,6 +87,42 @@ void getConfig(int* listeningPort, char** algorithm){
 	config_destroy(config);
 }
 
+//TODO, estas dos deberian devolver INSTANCIA_HAS_FALLEN si se cayo
+/*char valueStatus(Instancia* instancia, char* key);
+char* valueFromKey(Instancia* instancia, char* key);*/
+
+Instancia* lookForInstanciaAndGetValueStatus(char* key, char* instanciaValueResponse){
+	Instancia* instanciaThatMightHaveValue = lookForKey(key, instancias);
+
+	/*if(!instanciaThatMightHaveValue){
+		return NULL;
+	}
+
+	*instanciaValueResponse = valueStatus(instanciaThatMightHaveValue, key);*/
+	return instanciaThatMightHaveValue;
+}
+
+int obtainPlanificadorConsoleResponse(char* key){
+	/*char instanciaValueResponse;
+	Instancia* instanciaThatMightHaveValue = lookForInstanciaAndGetValueStatus(key, &instanciaValueResponse);*/
+
+	/*if(instanciaThatMightHaveValue){
+		if(instanciaValueResponse == INSTANCIA_RESPONSE_HAS_VALUE){
+			char* value = valueFromKey(instanciaThatMightHaveValue, key);
+			//TODO devolver ese value
+		}else if(instanciaValueResponse == INSTANCIA_RESPONSE_HAS_NOT_VALUE){
+			//devolver que no tiene valor
+		}
+		//TODO devolver, en esos dos casos, la instancia
+	}
+	else{
+		//TODO simular distribucion de la key
+	}*/
+
+	//TODO no olvidar liberar el valor una vez que se haya enviado al planificador
+	return 0;
+}
+
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
 	if(instancia->isFallen){
 		return 0;
@@ -98,41 +135,71 @@ int instanciaIsAliveAndNextToActual(Instancia* instancia){
 	return instancia->id >= lastInstanciaChosen + 1;
 }
 
-Instancia* equitativeLoad(char* keyToBeBlocked){
+Instancia* getNextInstancia(){
 	Instancia* instancia = list_find(instancias, (void*) &instanciaIsAliveAndNextToActual);
 	if(instancia == NULL){
 		instancia = list_get(instancias, 0);
 		if(instancia->isFallen){
+			//TODO esto no esta bien. deberia seguir buscando...
 			return NULL;
 		}
 	}
+	return instancia;
+}
+
+Instancia* equitativeLoad(char* key){
+	Instancia* instancia = getNextInstancia();
 	lastInstanciaChosen = instancia->id;
 	return instancia;
 }
 
-Instancia* leastSpaceUsed(char* keyToBeBlocked){
+Instancia* leastSpaceUsed(char* key){
 	//TODO
-	return list_get(instancias, 0);
+	return NULL;
 }
 
-Instancia* keyExplicit(char* keyToBeBlocked){
+Instancia* keyExplicit(char* key){
 	//TODO
-	return list_get(instancias, 0);
+	return NULL;
+}
+
+Instancia* equitativeLoadSimulation(char* key){
+	return getNextInstancia();
+}
+
+Instancia* leastSpaceUsedSimulation(char* key){
+	//TODO
+	return NULL;
+}
+
+Instancia* keyExplicitSimulation(char* key){
+	//TODO
+	return NULL;
 }
 
 void setDistributionAlgorithm(char* algorithm){
 	if(strcmp(algorithm, "EL") == 0){
 		distributionAlgorithm = &equitativeLoad;
+		distributionAlgorithmSimulation = &equitativeLoadSimulation;
 	}else if(strcmp(algorithm, "LSU") == 0){
 		distributionAlgorithm = &leastSpaceUsed;
+		distributionAlgorithmSimulation = &leastSpaceUsedSimulation;
 	}else if(strcmp(algorithm, "KE") == 0){
 		distributionAlgorithm = &keyExplicit;
+		distributionAlgorithmSimulation = &keyExplicitSimulation;
 	}
 }
 
-Instancia* chooseInstancia(char* keyToBeBlocked){
+Instancia* chooseInstancia(char* key){
 	if(list_size(instancias) != 0){
-		return (*distributionAlgorithm)(keyToBeBlocked);
+		return (*distributionAlgorithm)(key);
+	}
+	return NULL;
+}
+
+Instancia* simulateChooseInstancia(char* key){
+	if(list_size(instancias) != 0){
+		return (*distributionAlgorithmSimulation)(key);
 	}
 	return NULL;
 }
@@ -349,6 +416,8 @@ void recieveOperationDummy(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
+	//TODO sacar esto cuando cambiemos el orden de los recv's
+	log_info(logger, "Esperando que llegue un esi");
 	esiId = getActualEsiID();
 	//esiId = getActualEsiIDDummy();
 
