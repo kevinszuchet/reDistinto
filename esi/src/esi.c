@@ -131,6 +131,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 			log_info(logger, "recv an order from planificador");
 			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
 		}
+		//TODO que hacer cuando se recibe distinto a RUN?
 	}
 
 	if (line) {
@@ -178,11 +179,14 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 
 	log_info(logger, "I will send the coordinador response to planificador %s", getCoordinadorResponseName(coordinadorResponse));
 	char message = ESIINFORMATIONMESSAGE;
-	if (send(planificadorSocket, &message, sizeof(char), 0) < 0){
-	   log_error(logger, "Coultn't send message to Planificador about type of message");
-	   exit(-1);
-	}
-	if (send(planificadorSocket, &operationResponse, sizeof(OperationResponse), 0) <= 0) {
+
+	void* package = NULL;
+	int offset = 0;
+
+	addToPackageGeneric(&package, &message, sizeof(char), &offset);
+	addToPackageGeneric(&package, &operationResponse, sizeof(OperationResponse), &offset);
+
+	if (send_all(planificadorSocket, package, offset) == CUSTOM_FAILURE) {
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
 		exit(-1);
 	}

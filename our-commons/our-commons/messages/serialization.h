@@ -15,6 +15,9 @@
 #include <string.h>
 #include <stddef.h>
 
+int send_all(int socket, void* package, int length);
+int addToPackageGeneric(void** package, void* value, int size, int* offset);
+
 int sendInt(int value, int sendSocket);
 int recieveInt(int** value, int recvSocket);
 

@@ -381,12 +381,14 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	//TODO probar esto
 	char message = KEYSTATUSMESSAGE;
-	if (send(planificadorSocket, &message, sizeof(char), 0) < 0){
-	   log_error(logger, "Coultn't send message to Planificador about type of message");
-	   exit(-1);
-	}
 
-	if(sendString(key, planificadorSocket) == CUSTOM_FAILURE){
+	void* package = NULL;
+	int offset = 0;
+
+	addToPackageGeneric(&package, &message, sizeof(char), &offset);
+	addToPackageGeneric(&package, key, strlen(key)+1, &offset);
+
+	if(send_all(planificadorSocket, package, offset) == CUSTOM_FAILURE){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
 	}
