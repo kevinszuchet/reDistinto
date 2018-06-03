@@ -137,29 +137,20 @@ char waitForInstanciaResponseDummy(){
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia){
-	if(firstInstancia->id > secondInstancia->id){
-		return 1;
-	}
-	return 0;
-}
-
-Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId, char* name){
-	Instancia* newInstancia = createInstancia(*greatesInstanciaId, instanciaSocket, 0, 'a', 'z', name);
+Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, char* name){
+	Instancia* newInstancia = createInstancia(instanciaSocket, 0, 'a', 'z', name);
 
 	if(!newInstancia){
 		return newInstancia;
 	}
 
 	list_add(instancias, newInstancia);
-	(*greatesInstanciaId)++;
 
 	return newInstancia;
 }
 
-Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, char* name){
+Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char lastLetter, char* name){
 	Instancia* instancia = malloc(sizeof(Instancia));
-	instancia->id = id;
 	instancia->socket = socket;
 	instancia->spaceUsed = spaceUsed;
 	instancia->firstLetter = firstLetter;
@@ -181,9 +172,9 @@ Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, 
  * TEST FUNCTIONS
  */
 void initializeSomeInstancias(t_list* instancias){
-	list_add(instancias, createInstancia(0, 10, 0, 'a', 'z', "instancia1"));
-	list_add(instancias, createInstancia(5, 10, 0, 'a', 'z', "instancia2"));
-	list_add(instancias, createInstancia(9, 10, 0, 'a', 'z', "instancia3"));
+	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia1"));
+	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia2"));
+	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia3"));
 }
 
 void showStoredKey(char* key){
@@ -208,14 +199,13 @@ void showInstanciaState(Instancia* instancia){
 
 void showInstancia(Instancia* instancia){
 	if(instancia != NULL){
-		printf("ID = %d\n", instancia->id);
+		printf("Name = %s\n", instancia->name);
 		printf("Socket = %d\n", instancia->socket);
 		printf("Space used = %d\n", instancia->spaceUsed);
 		printf("First letter = %c\n", instancia->firstLetter);
 		printf("Last letter = %c\n", instancia->lastLetter);
 		showStoredKeys(instancia);
 		showInstanciaState(instancia);
-		printf("Name = %s\n", instancia->name);
 		printf("----------\n");
 	}else{
 		printf("Instance cannot be showed\n");

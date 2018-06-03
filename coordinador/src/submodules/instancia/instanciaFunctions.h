@@ -14,7 +14,6 @@
 	#include <semaphore.h>
 
 	typedef struct Instancia{
-		int id;
 		int socket;
 		int spaceUsed;
 		char firstLetter;
@@ -39,8 +38,8 @@
 	char waitForInstanciaResponse(Instancia* chosenInstancia);
 	char waitForInstanciaResponseDummy();
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
-	Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, int* greatesInstanciaId, char* name);
-	Instancia* createInstancia(int id, int socket, int spaceUsed, char firstLetter, char lastLetter, char* name);
+	Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, char* name);
+	Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char lastLetter, char* name);
 
 	/*-----------------------------------------------------*/
 

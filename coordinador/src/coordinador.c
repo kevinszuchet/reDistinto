@@ -25,9 +25,8 @@ t_list* instancias;
 int cantEntry;
 int entrySize;
 int delay;
-int lastInstanciaChosen = 0;
+Instancia* lastInstanciaChosen;
 int firstAlreadyPass = 0;
-int greatesInstanciaId = 0;
 
 EsiRequest* actualEsiRequest;
 sem_t* instanciaResponse;
@@ -123,33 +122,68 @@ int obtainPlanificadorConsoleResponse(char* key){
 	return 0;
 }
 
+int positionInList(Instancia* instancia){
+	int instanciasCounter = 0;
+	int alreadyFoundInstancia = 0;
+
+	void ifNotActualInstanciaIncrementCounter(Instancia* actualInstancia){
+		if(actualInstancia != instancia && !alreadyFoundInstancia){
+			instanciasCounter++;
+		}else{
+			alreadyFoundInstancia = 1;
+		}
+	}
+
+	list_iterate(instancias, (void*) &ifNotActualInstanciaIncrementCounter);
+	return instanciasCounter;
+}
+
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
 	if(instancia->isFallen){
 		return 0;
 	}
 
-	if(lastInstanciaChosen == 0 && firstAlreadyPass == 0){
+	if(positionInList(lastInstanciaChosen) == 0 && firstAlreadyPass == 0){
 		firstAlreadyPass = 1;
 		return 1;
 	}
-	return instancia->id >= lastInstanciaChosen + 1;
+
+	return positionInList(instancia) >= positionInList(lastInstanciaChosen) + 1;
 }
 
 Instancia* getNextInstancia(){
+	log_info(logger, "Position in list lastInstanciaChosen: %d", positionInList(lastInstanciaChosen));
 	Instancia* instancia = list_find(instancias, (void*) &instanciaIsAliveAndNextToActual);
-	if(instancia == NULL){
-		instancia = list_get(instancias, 0);
-		if(instancia->isFallen){
-			//TODO esto no esta bien. deberia seguir buscando...
-			return NULL;
+	if(!instancia && firstAlreadyPass){
+
+		Instancia* auxLastInstanciaChosen = lastInstanciaChosen;
+		lastInstanciaChosen = list_get(instancias, 0);
+		firstAlreadyPass = 0;
+
+		instancia = list_find(instancias, (void*) &instanciaIsAliveAndNextToActual);
+
+		if(!instancia){
+			lastInstanciaChosen = auxLastInstanciaChosen;
 		}
 	}
 	return instancia;
 }
 
 Instancia* equitativeLoad(char* key){
+	Instancia* chosenInstancia = getNextInstancia();
+	if(chosenInstancia){
+		lastInstanciaChosen = chosenInstancia;
+	}
+	return chosenInstancia;
+}
+
+//TODO testear (y que no afecte al posta)
+Instancia* equitativeLoadSimulation(char* key){
+	Instancia* auxLastInstanciaChosen2 = lastInstanciaChosen;
+	int firstAlreadyPassAux = firstAlreadyPass;
 	Instancia* instancia = getNextInstancia();
-	lastInstanciaChosen = instancia->id;
+	lastInstanciaChosen = auxLastInstanciaChosen2;
+	firstAlreadyPass = firstAlreadyPassAux;
 	return instancia;
 }
 
@@ -161,10 +195,6 @@ Instancia* leastSpaceUsed(char* key){
 Instancia* keyExplicit(char* key){
 	//TODO
 	return NULL;
-}
-
-Instancia* equitativeLoadSimulation(char* key){
-	return getNextInstancia();
 }
 
 Instancia* leastSpaceUsedSimulation(char* key){
@@ -264,7 +294,7 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 	//TODO mariano fijate que al hacer este sleep, si matas (rapido) al esi, se hace el send igual
 	//sleep(10);
 	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
-		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre %s. Instancia %d se cayo. Clave inaccesible", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->id);
+		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre %s. Instancia %s se cayo. Clave inaccesible", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->name);
 		sendResponseToEsi(actualEsiRequest, ABORT);
 		return -1;
 	}
@@ -407,6 +437,11 @@ char checkKeyStatusFromPlanificadorDummy(){
 }
 
 void recieveOperationDummy(Operation* operation){
+	/*operation->key = malloc(31);
+	strcpy(operation->key, "lio:messi");
+	char* buffer = malloc(3);
+	sprintf(buffer, "%d", lastInstanciaChosen);
+	strcat(operation->key, buffer);*/
 	operation->key = "lio:messi";
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
@@ -429,12 +464,13 @@ int recieveStentenceToProcess(int esiSocket){
 	esiRequest.operation = malloc(sizeof(Operation));
 
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
+		log_error(logger, "Couldn't recieve esi's operation");
 		//TODO testear esta partecita
 		esiRequest.operation = NULL;
 		sendResponseToEsi(&esiRequest, ABORT);
 		return -1;
 	}
-	/*recieveOperationDummy(esiRequest.operation);*/
+	//recieveOperationDummy(esiRequest.operation);
 
 	log_info(logger, "El esi %d va a hacer:", esiRequest.id);
 	showOperation(esiRequest.operation);
@@ -442,7 +478,15 @@ int recieveStentenceToProcess(int esiSocket){
 	char keyStatus;
 	keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
 	//keyStatus = checkKeyStatusFromPlanificadorDummy();
+
 	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
+
+	if(strcmp(getKeyStatusName(keyStatus), "UNKNOWN KEY STATUS") == 0){
+		log_error(logger, "Couldn't recieve esi key status from planificador");
+		free(esiRequest.operation);
+		sendResponseToEsi(&esiRequest, ABORT);
+		return -1;
+	}
 
 	switch (esiRequest.operation->operationCode){
 		case OURSET:
@@ -491,7 +535,7 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 		instanciaIsBack(arrivedInstancia, instanciaSocket);
 		log_info(logger, "La instancia %s esta reviviendo", arrivedInstanciaName);
 	}else{
-		arrivedInstancia = createNewInstancia(instanciaSocket, instancias, &greatesInstanciaId, arrivedInstanciaName);
+		arrivedInstancia = createNewInstancia(instanciaSocket, instancias, arrivedInstanciaName);
 
 		if(!arrivedInstancia){
 			log_error(logger, "Couldn't initalize instancia semaphre");
@@ -500,16 +544,44 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 			//si hay que matar al hilo, devolver NULL !!!
 		}
 
+		if(list_size(instancias) == 1){
+			lastInstanciaChosen = list_get(instancias, 0);
+		}
+
 		log_info(logger, "La instancia %s es nueva", arrivedInstanciaName);
 	}
 
 	return arrivedInstancia;
 }
 
+Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
+	char* arrivedInstanciaName = NULL;
+	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket, logger) < 0){
+		return NULL;
+	}
+	//recieveInstanciaNameDummy(&arrivedInstanciaName);
+	log_info(logger, "Llego instancia: %s", arrivedInstanciaName);
+
+	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
+		free(arrivedInstanciaName);
+		return NULL;
+	}
+	log_info(logger, "Se envio la configuracion a la instancia %s", arrivedInstanciaName);
+
+	Instancia* instancia = createNewInstancia(instanciaSocket, instancias, arrivedInstanciaName);
+
+	if(list_size(instancias) == 1){
+		lastInstanciaChosen = list_get(instancias, 0);
+	}
+
+	return instancia;
+}
+
 int handleInstancia(int instanciaSocket){
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos cuando puede haber varios activos (compactacion)
 
 	Instancia* actualInstancia = initialiceArrivedInstancia(instanciaSocket);
+	//Instancia* actualInstancia = initialiceArrivedInstanciaDummy(instanciaSocket);
 
 	if(!actualInstancia){
 		return -1;
