@@ -84,6 +84,8 @@ int main(int argc, char* argv[]) {
 	free(ipCoordinador);
 	free(ipPlanificador);
 	
+	log_info(logger, "That's all folks!");
+
 	return 0;
 }
 
