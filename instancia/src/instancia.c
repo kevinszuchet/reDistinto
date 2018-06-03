@@ -388,17 +388,18 @@ char store(char *key) {
 	char *valueToStore;
 	t_link_element * selectedElemByKey;
 
-	selectedElemByKey = list_find_element_with_param(entryTable, key, compareByKey,index);
+	selectedElemByKey = list_find_element_with_param(entryTable, key, compareByKey, &index);
 	valueSize = getValueSize(selectedElemByKey->data);
 	valueStart = getValueStart(selectedElemByKey->data);
 	valueToStore = malloc(valueSize);
 	getValue(&valueToStore, valueStart, valueStart);
 
-	file = fopen(*key, "w");
+	//TODO se manda key o *key o &key
+	file = fopen(key, "w");
 	results = fputs(valueToStore, file);
 
 	if (results == EOF) {
-		log_error("There was an error while trying to store %s key\n", key);
+		log_error(logger, "There was an error while trying to store %s key\n", key);
 	    // notifyCoordinador??
 	}
 
