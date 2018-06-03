@@ -16,5 +16,5 @@
 
 	void * list_remove_by_condition_with_param(t_list *self, void * param, bool(*condition)(void*, void*));
 	void list_remove_and_destroy_by_condition_with_param(t_list *self, void * param, bool(*condition)(void*, void*), void(*element_destroyer)(void*));
-
+	bool compareByKey(entryTableInfo * entryInfo, char * key);
 #endif /* SRC_OURLIST_OURLIST_H_ */
