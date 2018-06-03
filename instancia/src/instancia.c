@@ -8,6 +8,7 @@
 #include "instancia.h"
 
 t_log * logger;
+char* path;
 
 int main(void) {
 
@@ -16,7 +17,7 @@ int main(void) {
 
 	char* ipCoordinador;
 	int portCoordinador;
-	char* path, * name;
+	char * name;
 	int dump;
 
 	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dump);
@@ -44,7 +45,10 @@ int main(void) {
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
-	waitForCoordinadorStatements(coordinadorSocket);
+	//waitForCoordinadorStatements(coordinadorSocket);
+
+	set("Key1", "Prueba de un valor que ocupa 2 entradas");
+	store("Key1");
 
 	free(ipCoordinador);
 	free(algorithm);
@@ -388,18 +392,24 @@ char store(char *key) {
 	char *valueToStore;
 	t_link_element * selectedElemByKey;
 
-	selectedElemByKey = list_find_element_with_param(entryTable, key, compareByKey,index);
+	selectedElemByKey = list_find_element_with_param(entryTable, key, hasKey, &index);
 	valueSize = getValueSize(selectedElemByKey->data);
+	log_info(logger, "Size of value: %d", valueSize);
 	valueStart = getValueStart(selectedElemByKey->data);
-	valueToStore = malloc(valueSize);
-	getValue(&valueToStore, valueStart, valueStart);
+	log_info(logger, "Value start: %d\n", valueStart);
 
-	file = fopen(*key, "w");
+	valueToStore = malloc(valueSize);
+	getValue(&valueToStore, valueStart, valueSize);
+
+	log_info(logger, "Value to store: %d\n", valueToStore);
+
+	file = fopen(key, "w");
 	results = fputs(valueToStore, file);
 
 	if (results == EOF) {
-		log_error("There was an error while trying to store %s key\n", key);
+		log_error(logger, "There was an error while trying to store the key: %s \n", key);
 	    // notifyCoordinador??
+
 	}
 
 	fclose(file);
