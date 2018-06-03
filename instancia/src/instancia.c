@@ -379,7 +379,32 @@ int wholeUpperDivision(int x, int y) {
 }
 
 char store(char *key) {
-	log_info(logger, "The key: %s, was successfully stored/n", key);
+
+	log_info(logger, "The key: %s, is about to being stored\n", key);
+
+	int results, valueStart, valueSize;
+	int index = 0;
+	FILE *file;
+	char *valueToStore;
+	t_link_element * selectedElemByKey;
+
+	selectedElemByKey = list_find_element_with_param(entryTable, key, compareByKey,index);
+	valueSize = getValueSize(selectedElemByKey->data);
+	valueStart = getValueStart(selectedElemByKey->data);
+	valueToStore = malloc(valueSize);
+	getValue(&valueToStore, valueStart, valueStart);
+
+	file = fopen(*key, "w");
+	results = fputs(valueToStore, file);
+
+	if (results == EOF) {
+		log_error("There was an error while trying to store %s key\n", key);
+	    // notifyCoordinador??
+	}
+
+	fclose(file);
+	free(valueToStore);
+	log_info(logger, "The key: %s, was successfully stored\n", key);
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 

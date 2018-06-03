@@ -44,3 +44,8 @@ void list_remove_and_destroy_by_condition_with_param(t_list *self, void * param,
 	if (data)
 		element_destroyer(data);
 }
+
+bool compareByKey(entryTableInfo * entryInfo, char * key) {
+
+	return strcmp(entryInfo->key, key) == 0;
+}
