@@ -11,6 +11,7 @@
 	#define IS_EMPTY 0
 	#define IS_SET 1
 	#define ENTRY_START_ERROR -1
+	#define I_NEED_TO_COMPACT -2
 
 	#define MAX_KEY_SIZE 40
 
@@ -33,28 +34,27 @@
 	// Functions
 	void sendMyNameToCoordinador(char * name, int coordinadorSocket);
 	void receiveCoordinadorConfiguration(int coordinadorSocket);
-	int initialize(int entraces, int entryStorage);
+	void initialize(int entraces, int entryStorage);
 	void waitForCoordinadorStatements(int coordinadorSocket);
-	void interpretateStatement(Operation * operation);
+	char interpretateStatement(Operation * operation);
 	int finish();
 
 	void biMapInitialize(int entraces);
 	void emptyBiMap(int entraces);
 	void biMapUpdate(int valueStart, int entriesForValue, int value);
 
-	int set(char *key, char *value);
+	char set(char *key, char *value);
 	int updateKey(char *key, char *value);
 	int getStartEntryToSet(int amountOfEtries);
 	void storageSet(int initialEntry,  char * value);
 
-	int compact();
+	char compact();
 	int getTotalSettedEntries();
 	void getValue(char ** value, int valueStart, int valueSize);
 	int getValueStartEntry(char * key);
 
-	int notifyCoodinador(char *key, char *value, char *operation);
-	int dump();
-	int store(char *key);
+	char dump();
+	char store(char *key);
 
 	int wholeUpperDivision(int x, int y);
 

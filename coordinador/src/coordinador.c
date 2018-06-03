@@ -521,8 +521,8 @@ int handleInstancia(int instanciaSocket){
 		log_info(logger, "Hilo de %s va a encargarse de hacer %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
 		//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
-		//instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
-		instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
+		instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
+		//instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
 
 		//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada
 		log_info(logger, "Se va a procesar la respuesta de la instancia");

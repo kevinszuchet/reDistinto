@@ -8,8 +8,6 @@
 #include "instancia.h"
 
 t_log * logger;
-void getConfigDebug(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump);
-void test();
 
 int main(void) {
 
@@ -30,6 +28,9 @@ int main(void) {
 	printf("Name= %s\n", name);
 	printf("Dump= %d\n", dump);
 	log_info(logger, "trying to connect to coordinador...");
+
+	// TODO Tratar de levantar la instancia si existe una carpeta con el mismo nombre
+	// void tryToComeAliveAgain(name)
 
 	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA, logger);
 
@@ -54,35 +55,6 @@ int main(void) {
 	return 0;
 }
 
-void test() {
-
-	for (int i = 0; i < (entriesAmount * entrySize); i++) {
-		//TODO creo que deberian usar comillas simples aca ''
-		storage[i] = "5";
-	}
-
-	set("lionel", "andres messi cuccitini l10");
-	set("andres", "iniesta");
-	set("xavi", "hernandez");
-	set("matias", "kranevitter");
-	printf("Storage pre reemplazo: %s\n", storage);
-
-	set("gareth", "bale");
-
-	entryTableInfo * nodo;
-	for (int i = 0; i < 6; i++) {
-		nodo = list_get(entryTable, i);
-	}
-
-
-	set("jorge", "supital");
-	printf("Storage jorge: %s\n", storage);
-	set("marcela", "wilder");
-	printf("Storage marcela: %s\n", storage);
-	set("gabo", "anaconda ricardi");
-	printf("Storage gabo: %s\n", storage);
-}
-
 void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump) {
 
 	t_config* config;
@@ -96,16 +68,6 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	config_destroy(config);
 }
 
-void getConfigDebug(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump) {
-
-	*ipCoordinador = "127.0.0.1";
-	*portCoordinador = 8080;
-	*algorithm = "CIRC";
-	*path = "/home/utnso/instancia1/";
-	*name = "Instancia1";
-	*dump = 10;
-}
-
 // Functions
 
 void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
@@ -113,20 +75,25 @@ void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 		log_error(logger, "I cannot send my name to coordinador");
 		exit(-1);
 	}
+	log_info(logger, "I send my name to coordinador");
 }
 
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
 	InstanciaConfiguration instanciaConfiguration;
+
+	log_info(logger, "I am waiting for the last details (sent by coordinador)");
 
 	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(InstanciaConfiguration), 0) <= 0) {
 		log_error(logger, "recv failed on trying to connect with coordinador %s", strerror(errno));
 		exit(-1);
 	}
 
+	log_info(logger, "I recieve the coordinador configuration, so I can work");
+
 	initialize(instanciaConfiguration.entriesAmount, instanciaConfiguration.entrySize);
 }
 
-int initialize(int entraces, int entryStorage){
+void initialize(int entraces, int entryStorage){
 
 	// REVIEW Que casos de error puede haber?? Pensarlo.
 
@@ -135,16 +102,15 @@ int initialize(int entraces, int entryStorage){
 	entryTable = list_create();
 
 	// REVIEW Hace falta un +1 para el \0?
-	storage = malloc((entraces * entryStorage) + 1);
+	storage = malloc(entraces * entryStorage);
 	biMapInitialize(entraces);
 
 	log_info(logger, "Instancia was intialized correctly");
-
-	return 0;
 }
 
 void waitForCoordinadorStatements(int coordinadorSocket) {
 	Operation * operation = NULL;
+	char response;
 
 	while (1) {
 		log_info(logger, "Wait coordinador statement to execute");
@@ -153,22 +119,31 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 			exit(-1);
 		}
 
-		interpretateStatement(operation);
+		response = interpretateStatement(operation);
+
+		if (send(coordinadorSocket, &response, sizeof(response), 0) < 0) {
+			log_error(logger, "I cannot send my response to coordinador");
+			exit(-1);
+		}
+
+		log_info(logger, "The operation was successfully notified to coordinador");
 	}
 }
 
-void interpretateStatement(Operation * operation) {
+char interpretateStatement(Operation * operation) {
 	showOperation(operation);
 
 	switch (operation->operationCode) {
 		case OURSET:
-			set(operation->key, operation->value);
+			return set(operation->key, operation->value);
 			break;
 
 		case OURSTORE:
-			store(operation->key);
+			return store(operation->key);
 			break;
 	}
+
+	return INSTANCIA_RESPONSE_FALLEN;
 }
 
 int finish() {
@@ -199,7 +174,7 @@ void biMapUpdate(int valueStart, int entriesForValue, int biMapValue) {
 }
 
 /* Set */
-int set(char *key, char *value){
+char set(char *key, char *value){
 
 	int entriesForValue;
 	int valueStart = ENTRY_START_ERROR;
@@ -212,7 +187,7 @@ int set(char *key, char *value){
 	// Asks if the size of the value can be stored
 	if (valueSize > (entriesAmount * entrySize)) {
 		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
-		return -1;
+		return INSTANCIA_RESPONSE_FALLEN;
 	}
 
 	// If the key exists, the value is updated
@@ -242,8 +217,13 @@ int set(char *key, char *value){
 
 	if (valueStart == ENTRY_START_ERROR) {
 		log_error(logger, "There was an error trying to set, no valid entry start was found");
-		return -1;
+		return INSTANCIA_RESPONSE_FALLEN;
 	}
+
+	else if (valueStart == I_NEED_TO_COMPACT) {
+		return INSTANCIA_NEED_TO_COMPACT;
+	}
+
 	// Create the entry structure
 
 	entryInfo = malloc(sizeof(entryTableInfo));
@@ -254,7 +234,7 @@ int set(char *key, char *value){
 	biMapUpdate(valueStart, entriesForValue, IS_SET);
 
 	log_info(logger, "Set operation for key: %s and value: %s, was successfully done", key, value);
-	return 0;
+	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
 int getStartEntryToSet(int valueNeededEntries) {
@@ -292,7 +272,7 @@ int getStartEntryToSet(int valueNeededEntries) {
 			}
 		}
 
-		if(entryStart == ENTRY_START_ERROR) {
+		if (entryStart == ENTRY_START_ERROR) {
 
 			if (valueNeededEntries > totalFreeEntries) {
 				// Delete any value considering the replacement algorithm
@@ -300,6 +280,7 @@ int getStartEntryToSet(int valueNeededEntries) {
 				deleteAccodringToAlgorithm();
 			} else {
 				// A compactation is needed, we notify coordinador so he can order to compact all instancias.
+				return I_NEED_TO_COMPACT;
 				log_info(logger, "There are not enough contiguous free entries to set the value. A compactation is needed, we are about to notify coordinador");
 				break;
 			}
@@ -327,10 +308,9 @@ int updateKey(char *key, char *value) {
 	log_info(logger, "The key: %s, was successfully updated with the value: %s", key, value);
 
 	return 0;
-
 }
 
-int compact() {
+char compact() {
 
 	int totalSettedEntries = getTotalSettedEntries();
 	int totalUsedMemory = totalSettedEntries * entrySize;
@@ -370,7 +350,7 @@ int compact() {
 
 	free(auxStorage);
 	log_info(logger, "Compactation was successfully done");
-	return 0;
+	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
 void getValue(char ** value, int valueStart, int valueSize) {
@@ -398,31 +378,12 @@ int wholeUpperDivision(int x, int y) {
 	return (1 + ((x - 1) / y));
 }
 
-int store(char *key) {
+char store(char *key) {
 	log_info(logger, "The key: %s, was successfully stored/n", key);
-	return 0;
+	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-/*int notifyCoodinador(char *key, char *value, char *operation) {
-
-	log_info(logger, "%s operation, with key: %s and value: %s, was successfully notified to coordinador", operation, key, value);
-	return 0;
-
-}
-
-int dump() {
-
+char dump() {
 	log_info(logger, "Dump was successfully done");
-	return 0;
-
+	return INSTANCIA_RESPONSE_SUCCESS;
 }
-
-int getValueStartEntry(char * key) {
-
-	int entry = 0;
-
-	log_info(logger, "Start entry for value with key: %s, is: %d", key, entry);
-
-	return entry;
-
-}*/
