@@ -152,7 +152,6 @@ int instanciaIsAliveAndNextToActual(Instancia* instancia){
 }
 
 Instancia* getNextInstancia(){
-	log_info(logger, "Position in list lastInstanciaChosen: %d", positionInList(lastInstanciaChosen));
 	Instancia* instancia = list_find(instancias, (void*) &instanciaIsAliveAndNextToActual);
 	if(!instancia && firstAlreadyPass){
 
