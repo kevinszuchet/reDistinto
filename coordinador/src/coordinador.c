@@ -413,9 +413,11 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	void* package = NULL;
 	int offset = 0;
+	int sizeString = strlen(key)+1;
 
 	addToPackageGeneric(&package, &message, sizeof(char), &offset);
-	addToPackageGeneric(&package, key, strlen(key)+1, &offset);
+	addToPackageGeneric(&package, &sizeString, sizeof(sizeString), &offset);	
+	addToPackageGeneric(&package, key, sizeString, &offset);
 
 	if(send_all(planificadorSocket, package, offset) == CUSTOM_FAILURE){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
