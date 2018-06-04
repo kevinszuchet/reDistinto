@@ -25,7 +25,7 @@
 	#include <commons/log.h>
 	#include <our-commons/messages/serialization.h>
 	#include <our-commons/tads/tads.h>
-	#include <our-commons/semaphores/semaphores.h>
+	#include <semaphore.h>
 
 	#define  CFG_FILE "../planificador.cfg"
 	#define CONSOLE_BLOCKED 0

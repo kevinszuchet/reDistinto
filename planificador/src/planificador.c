@@ -29,10 +29,10 @@ pthread_t threadExecution;
 pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
 
-int executionSemaphore;
-int keyRecievedFromCoordinadorSemaphore;
-int esiInformationRecievedSemaphore;
-int readyEsisSemaphore;
+sem_t executionSemaphore;
+sem_t keyRecievedFromCoordinadorSemaphore;
+sem_t esiInformationRecievedSemaphore;
+sem_t readyEsisSemaphore;
 
 int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
@@ -58,22 +58,12 @@ int main(void) {
 
 
 
-	if((executionSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
-		log_error(logger,"Couln't create semaphore");
-	}
-	if((keyRecievedFromCoordinadorSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
-		log_error(logger,"Couln't create semaphore");
-	}
-	if((esiInformationRecievedSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
-		log_error(logger,"Couln't create semaphore");
-	}
-	if((readyEsisSemaphore=semget(IPC_PRIVATE,1,IPC_CREAT | 0700))<0) {
-		log_error(logger,"Couln't create semaphore");
-	}
-	initSem(keyRecievedFromCoordinadorSemaphore,0,0);
-	initSem(esiInformationRecievedSemaphore,0,0);
-	initSem(readyEsisSemaphore,0,0);
-	initSem(executionSemaphore,0,0);
+
+	sem_init(&keyRecievedFromCoordinadorSemaphore,0);
+	sem_init(&esiInformationRecievedSemaphore,0);
+	sem_init(&readyEsisSemaphore,0);
+	sem_init(&executionSemaphore,0);
+
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
@@ -96,13 +86,13 @@ void executionProcedure(){
 	//NEW SELECT EXECUTION
 	while(1){
 		while(pauseState){
-			doWait(executionSemaphore,0); //POR AHORA ESTA CON UN MUTEX, PASARLO A SEMAFORO DE ESTADO
+			sem_wait(&executionSemaphore); //POR AHORA ESTA CON UN MUTEX, PASARLO A SEMAFORO DE ESTADO
 			log_info(logger,"Time to execute\n");
 
 
 			if(runningEsi==NULL){
-				doWait(readyEsisSemaphore,0);
-				doSignal(readyEsisSemaphore,0);
+				sem_wait(&readyEsisSemaphore);
+				sem_post(&readyEsisSemaphore);
 
 				log_info(logger,"At least an ESI is ready to run\n");
 				pthread_mutex_lock(&mutexReadyList);
@@ -119,17 +109,17 @@ void executionProcedure(){
 
 			sendMessageExecuteToEsi(nextEsi);
 			log_info(logger,"Waiting coordinador request\n");
-			doWait(keyRecievedFromCoordinadorSemaphore,0);
+			sem_wait(&keyRecievedFromCoordinadorSemaphore);
 
 			log_info(logger,"Key received = %s\n",keyRecieved);
 			sendKeyStatusToCoordinador(keyRecieved);
 
 			log_info(logger,"Waiting esi information\n");
-			doWait(esiInformationRecievedSemaphore,0);
+			sem_wait(&esiInformationRecievedSemaphore);
 			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)",getCoordinadorResponseName(esiInformation->coordinadorResponse),getEsiInformationResponseName(esiInformation->esiStatus));
 			handleEsiInformation(esiInformation,keyRecieved);
 			log_info(logger,"Finish executing one instruction from ESI %d\n",nextEsi->id);
-			doSignal(executionSemaphore,0);
+			sem_post(&executionSemaphore);
 
 		}
 	}
@@ -216,7 +206,7 @@ void finishRunningEsi(){
 void removeFromReady(Esi* esi){
 
 	pthread_mutex_lock(&mutexReadyList);
-	doWait(readyEsisSemaphore,0);
+	sem_wait(&readyEsisSemaphore);
 	Esi* esiFromReady;
 	int idToRemove =-1;
 	for(int i = 0;i<list_size(readyEsis);i++){
@@ -451,7 +441,7 @@ void addEsiToReady(Esi* esi){
 	pthread_mutex_lock(&mutexReadyList);
 	list_add(readyEsis,(void*)esi);
 	pthread_mutex_unlock(&mutexReadyList);
-	doSignal(readyEsisSemaphore,0);
+	sem_post(&readyEsisSemaphore);
 	log_info(logger, "Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
 }
 
@@ -509,13 +499,13 @@ int clientHandler(char clientMessage, int clientSocket){
 			log_error(logger,"Couldn't recieve key to check from coordinador, quitting...");
 			exit(-1);
 		}
-		doSignal(keyRecievedFromCoordinadorSemaphore,0);
+		sem_post(&keyRecievedFromCoordinadorSemaphore);
 	}else if(clientMessage == ESIINFORMATIONMESSAGE){
 		log_info(logger,"I recieved a esi information message\n");
 
 		esiInformation = waitEsiInformation(nextEsi->socketConection);
 
-		doSignal(esiInformationRecievedSemaphore,0);
+		sem_post(&esiInformationRecievedSemaphore);
 	}else if(clientMessage == CORDINADORCONSOLERESPONSEMESSAGE){
 		log_info(logger,"I recieved a coordinador console response message\n");
 
@@ -534,8 +524,8 @@ int welcomeNewClients(int newCoordinadorSocket){
 
 	coordinadorSocket = newCoordinadorSocket;
 
-	log_info(logger,"Starting the execution");
-	doSignal(executionSemaphore,0);
+
+
 	/*
 	 * Planificador console
 	 * */
@@ -572,6 +562,9 @@ int handleConcurrence(){
 	FD_SET(serverSocket, &master);
 	FD_SET(coordinadorSocket, &master);
 	fdmax = serverSocket;
+
+	log_info(logger,"Starting the execution");
+	sem_post(&executionSemaphore);
 
 	while(1){
 		readfds = master; // copy it
