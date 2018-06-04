@@ -26,10 +26,12 @@
 	} __attribute__((packed)) InstanciaConfiguration;
 
 	#include <stdio.h>
+	#include <stdlib.h>
 	#include "../messages/operation_codes.h"
 
 	char* getOperationName(Operation* operation);
 	void showOperation(Operation* operation);
 	char* getKeyStatusName(char keyStatus);
+	void destroyOperation(Operation* operation);
 
 #endif /* TADS_H_ */

@@ -46,3 +46,9 @@ char* getKeyStatusName(char keyStatus){
 			break;
 	}
 }
+
+void destroyOperation(Operation* operation){
+	free(operation->key);
+	free(operation->value);
+	free(operation);
+}

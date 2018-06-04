@@ -152,7 +152,6 @@ int instanciaIsAliveAndNextToActual(Instancia* instancia){
 }
 
 Instancia* getNextInstancia(){
-	log_info(logger, "Position in list lastInstanciaChosen: %d", positionInList(lastInstanciaChosen));
 	Instancia* instancia = list_find(instancias, (void*) &instanciaIsAliveAndNextToActual);
 	if(!instancia && firstAlreadyPass){
 
@@ -261,7 +260,7 @@ int getActualEsiID(){
 }
 
 int getActualEsiIDDummy(){
-	return 0;
+	return 1;
 }
 
 //TODO deprecated. sacar
@@ -453,29 +452,26 @@ void recieveOperationDummy(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	//TODO sacar esto cuando cambiemos el orden de los recv's
 	log_info(logger, "Esperando que llegue un esi");
-	esiId = getActualEsiID();
-	//esiId = getActualEsiIDDummy();
-
-	log_info(logger, "Llego el esi con id = %d", esiId);
 
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
-	esiRequest.id = esiId;
 	esiRequest.operation = malloc(sizeof(Operation));
 
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't recieve esi's operation");
-		//TODO testear esta partecita
-		esiRequest.operation = NULL;
-		sendResponseToEsi(&esiRequest, ABORT);
+		log_error(logger, "Couldn't receive esi's operation");
+		destroyOperation(esiRequest.operation);
 		return -1;
 	}
 	//recieveOperationDummy(esiRequest.operation);
 
-	log_info(logger, "El esi %d va a hacer:", esiRequest.id);
+	log_info(logger, "El esi que llego va a hacer:");
 	showOperation(esiRequest.operation);
+
+	esiId = getActualEsiID();
+	//esiId = getActualEsiIDDummy();
+	esiRequest.id = esiId;
+	log_info(logger, "Llego el esi con id = %d", esiId);
 
 	char keyStatus;
 	keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
@@ -485,7 +481,7 @@ int recieveStentenceToProcess(int esiSocket){
 
 	if(strcmp(getKeyStatusName(keyStatus), "UNKNOWN KEY STATUS") == 0){
 		log_error(logger, "Couldn't recieve esi key status from planificador");
-		free(esiRequest.operation);
+		destroyOperation(esiRequest.operation);
 		sendResponseToEsi(&esiRequest, ABORT);
 		return -1;
 	}
@@ -513,7 +509,7 @@ int recieveStentenceToProcess(int esiSocket){
 			break;
 	}
 
-	free(esiRequest.operation);
+	destroyOperation(esiRequest.operation);
 	sleep(delay);
 	return operationResult == 0 ? 1 : -1;
 }
