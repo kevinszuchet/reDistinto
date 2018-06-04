@@ -108,7 +108,7 @@ void removeKeyFromFallenInstancia(char* key, Instancia* instancia){
 }
 
 void addKeyToInstanciaStruct(Instancia* instancia, char* key){
-	list_add(instancia->storedKeys, key);
+	list_add(instancia->storedKeys, strdup(key));
 }
 
 void freeInstanciaSemaphore(Instancia* instancia){

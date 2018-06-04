@@ -121,7 +121,7 @@ int recieveOperation(Operation** operationRef, int recvSocket) {
 	int sizeKey;
 	int sizeValue;
 
-	Operation* operation = malloc(sizeof(Operation));
+	Operation* operation = calloc(1, sizeof(Operation));
 	*operationRef = operation;
 	operation->value = NULL;
 

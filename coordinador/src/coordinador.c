@@ -263,11 +263,6 @@ int getActualEsiIDDummy(){
 	return 1;
 }
 
-//TODO deprecated. sacar
-void logOperation(char* stringToLog){
-	log_info(operationsLogger, stringToLog);
-}
-
 int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest){
 	if(keyStatus != LOCKED){
 		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre la clave %s. Clave no bloqueada por el",
@@ -460,6 +455,7 @@ int recieveStentenceToProcess(int esiSocket){
 	esiRequest.socket = esiSocket;
 	esiRequest.operation = malloc(sizeof(Operation));
 
+	//TODO se podria usar esta parte para ver si el esi termino
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't receive esi's operation");
 		destroyOperation(esiRequest.operation);
