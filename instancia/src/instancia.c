@@ -47,7 +47,7 @@ int main(void) {
 	receiveCoordinadorConfiguration(coordinadorSocket);
 	//waitForCoordinadorStatements(coordinadorSocket);
 
-	set("Key1", "Prueba de un valor que ocupa 2 entradas");
+	set("Key1", "Prueba de un valor que ocupa 3 entradas, hola hola hola");
 	store("Key1");
 
 	free(ipCoordinador);
@@ -184,7 +184,7 @@ char set(char *key, char *value){
 	int valueStart = ENTRY_START_ERROR;
 	int valueSize = strlen(value);
 	entryTableInfo * entryInfo;
-	entryTableInfo * auxEntryInfo;
+
 
 	log_info(logger, "Size of value: %d", valueSize);
 
@@ -192,24 +192,6 @@ char set(char *key, char *value){
 	if (valueSize > (entriesAmount * entrySize)) {
 		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
 		return INSTANCIA_RESPONSE_FALLEN;
-	}
-
-	// If the key exists, the value is updated
-	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
-
-		/*
-		 * Por las dudas guardo la información de la key que voy a borrar para hacerle update por si algo sale mal la reetablesco.
-		 * TODO revisarlo bien y pensar bien como y cuando chequear si no se pudo hacer el set para reetablecer la key.
-		 * */
-
-		auxEntryInfo = malloc(sizeof(entryTableInfo));
-		entryInfo = malloc(sizeof(entryTableInfo));
-		entryInfo = list_find_with_param(entryTable, key, hasKey);
-
-		createTableInfo(auxEntryInfo, key, entryInfo->valueStart, entryInfo->valueSize);
-		deleteKey(entryInfo);
-
-		free(entryInfo);
 	}
 
 	// Get the amount of entries that is needed to store the value
@@ -228,16 +210,37 @@ char set(char *key, char *value){
 		return INSTANCIA_NEED_TO_COMPACT;
 	}
 
-	// Create the entry structure
+	// If the key exists, the value is updated
+	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
 
-	entryInfo = malloc(sizeof(entryTableInfo));
-	createTableInfo(entryInfo, key, valueStart, valueSize);
+		/*
+		 * Por las dudas guardo la información de la key que voy a borrar para hacerle update por si algo sale mal la reetablesco.
+		 * TODO revisarlo bien y pensar bien como y cuando chequear si no se pudo hacer el set para reetablecer la key.
+		 * */
 
-	list_add(entryTable, entryInfo);
-	storageSet(valueStart, value);
-	biMapUpdate(valueStart, entriesForValue, IS_SET);
+		log_info(logger, "The key: %s already exists, so we are about to update it.", key);
 
-	log_info(logger, "Set operation for key: %s and value: %s, was successfully done", key, value);
+		entryInfo = list_find_with_param(entryTable, key, hasKey);
+
+		entryInfo->valueSize = valueSize;
+		entryInfo->valueStart = valueStart;
+
+	} else {
+
+		// Create the entry structure
+
+		entryInfo = malloc(sizeof(entryTableInfo));
+		createTableInfo(entryInfo, key, valueStart, valueSize);
+
+		list_add(entryTable, entryInfo);
+
+	}
+
+		storageSet(valueStart, value);
+		biMapUpdate(valueStart, entriesForValue, IS_SET);
+
+		log_info(logger, "Set operation for key: %s and value: %s, was successfully done", key, value);
+
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
@@ -303,17 +306,6 @@ void storageSet(int initialEntry,  char * value) {
 	}
 }
 
-int updateKey(char *key, char *value) {
-
-	log_info(logger, "The key: %s, already exists so it will be updated with value: %s", key, value);
-
-	//...
-
-	log_info(logger, "The key: %s, was successfully updated with the value: %s", key, value);
-
-	return 0;
-}
-
 char compact() {
 
 	int totalSettedEntries = getTotalSettedEntries();
@@ -357,12 +349,21 @@ char compact() {
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-void getValue(char ** value, int valueStart, int valueSize) {
+/*void getValue2(char ** value, int valueStart, int valueSize) {
 	int j = 0;
+	//printf("storage: %s\n", storage);
 	for (int i = valueStart; i < (valueStart + valueSize); i++) {
+		//printf("storage[%d] = %c\n", i, storage[i]);
 		*value[j] = storage[i];
+		//printf("value[%d] = %s\n", j, value[j]);
 		j++;
 	}
+}*/
+
+void getValue(char ** value, int valueStart, int valueSize) {
+	char * storageValue = string_substring(storage, valueStart, valueStart + valueSize);
+	strcpy(*value, storageValue);
+	free(storageValue);
 }
 
 int getTotalSettedEntries() {
@@ -387,34 +388,39 @@ char store(char *key) {
 	log_info(logger, "The key: %s, is about to being stored\n", key);
 
 	int results, valueStart, valueSize;
-	int index = 0;
 	FILE *file;
 	char *valueToStore;
 	t_link_element * selectedElemByKey;
+	/*char * filePath;
+	string_append(&filePath, path);
+	string_append(&filePath, key);
+	string_append(&filePath, "\0");
+	printf("filePath: %s", filePath);*/
 
-	selectedElemByKey = list_find_element_with_param(entryTable, key, hasKey, &index);
+	selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
 	valueSize = getValueSize(selectedElemByKey->data);
 	log_info(logger, "Size of value: %d", valueSize);
 	valueStart = getValueStart(selectedElemByKey->data);
-	log_info(logger, "Value start: %d\n", valueStart);
+	log_info(logger, "Value start: %d", valueStart);
 
 	valueToStore = malloc(valueSize);
 	getValue(&valueToStore, valueStart, valueSize);
 
-	log_info(logger, "Value to store: %d\n", valueToStore);
+	log_info(logger, "Value to store: %s", valueToStore);
 
 	file = fopen(key, "w");
 	results = fputs(valueToStore, file);
 
 	if (results == EOF) {
-		log_error(logger, "There was an error while trying to store the key: %s \n", key);
+		log_error(logger, "There was an error while trying to store the key: %s", key);
 	    // notifyCoordinador??
 
 	}
 
 	fclose(file);
 	free(valueToStore);
-	log_info(logger, "The key: %s, was successfully stored\n", key);
+	log_info(logger, "The key: %s, was successfully stored", key);
+	//free(filePath);
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
