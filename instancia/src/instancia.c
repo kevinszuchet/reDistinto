@@ -30,6 +30,13 @@ int main(void) {
 	printf("Dump= %d\n", dump);
 	log_info(logger, "trying to connect to coordinador...");
 
+	/*
+	 * Creates path directory with mkdir (if it does not exists)
+	 * S_IRWXU: User mode to Read, Write and eXecute
+	 * */
+
+	mkdir(path, S_IRWXU);
+
 	// TODO Tratar de levantar la instancia si existe una carpeta con el mismo nombre
 	// void tryToComeAliveAgain(name)
 
@@ -225,18 +232,16 @@ char set(char *key, char *value){
 	} else {
 
 		// Create the entry structure
-
 		entryInfo = malloc(sizeof(entryTableInfo));
 		createTableInfo(entryInfo, key, valueStart, valueSize);
 
 		list_add(entryTable, entryInfo);
-
 	}
 
-		storageSet(valueStart, value);
-		biMapUpdate(valueStart, entriesForValue, IS_SET);
+	storageSet(valueStart, value);
+	biMapUpdate(valueStart, entriesForValue, IS_SET);
 
-		log_info(logger, "Set operation for key: %s and value: %s, was successfully done", key, value);
+	log_info(logger, "Set operation for key: %s and value: %s, was successfully done", key, value);
 
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
@@ -321,7 +326,7 @@ char compact() {
 
 		 valueSize = getValueSize(element->data);
 		 valueStart = getValueStart(element->data);
-		 char * value = malloc(valueSize);
+		 char * value = NULL;
 		 getValue(&value, valueStart, valueSize);
 
 		 // Update ValueStart on dictionary(key) element
@@ -346,20 +351,11 @@ char compact() {
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-/*void getValue2(char ** value, int valueStart, int valueSize) {
-	int j = 0;
-	//printf("storage: %s\n", storage);
-	for (int i = valueStart; i < (valueStart + valueSize); i++) {
-		//printf("storage[%d] = %c\n", i, storage[i]);
-		*value[j] = storage[i];
-		//printf("value[%d] = %s\n", j, value[j]);
-		j++;
-	}
-}*/
-
 void getValue(char ** value, int valueStart, int valueSize) {
 	char * storageValue = string_substring(storage, valueStart, valueStart + valueSize);
+	*value = malloc((valueSize * sizeof(char)) + 1);
 	strcpy(*value, storageValue);
+	*value[valueSize] = '\0';
 	free(storageValue);
 }
 
@@ -386,13 +382,11 @@ char store(char *key) {
 
 	int results, valueStart, valueSize;
 	FILE *file;
-	char *valueToStore;
 	t_link_element * selectedElemByKey;
-	/*char * filePath;
-	string_append(&filePath, path);
-	string_append(&filePath, key);
-	string_append(&filePath, "\0");
-	printf("filePath: %s", filePath);*/
+	char *valueToStore, *filePath = malloc(strlen(path) + strlen(key) + 1);
+
+	sprintf(filePath, "%s%s", path, key);
+	filePath[strlen(path) + strlen(key)] = '\0';
 
 	selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
 
@@ -401,25 +395,30 @@ char store(char *key) {
 	valueStart = getValueStart(selectedElemByKey->data);
 	log_info(logger, "Value start: %d", valueStart);
 
-	valueToStore = malloc(valueSize);
 	getValue(&valueToStore, valueStart, valueSize);
 
-	log_info(logger, "Value to store: %s", valueToStore);
+	// REVIEW porque rompe esto --> log_info(logger, "Value to store: %s", valueToStore);
 
-	log_info(logger, "Value to store: %s", valueToStore);
-	file = fopen(key, "w");
-	results = fputs(valueToStore, file);
+	if ((file = fopen(filePath, "w")) != NULL) {
 
-	if (results == EOF) {
-		log_error(logger, "There was an error while trying to store the key: %s", key);
-	    // notifyCoordinador??
+		results = fputs(valueToStore, file);
 
+		log_info(logger, "The key was stored in: %s", filePath);
+
+		free(filePath);
+		free(valueToStore);
+		fclose(file);
+
+		if (results == EOF) {
+			log_error(logger, "There was an error while trying to store the key: %s", key);
+			return INSTANCIA_RESPONSE_FALLEN;
+		}
+	} else {
+		log_error(logger, "File doesnt exist: %s", strerror(errno));
+		return INSTANCIA_RESPONSE_FALLEN;
 	}
 
-	fclose(file);
-	free(valueToStore);
 	log_info(logger, "The key: %s, was successfully stored", key);
-	//free(filePath);
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
