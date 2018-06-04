@@ -56,13 +56,11 @@ int main(void) {
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-
-
-
-	sem_init(&keyRecievedFromCoordinadorSemaphore,0);
-	sem_init(&esiInformationRecievedSemaphore,0);
-	sem_init(&readyEsisSemaphore,0);
-	sem_init(&executionSemaphore,0);
+	//TODO NICO chequear el segundo parametro (es si se comparte entre hilos o no)
+	sem_init(&keyRecievedFromCoordinadorSemaphore, 1, 0);
+	sem_init(&esiInformationRecievedSemaphore, 1, 0);
+	sem_init(&readyEsisSemaphore, 1, 0);
+	sem_init(&executionSemaphore, 1, 0);
 
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 
