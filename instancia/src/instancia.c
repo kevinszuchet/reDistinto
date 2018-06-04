@@ -45,10 +45,7 @@ int main(void) {
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
-	//waitForCoordinadorStatements(coordinadorSocket);
-
-	set("Key1", "Prueba de un valor que ocupa 3 entradas, hola hola hola");
-	store("Key1");
+	waitForCoordinadorStatements(coordinadorSocket);
 
 	free(ipCoordinador);
 	free(algorithm);
@@ -385,7 +382,7 @@ int wholeUpperDivision(int x, int y) {
 
 char store(char *key) {
 
-	log_info(logger, "The key: %s, is about to being stored\n", key);
+	log_info(logger, "The key: %s, is about to being stored", key);
 
 	int results, valueStart, valueSize;
 	FILE *file;
@@ -398,6 +395,7 @@ char store(char *key) {
 	printf("filePath: %s", filePath);*/
 
 	selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
+
 	valueSize = getValueSize(selectedElemByKey->data);
 	log_info(logger, "Size of value: %d", valueSize);
 	valueStart = getValueStart(selectedElemByKey->data);
@@ -408,6 +406,7 @@ char store(char *key) {
 
 	log_info(logger, "Value to store: %s", valueToStore);
 
+	log_info(logger, "Value to store: %s", valueToStore);
 	file = fopen(key, "w");
 	results = fputs(valueToStore, file);
 
