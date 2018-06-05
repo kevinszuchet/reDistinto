@@ -310,7 +310,7 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 
 	log_info(operationsLogger, "ESI %d hizo %s sobre la clave %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 
-	return sendResponseToEsi(esiRequest, SUCCESS);
+	return 0;
 }
 
 Instancia* lookOrRemoveKeyIfInFallenInstancia(EsiRequest* esiRequest){
@@ -361,6 +361,8 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}
 
+	sendResponseToEsi(esiRequest, SUCCESS);
+
 	return 0;
 }
 
@@ -383,6 +385,8 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed) < 0){
 		return -1;
 	}
+
+	sendResponseToEsi(esiRequest, FREE);
 
 	return 0;
 }

@@ -21,8 +21,10 @@ char* getCoordinadorResponseName(char coordinadorResponse){
 		case ABORT:
 			return "ABORT";
 			break;
+		case FREE:
+			return "FREE";
 		default:
-			return "UNKNOWN KEY STATUS";
+			return "UNKNOWN COORDINADOR RESPONSE";
 			break;
 	}
 }
