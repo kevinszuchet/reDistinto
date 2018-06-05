@@ -9,7 +9,7 @@
 
 t_log* logger;
 
-int pauseState = 1; //1 is running, 0 is paussed
+int pauseState = CONTINUE; //1 is running, 0 is paussed
 
 t_dictionary* blockedEsiDic; //Key->esiQueue  if queue is empty, no one have take the resource
 t_list* readyEsis;
@@ -25,14 +25,20 @@ int portCoordinador;
 char** blockedKeys;
 pthread_t threadConsole;
 pthread_t threadExecution;
+pthread_t threadConsoleInstructions;
 
 pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
+
 
 sem_t executionSemaphore;
 sem_t keyRecievedFromCoordinadorSemaphore;
 sem_t esiInformationRecievedSemaphore;
 sem_t readyEsisSemaphore;
+
+sem_t consoleInstructionSemaphore;
+
+
 
 int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
@@ -41,6 +47,8 @@ int coordinadorSocket;
 char* keyRecieved;
 OperationResponse* esiInformation;
 Esi* nextEsi;
+
+t_list* instruccionsByConsoleList;
 
 int welcomeNewClients();
 
@@ -56,14 +64,19 @@ int main(void) {
 	finishedEsis = list_create();
 	runningEsi = NULL;
 
-	//TODO NICO chequear el segundo parametro (es si se comparte entre hilos o no)
+	instruccionsByConsoleList = list_create();
+
 	sem_init(&keyRecievedFromCoordinadorSemaphore, 0, 0);
 	sem_init(&esiInformationRecievedSemaphore, 0, 0);
 	sem_init(&readyEsisSemaphore, 0, 0);
 	sem_init(&executionSemaphore, 0, 0);
 
-	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
+	sem_init(&consoleInstructionSemaphore, 0, 1);
 
+
+
+	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
+	pthread_create(&threadConsoleInstructions,NULL,(void*)executeConsoleInstruccions,NULL);
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
 	if(welcomeCoordinadorResult < 0){
 		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
@@ -83,15 +96,12 @@ void executionProcedure(){
 
 	//NEW SELECT EXECUTION
 	while(1){
-		while(pauseState){
-			sem_wait(&executionSemaphore); //POR AHORA ESTA CON UN MUTEX, PASARLO A SEMAFORO DE ESTADO
-			log_info(logger,"Time to execute\n");
 
+
+		sem_wait(&executionSemaphore);
+		if((list_size(readyEsis)>0 ||runningEsi!=NULL)&&pauseState==CONTINUE){
 
 			if(runningEsi==NULL){
-				sem_wait(&readyEsisSemaphore);
-				sem_post(&readyEsisSemaphore);
-
 				log_info(logger,"At least an ESI is ready to run\n");
 				pthread_mutex_lock(&mutexReadyList);
 				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
@@ -117,21 +127,36 @@ void executionProcedure(){
 			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)",getCoordinadorResponseName(esiInformation->coordinadorResponse),getEsiInformationResponseName(esiInformation->esiStatus));
 			handleEsiInformation(esiInformation,keyRecieved);
 			log_info(logger,"Finish executing one instruction from ESI %d\n",nextEsi->id);
-			sem_post(&executionSemaphore);
-
+			sem_post(&consoleInstructionSemaphore);
+		}else{
+			sem_post(&consoleInstructionSemaphore);
 		}
+
+
+
 	}
 }
 
-
-int checkKeyBlocked(char* keyRecieved){
-	t_queue* blockedEsis = dictionary_get(blockedEsiDic,keyRecieved);
-	if(queue_size(blockedEsis)==0){
-		log_info(logger,"Key %s free to use\n");
-		return KEYFREE;
-	}else{
-		return KEYBLOCKED;
+void executeConsoleInstruccions(){
+	void validateAndexecuteComand(void* parameters){
+		if(validCommand((char**)parameters)){
+			execute((char**)parameters);
+		}
 	}
+	log_info(logger,"Console instruccion thread created");
+	while(1){
+		sem_wait(&consoleInstructionSemaphore);
+
+		if(list_size(instruccionsByConsoleList)>0){
+			log_info(logger,"Hay (%d) instrucciones de consola para ejecutar",list_size(instruccionsByConsoleList));
+			list_iterate(instruccionsByConsoleList,&validateAndexecuteComand);
+			list_clean(instruccionsByConsoleList);
+		}
+
+		sem_post(&executionSemaphore);
+	}
+
+
 }
 
 void unlockEsi(char* key){
@@ -330,6 +355,7 @@ void blockEsi(char* lockedResource, int esiBlocked){
 	t_queue* esiQueue = malloc(sizeof(esiQueue));
 
 	if(!dictionary_has_key(blockedEsiDic,lockedResource)){
+		log_warning(logger,"Trying to block an ESI in a key that is not already in the dictionary");
 		queue_create(esiQueue);
 		queue_push(esiQueue,(void*)esiBlocked);
 		dictionary_put(blockedEsiDic,lockedResource,esiQueue);
@@ -347,12 +373,15 @@ void blockEsi(char* lockedResource, int esiBlocked){
 void takeResource(char* key, int esiID){
 	printf("log1\n");
 	if(esiID != CONSOLE_BLOCKED){
-		printf("Key (%s) runningEsiID (%d)\n",key,runningEsi->id);
 		addLockedKey(&key,&runningEsi);
 		dictionary_put(takenResources,key,(void*)esiID);
+		t_queue* esiQueue = queue_create();
+		dictionary_put(blockedEsiDic,key,esiQueue);
 		log_info(logger,"Resource (%s) was taken by ESI (%d)",key,esiID);
 	}else{
 		dictionary_put(takenResources,key,(void*)CONSOLE_BLOCKED);
+		t_queue* esiQueue = queue_create();
+		dictionary_put(blockedEsiDic,key,esiQueue);
 		log_info(logger,"Resource (%s) was taken Console",key);
 	}
 
@@ -371,16 +400,14 @@ void freeResource(char* key,Esi* esiTaker){
 
 	if(dictionary_has_key(blockedEsiDic,key)){
 		t_queue* blockedEsisQueue;
-			blockedEsisQueue = dictionary_get(blockedEsiDic,key);
-			Esi* unblockedEsi = NULL;
-			if(!queue_is_empty(blockedEsisQueue)){
-				unblockedEsi = (Esi*)queue_pop(blockedEsisQueue);
-				dictionary_remove(blockedEsiDic,key);
-				dictionary_put(blockedEsiDic,key,blockedEsisQueue);
-				log_info(logger,"Unblocked ESI %d from resource %s",unblockedEsi->id,key);
-				addEsiToReady(unblockedEsi);
-				log_info(logger,"Added ESI %d to ready",unblockedEsi->id);
-			}
+		blockedEsisQueue = dictionary_get(blockedEsiDic,key);
+		Esi* unblockedEsi = NULL;
+		if(!queue_is_empty(blockedEsisQueue)){
+			unblockedEsi = (Esi*)queue_pop(blockedEsisQueue);
+			log_info(logger,"Unblocked ESI %d from resource %s",unblockedEsi->id,key);
+			addEsiToReady(unblockedEsi);
+			log_info(logger,"Added ESI %d to ready",unblockedEsi->id);
+		}
 	}else{
 		log_warning(logger,"Can't release an esi from key (%s), key isn't in the dictionary",key);
 	}
@@ -451,10 +478,6 @@ int clientHandler(char clientMessage, int clientSocket){
 
 	if (clientMessage == ESIID){
 		welcomeEsi(clientSocket);
-
-		//Start planificador task
-		log_info(logger,"Start to execute ESIs\n");
-		//executionProcedure();
 	}else if(clientMessage == KEYSTATUSMESSAGE){
 		log_info(logger,"I recieved a key status message\n");
 		if(recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE){
@@ -525,8 +548,6 @@ int handleConcurrence(){
 	FD_SET(coordinadorSocket, &master);
 	fdmax = serverSocket;
 
-	log_info(logger,"Starting the execution");
-	sem_post(&executionSemaphore);
 
 	while(1){
 		readfds = master; // copy it

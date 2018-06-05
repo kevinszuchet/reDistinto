@@ -31,6 +31,11 @@
 	#define CONSOLE_BLOCKED 0
 	#define KEYFREE 1
 	#define KEYBLOCKED 0
+	#define PAUSE 0
+	#define CONTINUE 1
+
+
+	int pauseState;
 
 	t_dictionary* blockedEsiDic;
 	t_list* readyEsis;
@@ -47,8 +52,8 @@
 	int portCoordinador;
 	char** blockedKeys;
 
-
-
+	t_list* instruccionsByConsoleList;
+	sem_t pauseStateSemaphore;
 
 	//DUMMIE FUNCTIONS
 	void sendKeyStatusToCoordinadorDummie(char status);
@@ -58,6 +63,7 @@
 
 	void executionProcedure();
 
+	void executeConsoleInstruccions();
 	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
 
 	void abortEsi(Esi* esi);

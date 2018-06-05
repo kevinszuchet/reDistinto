@@ -34,9 +34,12 @@ void openConsole() {
 			break;
 		}*/
 
-		if(validCommand(parameters)) {
-			execute(parameters);
-		}
+
+		list_add(instruccionsByConsoleList,parameters);
+		log_info(logger,"Command added to instruccionsByConsole list");
+
+
+
 
 		free(line);
 	}
@@ -46,14 +49,20 @@ void execute(char** parameters) {
 	char* command = parameters[0];
 	int commandNumber = getCommandNumber(command);
 	// Borrar cuando todo funcione
-	printf("Execute command number: %d\n", commandNumber);
+	log_info(logger,"Execute command : %s\n", command);
 	char* key;
 	int esiID;
 	switch(commandNumber) {
 		case PAUSAR:
+			pauseState = PAUSE;
+			log_info(logger,"Execution paused by console");
+			//sem_wait(&pauseStateSemaphore);
 
 		break;
 		case CONTINUAR:
+			pauseState = CONTINUE;
+			log_info(logger,"Execution continued by console");
+			//sem_post(&pauseStateSemaphore);
 
 		break;
 		case BLOQUEAR:
@@ -145,15 +154,13 @@ int validCommand(char** parameters) {
 }
 
 int validateBloquear(char* key,int id){
-	if(keyExists(key)&&(isReady(id)||isRunning(id))&&(!isTakenResource(key))){
+	if(keyExists(key)&&(isReady(id)||isRunning(id))){
 		return 1;
 	}
 	return 0;
 }
 
 int keyExists(char* key){
-	//Debo preguntarle al coordinador si alguna instancia guarda esa clave
-	//Mientras tanto pregunto si existe en mi listado de claves bloqueadas
 	if(dictionary_has_key(blockedEsiDic,key)){
 		printf("key %s exists\n",key);
 		return 1;
