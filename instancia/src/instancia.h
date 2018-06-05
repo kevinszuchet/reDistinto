@@ -52,7 +52,7 @@
 
 	char compact();
 	int getTotalSettedEntries();
-	void getValue(char ** value, int valueStart, int valueSize);
+	void getValue(char * value, int valueStart, int valueSize);
 	int getValueStartEntry(char * key);
 
 	char dump();

@@ -326,8 +326,8 @@ char compact() {
 
 		 valueSize = getValueSize(element->data);
 		 valueStart = getValueStart(element->data);
-		 char * value = NULL;
-		 getValue(&value, valueStart, valueSize);
+		 char * value = malloc((valueSize * sizeof(char)) + 1);
+		 getValue(value, valueStart, valueSize);
 
 		 // Update ValueStart on dictionary(key) element
 		 setValueStart(element->data, auxIndex);
@@ -351,11 +351,10 @@ char compact() {
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-void getValue(char ** value, int valueStart, int valueSize) {
+void getValue(char * value, int valueStart, int valueSize) {
 	char * storageValue = string_substring(storage, valueStart, valueStart + valueSize);
-	*value = malloc((valueSize * sizeof(char)) + 1);
-	strcpy(*value, storageValue);
-	*value[valueSize] = '\0';
+	strcpy(value, storageValue);
+	value[valueSize] = '\0';
 	free(storageValue);
 }
 
@@ -395,24 +394,20 @@ char store(char *key) {
 	valueStart = getValueStart(selectedElemByKey->data);
 	log_info(logger, "Value start: %d", valueStart);
 
-	getValue(&valueToStore, valueStart, valueSize);
+	valueToStore = malloc((valueSize * sizeof(char)) + 1);
+	getValue(valueToStore, valueStart, valueSize);
 
 	// REVIEW porque rompe esto --> log_info(logger, "Value to store: %s", valueToStore);
 
 	if ((file = fopen(filePath, "w")) != NULL) {
 
-		results = fputs(valueToStore, file);
+		fprintf(file, "%s", valueToStore);
 
 		log_info(logger, "The key was stored in: %s", filePath);
 
 		free(filePath);
 		free(valueToStore);
 		fclose(file);
-
-		if (results == EOF) {
-			log_error(logger, "There was an error while trying to store the key: %s", key);
-			return INSTANCIA_RESPONSE_FALLEN;
-		}
 	} else {
 		log_error(logger, "File doesnt exist: %s", strerror(errno));
 		return INSTANCIA_RESPONSE_FALLEN;
