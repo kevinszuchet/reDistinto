@@ -149,8 +149,9 @@ void finishRunningEsi(){
 		log_info(logger,"Key (%s) was freed by Esi (%d)  \n",keyToFree, runningEsi->id);
 	}
 	list_clean(runningEsi->lockedKeys);
-	runningEsi = NULL;
 	log_info(logger,"Esi (%d) succesfully finished \n",runningEsi->id);
+	runningEsi = NULL;
+
 
 }
 
