@@ -27,18 +27,18 @@
 	int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger);
 	int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize, t_log* logger);
 	void recieveInstanciaNameDummy(char** arrivedInstanciaName);
-	Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias);
+	Instancia* existsInstanciaWithName(char* arrivedInstanciaName);
 	void instanciaIsBack(Instancia* instancia, int instanciaSocket);
 	void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger);
 	void instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger);
-	Instancia* lookForKey(char* key, t_list* instancias);
+	Instancia* lookForKey(char* key);
 	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
 	void addKeyToInstanciaStruct(Instancia* instancia, char* key);
 	void instanciaHasFallen(Instancia* fallenInstancia);
 	char waitForInstanciaResponse(Instancia* chosenInstancia);
 	char waitForInstanciaResponseDummy();
 	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
-	Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, char* name);
+	Instancia* createNewInstancia(int instanciaSocket, char* name);
 	Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char lastLetter, char* name);
 
 	/*-----------------------------------------------------*/
@@ -46,9 +46,9 @@
 	/*
 	 * TEST FUNCTIONS
 	 */
-	void initializeSomeInstancias(t_list* instancias);
+	void initializeSomeInstancias();
 	void showInstancia(Instancia* instancia);
-	void showInstancias(t_list* instancias);
+	void showInstancias();
 	/*
 	 * TEST FUNCTIONS
 	 */

@@ -38,6 +38,7 @@
 	int welcomePlanificador(int coordinadorSocket, int planificadorSocket);
 	int clientHandler(int clientSocket);
 
+	t_list* instancias;
 	char instanciaResponseStatus;
 
 #endif /* SRC_COORDINADOR_H_ */

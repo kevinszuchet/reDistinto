@@ -24,13 +24,13 @@ int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize
 	config.entriesAmount = cantEntry;
 	config.entrySize = entrySize;
 	if (send(instanciaSocket, &config, sizeof(InstanciaConfiguration), 0) < 0) {
-		log_error(logger,	"No se pudo enviar su configuracion a la instancia");
+		log_error(logger, "No se pudo enviar su configuracion a la instancia");
 		return -1;
 	}
 	return 0;
 }
 
-Instancia* existsInstanciaWithName(char* arrivedInstanciaName, t_list* instancias){
+Instancia* existsInstanciaWithName(char* arrivedInstanciaName){
 	int instanciaHasName(Instancia* instancia){
 		return strcmp(instancia->name, arrivedInstanciaName) == 0;
 	}
@@ -84,7 +84,7 @@ int isLookedKeyGeneric(char* actualKey, char* key){
 	return 1;
 }
 
-Instancia* lookForKey(char* key, t_list* instancias){
+Instancia* lookForKey(char* key){
 	int isLookedKey(char* actualKey){
 		return isLookedKeyGeneric(actualKey, key);
 	}
@@ -137,7 +137,7 @@ char waitForInstanciaResponseDummy(){
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-Instancia* createNewInstancia(int instanciaSocket, t_list* instancias, char* name){
+Instancia* createNewInstancia(int instanciaSocket, char* name){
 	Instancia* newInstancia = createInstancia(instanciaSocket, 0, 'a', 'z', name);
 
 	if(!newInstancia){
@@ -171,7 +171,7 @@ Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char las
 /*
  * TEST FUNCTIONS
  */
-void initializeSomeInstancias(t_list* instancias){
+void initializeSomeInstancias(){
 	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia1"));
 	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia2"));
 	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia3"));
@@ -212,9 +212,11 @@ void showInstancia(Instancia* instancia){
 	}
 }
 
-void showInstancias(t_list* instancias){
+void showInstancias(){
 	printf("----- INSTANCIAS -----\n");
+	//pthread_mutex_lock(&instanciasListMutex);
 	list_iterate(instancias, (void*) &showInstancia);
+	//pthread_mutex_unlock(&instanciasListMutex);
 }
 /*
  * TEST FUNCTIONS

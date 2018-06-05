@@ -21,13 +21,14 @@ int planificadorSocket;
 void setDistributionAlgorithm(char* algorithm);
 Instancia* (*distributionAlgorithm)(char* key);
 Instancia* (*distributionAlgorithmSimulation)(char* key);
-t_list* instancias;
 int cantEntry;
 int entrySize;
 int delay;
 Instancia* lastInstanciaChosen;
 int firstAlreadyPass = 0;
-
+pthread_mutex_t esisMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t instanciasListMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lastInstanciaChosenMutex = PTHREAD_MUTEX_INITIALIZER;
 EsiRequest* actualEsiRequest;
 sem_t* instanciaResponse;
 
@@ -91,7 +92,9 @@ void getConfig(int* listeningPort, char** algorithm){
 char* valueFromKey(Instancia* instancia, char* key);*/
 
 Instancia* lookForInstanciaAndGetValueStatus(char* key, char* instanciaValueResponse){
-	Instancia* instanciaThatMightHaveValue = lookForKey(key, instancias);
+	pthread_mutex_lock(&instanciasListMutex);
+	Instancia* instanciaThatMightHaveValue = lookForKey(key);
+	pthread_mutex_unlock(&instanciasListMutex);
 
 	/*if(!instanciaThatMightHaveValue){
 		return NULL;
@@ -169,19 +172,23 @@ Instancia* getNextInstancia(){
 }
 
 Instancia* equitativeLoad(char* key){
+	pthread_mutex_lock(&lastInstanciaChosenMutex);
 	Instancia* chosenInstancia = getNextInstancia();
 	if(chosenInstancia){
 		lastInstanciaChosen = chosenInstancia;
 	}
+	pthread_mutex_unlock(&lastInstanciaChosenMutex);
 	return chosenInstancia;
 }
 
 //TODO testear (y que no afecte al posta)
 Instancia* equitativeLoadSimulation(char* key){
+	pthread_mutex_lock(&lastInstanciaChosenMutex);
 	Instancia* auxLastInstanciaChosen2 = lastInstanciaChosen;
 	int firstAlreadyPassAux = firstAlreadyPass;
 	Instancia* instancia = getNextInstancia();
 	lastInstanciaChosen = auxLastInstanciaChosen2;
+	pthread_mutex_unlock(&lastInstanciaChosenMutex);
 	firstAlreadyPass = firstAlreadyPassAux;
 	return instancia;
 }
@@ -220,17 +227,25 @@ void setDistributionAlgorithm(char* algorithm){
 }
 
 Instancia* chooseInstancia(char* key){
+	Instancia* chosenInstancia = NULL;
+
+	//ojo si se quiere usar alguna funcion que use este semaforo en algun algoritmo de distribucion
+	pthread_mutex_lock(&instanciasListMutex);
 	if(list_size(instancias) != 0){
-		return (*distributionAlgorithm)(key);
+		chosenInstancia = (*distributionAlgorithm)(key);
 	}
-	return NULL;
+	pthread_mutex_unlock(&instanciasListMutex);
+	return chosenInstancia;
 }
 
 Instancia* simulateChooseInstancia(char* key){
-	if(list_size(instancias) != 0){
-		return (*distributionAlgorithmSimulation)(key);
-	}
-	return NULL;
+	Instancia* chosenInstancia = NULL;
+		pthread_mutex_lock(&instanciasListMutex);
+		if(list_size(instancias) != 0){
+			chosenInstancia = (*distributionAlgorithmSimulation)(key);
+		}
+		pthread_mutex_unlock(&instanciasListMutex);
+		return chosenInstancia;
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, char response){
@@ -299,13 +314,15 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 }
 
 Instancia* lookOrRemoveKeyIfInFallenInstancia(EsiRequest* esiRequest){
-	Instancia* instanciaToBeUsed = lookForKey(esiRequest->operation->key, instancias);
+	pthread_mutex_lock(&instanciasListMutex);
+	Instancia* instanciaToBeUsed = lookForKey(esiRequest->operation->key);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		log_warning(operationsLogger, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible",
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		removeKeyFromFallenInstancia(esiRequest->operation->key, instanciaToBeUsed);
 		sendResponseToEsi(esiRequest, ABORT);
 	}
+	pthread_mutex_unlock(&instanciasListMutex);
 	return instanciaToBeUsed;
 }
 
@@ -435,11 +452,6 @@ char checkKeyStatusFromPlanificadorDummy(){
 }
 
 void recieveOperationDummy(Operation* operation){
-	/*operation->key = malloc(31);
-	strcpy(operation->key, "lio:messi");
-	char* buffer = malloc(3);
-	sprintf(buffer, "%d", lastInstanciaChosen);
-	strcat(operation->key, buffer);*/
 	operation->key = "lio:messi";
 	//operation->key = "cristiano:ronaldo";
 	operation->value = "elMasCapo";
@@ -449,7 +461,7 @@ void recieveOperationDummy(Operation* operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	log_info(logger, "Esperando que llegue un esi");
+	log_info(logger, "Waiting for esis to arrive");
 
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
@@ -457,30 +469,33 @@ int recieveStentenceToProcess(int esiSocket){
 
 	//TODO se podria usar esta parte para ver si el esi termino
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't receive esi's operation");
+		log_info(logger, "Couldn't receive operation from esi %d. Finished or fell, so his thread dies", esiRequest.id);
 		destroyOperation(esiRequest.operation);
 		return -1;
 	}
 	//recieveOperationDummy(esiRequest.operation);
 
-	log_info(logger, "El esi que llego va a hacer:");
+	pthread_mutex_lock(&esisMutex);
+
+	log_info(logger, "Arrived esi is going to do:");
 	showOperation(esiRequest.operation);
 
 	esiId = getActualEsiID();
 	//esiId = getActualEsiIDDummy();
 	esiRequest.id = esiId;
-	log_info(logger, "Llego el esi con id = %d", esiId);
+	log_info(logger, "Esi's id is %d", esiId);
 
 	char keyStatus;
 	keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
 	//keyStatus = checkKeyStatusFromPlanificadorDummy();
 
-	log_info(logger, "El estado de la clave %s del esi %d es %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
+	log_info(logger, "Status from key %s from esi %d is %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	if(strcmp(getKeyStatusName(keyStatus), "UNKNOWN KEY STATUS") == 0){
-		log_error(logger, "Couldn't recieve esi key status from planificador");
+		log_error(logger, "Couldn't receive esi key status from planificador");
 		destroyOperation(esiRequest.operation);
 		sendResponseToEsi(&esiRequest, ABORT);
+		pthread_mutex_unlock(&esisMutex);
 		return -1;
 	}
 
@@ -501,11 +516,13 @@ int recieveStentenceToProcess(int esiSocket){
 			}
 			break;
 		default:
-			log_warning(operationsLogger, "El ESI %d envio una operacion invalida", esiRequest.id);
+			log_warning(operationsLogger, "Esi %d has sent an invalid operation", esiRequest.id);
 			sendResponseToEsi(&esiRequest, ABORT);
 			operationResult = -1;
 			break;
 	}
+
+	pthread_mutex_unlock(&esisMutex);
 
 	destroyOperation(esiRequest.operation);
 	sleep(delay);
@@ -518,34 +535,38 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 		return NULL;
 	}
 	/*recieveInstanciaNameDummy(&arrivedInstanciaName);*/
-	log_info(logger, "Llego instancia: %s", arrivedInstanciaName);
+	log_info(logger, "Arrived instancia: %s", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
 		free(arrivedInstanciaName);
 		return NULL;
 	}
-	log_info(logger, "Se envio la configuracion a la instancia %s", arrivedInstanciaName);
+	log_info(logger, "Sent configuration to instancia %s", arrivedInstanciaName);
 
-	Instancia* arrivedInstancia = existsInstanciaWithName(arrivedInstanciaName, instancias);
+	pthread_mutex_lock(&instanciasListMutex);
+	Instancia* arrivedInstancia = existsInstanciaWithName(arrivedInstanciaName);
 	if(arrivedInstancia){
 		instanciaIsBack(arrivedInstancia, instanciaSocket);
-		log_info(logger, "La instancia %s esta reviviendo", arrivedInstanciaName);
+		log_info(logger, "Instancia %s is back", arrivedInstanciaName);
 	}else{
-		arrivedInstancia = createNewInstancia(instanciaSocket, instancias, arrivedInstanciaName);
+		arrivedInstancia = createNewInstancia(instanciaSocket, arrivedInstanciaName);
 
 		if(!arrivedInstancia){
-			log_error(logger, "Couldn't initalize instancia semaphre");
-			//TODO que deberia pasar aca? mientras dejo este exit
+			log_error(logger, "Couldn't initalize instancia semapohre");
+			//TODO que deberia pasar aca? mientras dejo este exit. tener cuidado con los semaforos que el de abajo no se libera si se cambia exit por return
 			exit(-1);
 			//si hay que matar al hilo, devolver NULL !!!
 		}
 
 		if(list_size(instancias) == 1){
+			pthread_mutex_lock(&lastInstanciaChosenMutex);
 			lastInstanciaChosen = list_get(instancias, 0);
+			pthread_mutex_unlock(&lastInstanciaChosenMutex);
 		}
 
-		log_info(logger, "La instancia %s es nueva", arrivedInstanciaName);
+		log_info(logger, "Instancia %s is new", arrivedInstanciaName);
 	}
+	pthread_mutex_unlock(&instanciasListMutex);
 
 	return arrivedInstancia;
 }
@@ -556,19 +577,24 @@ Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
 		return NULL;
 	}
 	//recieveInstanciaNameDummy(&arrivedInstanciaName);
-	log_info(logger, "Llego instancia: %s", arrivedInstanciaName);
+	log_info(logger, "Arrived instancia: %s", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
 		free(arrivedInstanciaName);
 		return NULL;
 	}
-	log_info(logger, "Se envio la configuracion a la instancia %s", arrivedInstanciaName);
+	log_info(logger, "Sent configuration to instancia %s", arrivedInstanciaName);
 
-	Instancia* instancia = createNewInstancia(instanciaSocket, instancias, arrivedInstanciaName);
+	pthread_mutex_lock(&instanciasListMutex);
+	Instancia* instancia = createNewInstancia(instanciaSocket, arrivedInstanciaName);
 
 	if(list_size(instancias) == 1){
+		pthread_mutex_lock(&lastInstanciaChosenMutex);
 		lastInstanciaChosen = list_get(instancias, 0);
+		pthread_mutex_unlock(&lastInstanciaChosenMutex);
 	}
+
+	pthread_mutex_unlock(&instanciasListMutex);
 
 	return instancia;
 }
@@ -582,21 +608,25 @@ int handleInstancia(int instanciaSocket){
 	if(!actualInstancia){
 		return -1;
 	}
-	showInstancias(instancias);
+
+	//TODO no pude pasar el semaforo a coordinador.h para reutilizar en instancisaFunctions porque me tiraba error de definicion multiple
+	pthread_mutex_lock(&instanciasListMutex);
+	showInstancias();
+	pthread_mutex_unlock(&instanciasListMutex);
 
 	while(1){
 		sem_wait(actualInstancia->semaphore);
-		log_info(logger, "Hilo de %s va a encargarse de hacer %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
+		log_info(logger, "%s's thread is gonna handle %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
 		//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
 		instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
 		//instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
 
 		//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada
-		log_info(logger, "Se va a procesar la respuesta de la instancia");
+		log_info(logger, "Instancia's response is gonna be processed");
 
 		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
-			log_error(logger, "La instancia %s no pudo hacer %s, su hilo muere, se le elimina la clave %s:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
+			log_error(logger, "Instancia %s couldn't do %s. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
 			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 			instanciaHasFallen(actualInstancia);
 			showInstancia(actualInstancia);
@@ -606,7 +636,7 @@ int handleInstancia(int instanciaSocket){
 			return -1;
 		}
 
-		log_info(logger, "%s pudo hacer %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
+		log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
 		sem_post(instanciaResponse);
 	}

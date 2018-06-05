@@ -14,7 +14,6 @@ C_DEPS :=
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 our-commons/messages \
-our-commons/semaphores \
 our-commons/sockets \
 our-commons/tads \
 
