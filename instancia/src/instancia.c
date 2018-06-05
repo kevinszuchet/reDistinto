@@ -52,7 +52,13 @@ int main(void) {
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
-	waitForCoordinadorStatements(coordinadorSocket);
+	//waitForCoordinadorStatements(coordinadorSocket);
+
+	set("key1", "valor que ocupa 2 entradas");
+
+	while(1){
+		store("key1");
+	}
 
 	free(ipCoordinador);
 	free(algorithm);
@@ -379,7 +385,7 @@ char store(char *key) {
 
 	log_info(logger, "The key: %s, is about to being stored", key);
 
-	int results, valueStart, valueSize;
+	int valueStart, valueSize;
 	FILE *file;
 	t_link_element * selectedElemByKey;
 	char *valueToStore, *filePath = malloc(strlen(path) + strlen(key) + 1);
@@ -409,8 +415,8 @@ char store(char *key) {
 		free(valueToStore);
 		fclose(file);
 	} else {
-		log_error(logger, "File doesnt exist: %s", strerror(errno));
-		return INSTANCIA_RESPONSE_FALLEN;
+		log_error(logger, "Couldn't open the file: %s", strerror(errno));
+		return INSTANCIA_STORE_FAILED;
 	}
 
 	log_info(logger, "The key: %s, was successfully stored", key);
@@ -418,6 +424,25 @@ char store(char *key) {
 }
 
 char dump() {
+
+	log_info(logger, "We are about to dump all the keys");
+
+	int position = 0;
+	t_link_element * element = entryTable->head;
+	while (element != NULL) {
+
+		if(store(getKey(element->data)) == INSTANCIA_STORE_FAILED) {
+
+			//TODO se sigue con el dump o se corta acá si falla??
+			log_error(logger, "The store number %d couldn't be done", position);
+		}
+
+		log_error(logger, "The store number %d was succesfully done", position);
+
+		element = element->next;
+		position++;
+	}
+
 	log_info(logger, "Dump was successfully done");
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
