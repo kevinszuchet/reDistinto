@@ -57,10 +57,10 @@ int main(void) {
 	runningEsi = NULL;
 
 	//TODO NICO chequear el segundo parametro (es si se comparte entre hilos o no)
-	sem_init(&keyRecievedFromCoordinadorSemaphore, 1, 0);
-	sem_init(&esiInformationRecievedSemaphore, 1, 0);
-	sem_init(&readyEsisSemaphore, 1, 0);
-	sem_init(&executionSemaphore, 1, 0);
+	sem_init(&keyRecievedFromCoordinadorSemaphore, 0, 0);
+	sem_init(&esiInformationRecievedSemaphore, 0, 0);
+	sem_init(&readyEsisSemaphore, 0, 0);
+	sem_init(&executionSemaphore, 0, 0);
 
 	pthread_create(&threadExecution,NULL,(void *)executionProcedure,NULL);
 
@@ -121,53 +121,6 @@ void executionProcedure(){
 
 		}
 	}
-
-
-	/* OLD EXECUTION
-	while(pauseState){ //En vez de esto se puede hacer un semaforo?
-
-		//WAIT AT LEAST ONE ESI TO BE IN READY LIST
-
-		//Obtaining next esi to execute
-		if(list_size(readyEsis)>0 || runningEsi != NULL){
-			log_info(logger,"At least an ESI is ready to run\n");
-			Esi* nextEsi;
-			if(runningEsi==NULL){
-				pthread_mutex_lock(&mutexReadyList);
-				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
-				pthread_mutex_unlock(&mutexReadyList);
-				runningEsi = nextEsi;
-			}else{
-				nextEsi = runningEsi;
-			}
-			log_info(logger,"Esi %d was selected to execute\n",nextEsi->id);
-			sendEsiIdToCoordinador(nextEsi->id);
-			removeFromReady(nextEsi);
-			sendMessageExecuteToEsi(nextEsi);
-			//sendMessageExecuteToEsiDummie(nextEsi);
-			char* keyRecieved = malloc(40);;
-			log_info(logger,"Waiting coordinador request\n");
-			log_info(logger,"...\n");
-
-			if(recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE){
-				log_error(logger,"Couldn't recieve key to check from coordinador, quitting...");
-				exit(-1);
-			}
-			log_info(logger,"Key received = %s\n",keyRecieved);
-			sendKeyStatusToCoordinador(keyRecieved);
-
-			log_info(logger,"Waiting esi information\n");
-			OperationResponse* esiInformation = waitEsiInformation(nextEsi->socketConection);
-
-			log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%c) ,esiStatus = (%c)",esiInformation->coordinadorResponse,esiInformation->esiStatus);
-			handleEsiInformation(esiInformation,keyRecieved);
-			log_info(logger,"Finish executing ESI %d\n",nextEsi->id);
-
-
-
-		}
-	}*/
-
 }
 
 
@@ -199,6 +152,11 @@ void finishRunningEsi(){
 	runningEsi = NULL;
 	log_info(logger,"Esi (%d) succesfully finished \n",runningEsi->id);
 
+}
+
+void addToFinishedList(Esi* finishedEsi){
+	list_add(finishedEsis,finishedEsi);
+	log_info(logger,"Esi (%d) agregado a finalizados",finishedEsi->id);
 }
 
 void removeFromReady(Esi* esi){
@@ -410,17 +368,22 @@ void freeResource(char* key,Esi* esiTaker){
 
 	}
 
-	t_queue* blockedEsisQueue;
-	blockedEsisQueue = dictionary_get(blockedEsiDic,key);
-	Esi* unblockedEsi = NULL;
-	if(!queue_is_empty(blockedEsisQueue)){
-		unblockedEsi = (Esi*)queue_pop(blockedEsisQueue);
-		dictionary_remove(blockedEsiDic,key);
-		dictionary_put(blockedEsiDic,key,blockedEsisQueue);
-		log_info(logger,"Unblocked ESI %d from resource %s",unblockedEsi->id,key);
-		addEsiToReady(unblockedEsi);
-		log_info(logger,"Added ESI %d to ready",unblockedEsi->id);
+	if(dictionary_has_key(blockedEsiDic,key)){
+		t_queue* blockedEsisQueue;
+			blockedEsisQueue = dictionary_get(blockedEsiDic,key);
+			Esi* unblockedEsi = NULL;
+			if(!queue_is_empty(blockedEsisQueue)){
+				unblockedEsi = (Esi*)queue_pop(blockedEsisQueue);
+				dictionary_remove(blockedEsiDic,key);
+				dictionary_put(blockedEsiDic,key,blockedEsisQueue);
+				log_info(logger,"Unblocked ESI %d from resource %s",unblockedEsi->id,key);
+				addEsiToReady(unblockedEsi);
+				log_info(logger,"Added ESI %d to ready",unblockedEsi->id);
+			}
+	}else{
+		log_warning(logger,"Can't release an esi from key (%s), key isn't in the dictionary",key);
 	}
+
 
 
 }
