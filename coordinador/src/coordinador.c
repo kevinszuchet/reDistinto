@@ -55,10 +55,15 @@ int main(void) {
 	int welcomePlanificadorResponse = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomePlanificador, logger);
 	if(welcomePlanificadorResponse < 0){
 		log_error(logger, "Couldn't handshake with planificador, quitting...");
-		exit(-1);
 	}
 
 	free(algorithm);
+
+	sem_destroy(instanciaResponse);
+	free(instanciaResponse);
+	pthread_mutex_destroy(&esisMutex);
+	pthread_mutex_destroy(&instanciasListMutex);
+	pthread_mutex_destroy(&lastInstanciaChosenMutex);
 
 	return 0;
 }
@@ -280,7 +285,7 @@ int getActualEsiIDDummy(){
 
 int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest){
 	if(keyStatus != LOCKED){
-		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre la clave %s. Clave no bloqueada por el",
+		log_warning(operationsLogger, "Esi %d cannot do %s over key %s. Key not blocked by him",
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		sendResponseToEsi(esiRequest, ABORT);
 		return -1;
@@ -291,24 +296,24 @@ int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest){
 
 //TODO cuidado en estos casos que el stringToLog no se limpia y es llamado mas de una vez
 int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenInstancia){
-	log_info(logger, "Se usara la siguiente instancia para hacer %s", getOperationName(esiRequest->operation));
+	log_info(logger, "The next instancia is going to be used for %s", getOperationName(esiRequest->operation));
 	showInstancia(chosenInstancia);
 
 	actualEsiRequest = esiRequest;
 	sem_post(chosenInstancia->semaphore);
-	log_info(logger, "Hilo del esi aviso al de instancia, esperando para continuar...");
+	log_info(logger, "Esi's thread advised instancia's thread, waiting to continue...");
 	sem_wait(instanciaResponse);
-	log_info(logger, "El hilo del esi va a procesar la respuesta de la instancia");
+	log_info(logger, "Esi's thread is gonna process instancia's thread response");
 
 	//TODO mariano fijate que al hacer este sleep, si matas (rapido) al esi, se hace el send igual
 	//sleep(10);
 	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
-		log_warning(operationsLogger, "ESI %d no puede hacer %s sobre %s. Instancia %s se cayo. Clave inaccesible", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->name);
+		log_warning(operationsLogger, "Esi %d cannot do %s over %s. Instancia %s fell. Inaccessible key", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->name);
 		sendResponseToEsi(actualEsiRequest, ABORT);
 		return -1;
 	}
 
-	log_info(operationsLogger, "ESI %d hizo %s sobre la clave %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+	log_info(operationsLogger, "Esi %d does %s over key %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 
 	return 0;
 }
@@ -317,7 +322,7 @@ Instancia* lookOrRemoveKeyIfInFallenInstancia(EsiRequest* esiRequest){
 	pthread_mutex_lock(&instanciasListMutex);
 	Instancia* instanciaToBeUsed = lookForKey(esiRequest->operation->key);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
-		log_warning(operationsLogger, "ESI %d intenta hacer %s sobre la clave %s. Clave inaccesible",
+		log_warning(operationsLogger, "Esi %d tries %s over key %s. Inaccessible key",
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		removeKeyFromFallenInstancia(esiRequest->operation->key, instanciaToBeUsed);
 		sendResponseToEsi(esiRequest, ABORT);
@@ -333,7 +338,7 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 
 	int keyExists = 0;
 
-	log_info(logger, "Se va a buscar la instancia para settear la clave %s:", esiRequest->operation->key);
+	log_info(logger, "Gonna look for instancia to set key %s:", esiRequest->operation->key);
 	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
 	showInstancia(instanciaToBeUsed);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
@@ -343,7 +348,7 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 		if(instanciaToBeUsed == NULL){
 			instanciaToBeUsed = chooseInstancia(esiRequest->operation->key);
 			if(instanciaToBeUsed == NULL){
-				log_warning(operationsLogger, "ESI %d es abortado al intentar SET por no existir la clave en ninguna instancia y no haber instancias disponibles", esiRequest->id);
+				log_warning(operationsLogger, "Esi %d is aborted when trying SET because the key is not in any instancia and there are no instancias available", esiRequest->id);
 				sendResponseToEsi(esiRequest, ABORT);
 				return -1;
 			}
@@ -354,7 +359,7 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 
 	if(keyExists == 0){
 		addKeyToInstanciaStruct(instanciaToBeUsed, esiRequest->operation->key);
-		log_info(logger, "La clave %s no existe aun", esiRequest->operation->key);
+		log_info(logger, "Key %s does not exist yet", esiRequest->operation->key);
 	}
 
 	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed) < 0){
@@ -376,7 +381,7 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}else{
 		if(instanciaToBeUsed == NULL){
-			log_warning(operationsLogger, "ESI %d intenta hacer %s sobre la clave %s. Clave no identificada en instancias", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
+			log_warning(operationsLogger, "Esi %d tries %s over key %s. Key not identified in instancias", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 			sendResponseToEsi(esiRequest, ABORT);
 			return -1;
 		}
@@ -393,9 +398,7 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 
 int doGet(EsiRequest* esiRequest, char keyStatus){
 	if(keyStatus == BLOCKED){
-		log_info(operationsLogger, "ESI %d intenta hacer GET sobre la clave %s. Clave bloqueada", esiRequest->id, esiRequest->operation->key);
-		//todo ojo en estos casos que no se esta abortando al esi porque se supone que el murio.
-		//esto es: hay que validar que el planificador se entere bien de esto para no cagarla
+		log_info(operationsLogger, "Esi %d tries GET over key %s. Blocked key", esiRequest->id, esiRequest->operation->key);
 		return sendResponseToEsi(esiRequest, BLOCK);
 	}
 
@@ -406,12 +409,12 @@ int doGet(EsiRequest* esiRequest, char keyStatus){
 	}
 
 	if(keyStatus == LOCKED){
-		log_info(operationsLogger, "ESI %d hace GET sobre la clave %s, la cual ya tenia", esiRequest->id, esiRequest->operation->key);
+		log_info(operationsLogger, "Esi %d does GET over key %s, which he already had", esiRequest->id, esiRequest->operation->key);
 		if(sendResponseToEsi(esiRequest, SUCCESS) < 0){
 			return -1;
 		}
 	}else{
-		log_info(operationsLogger, "ESI %d hizo GET sobre la clave %s", esiRequest->id, esiRequest->operation->key);
+		log_info(operationsLogger, "Esi %d does GET over key %s", esiRequest->id, esiRequest->operation->key);
 		if(sendResponseToEsi(esiRequest, LOCK) < 0){
 			return -1;
 		}
@@ -422,7 +425,7 @@ int doGet(EsiRequest* esiRequest, char keyStatus){
 char checkKeyStatusFromPlanificador(int esiId, char* key){
 	char response = 0;
 
-	log_info(logger, "Voy a recibir el estado de la clave %s del planificador", key);
+	log_info(logger, "Gonna recieve %s's status from planificador", key);
 
 	//TODO probar esto
 	char message = KEYSTATUSMESSAGE;
@@ -440,7 +443,9 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 		exit(-1);
 	}
 
-	log_info(logger, "Le envie la clave de interes al planificador");
+	free(package);
+
+	log_info(logger, "Sent key to planificador to check its status");
 
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
@@ -469,11 +474,10 @@ int recieveStentenceToProcess(int esiSocket){
 
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
-	esiRequest.operation = malloc(sizeof(Operation));
 
-	//TODO se podria usar esta parte para ver si el esi termino
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
-		log_info(logger, "Couldn't receive operation from esi %d. Finished or fell, so his thread dies", esiRequest.id);
+		//TODO revisar que se estaria usando el esiRequest anterior, y esto podria fallar
+		//log_info(logger, "Couldn't receive operation from esi %d. Finished or fell, so his thread dies", esiRequest.id);
 		destroyOperation(esiRequest.operation);
 		return -1;
 	}
@@ -493,7 +497,7 @@ int recieveStentenceToProcess(int esiSocket){
 	keyStatus = checkKeyStatusFromPlanificador(esiRequest.id, esiRequest.operation->key);
 	//keyStatus = checkKeyStatusFromPlanificadorDummy();
 
-	log_info(logger, "Status from key %s from esi %d is %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
+	log_info(logger, "Status from key %s, from esi %d, is %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	if(strcmp(getKeyStatusName(keyStatus), "UNKNOWN KEY STATUS") == 0){
 		log_error(logger, "Couldn't receive esi key status from planificador");
@@ -504,6 +508,11 @@ int recieveStentenceToProcess(int esiSocket){
 	}
 
 	switch (esiRequest.operation->operationCode){
+		case OURGET:
+			if (doGet(&esiRequest, keyStatus) < 0){
+				operationResult = -1;
+			}
+			break;
 		case OURSET:
 			if(doSet(&esiRequest, keyStatus) < 0){
 				operationResult = -1;
@@ -514,13 +523,8 @@ int recieveStentenceToProcess(int esiSocket){
 				operationResult = -1;
 			}
 			break;
-		case OURGET:
-			if (doGet(&esiRequest, keyStatus) < 0){
-				operationResult = -1;
-			}
-			break;
 		default:
-			log_warning(operationsLogger, "Esi %d has sent an invalid operation", esiRequest.id);
+			log_warning(operationsLogger, "Esi %d sent an invalid operation", esiRequest.id);
 			sendResponseToEsi(&esiRequest, ABORT);
 			operationResult = -1;
 			break;
@@ -539,7 +543,7 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 		return NULL;
 	}
 	/*recieveInstanciaNameDummy(&arrivedInstanciaName);*/
-	log_info(logger, "Arrived instancia: %s", arrivedInstanciaName);
+	log_info(logger, "Arrived instancia's name is %s", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
 		free(arrivedInstanciaName);
@@ -556,7 +560,7 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 		arrivedInstancia = createNewInstancia(instanciaSocket, arrivedInstanciaName);
 
 		if(!arrivedInstancia){
-			log_error(logger, "Couldn't initalize instancia semapohre");
+			log_error(logger, "Couldn't initialize instancia's semaphore");
 			//TODO que deberia pasar aca? mientras dejo este exit. tener cuidado con los semaforos que el de abajo no se libera si se cambia exit por return
 			exit(-1);
 			//si hay que matar al hilo, devolver NULL !!!
@@ -581,7 +585,7 @@ Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
 		return NULL;
 	}
 	//recieveInstanciaNameDummy(&arrivedInstanciaName);
-	log_info(logger, "Arrived instancia: %s", arrivedInstanciaName);
+	log_info(logger, "Arrived instancia's name is %s", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
 		free(arrivedInstanciaName);
@@ -631,9 +635,11 @@ int handleInstancia(int instanciaSocket){
 
 		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
 			log_error(logger, "Instancia %s couldn't do %s. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
+			pthread_mutex_lock(&instanciasListMutex);
 			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 			instanciaHasFallen(actualInstancia);
 			showInstancia(actualInstancia);
+			pthread_mutex_unlock(&instanciasListMutex);
 
 			sem_post(instanciaResponse);
 
@@ -680,11 +686,13 @@ int clientHandler(int clientSocket){
 	*clientSocketPointer = clientSocket;
 	if(pthread_create(&clientThread, NULL, (void*) &pthreadInitialize, clientSocketPointer)){
 		log_error(logger, "Error creating thread");
+		free(clientSocketPointer);
 		return -1;
 	}
 
 	if(pthread_detach(clientThread) != 0){
 		log_error(logger,"Couldn't detach thread");
+		free(clientSocketPointer);
 		return -1;
 	}
 
