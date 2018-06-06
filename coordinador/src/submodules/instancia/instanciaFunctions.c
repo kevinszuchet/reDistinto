@@ -14,6 +14,7 @@ int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log
 		return -1;
 	}else if(strlen(*arrivedInstanciaName) == 0){
 		log_error(logger, "La instancia no puede no tener nombre");
+		free(*arrivedInstanciaName);
 		return -1;
 	}
 	return 0;
@@ -111,7 +112,7 @@ void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 	list_add(instancia->storedKeys, strdup(key));
 }
 
-void freeInstanciaSemaphore(Instancia* instancia){
+void destroyInstanciaSemaphore(Instancia* instancia){
 	sem_destroy(instancia->semaphore);
 	free(instancia->semaphore);
 }
@@ -121,7 +122,7 @@ void freeInstanciaSemaphore(Instancia* instancia){
 void instanciaHasFallen(Instancia* fallenInstancia){
 	fallenInstancia->isFallen = INSTANCIA_FALLEN;
 	close(fallenInstancia->socket);
-	freeInstanciaSemaphore(fallenInstancia);
+	destroyInstanciaSemaphore(fallenInstancia);
 }
 
 char waitForInstanciaResponse(Instancia* chosenInstancia){
@@ -171,11 +172,6 @@ Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char las
 /*
  * TEST FUNCTIONS
  */
-void initializeSomeInstancias(){
-	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia1"));
-	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia2"));
-	list_add(instancias, createInstancia(10, 0, 'a', 'z', "instancia3"));
-}
 
 void showStoredKey(char* key){
 	printf("%s\n", key);

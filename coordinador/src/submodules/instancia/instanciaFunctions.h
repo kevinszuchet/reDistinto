@@ -46,7 +46,6 @@
 	/*
 	 * TEST FUNCTIONS
 	 */
-	void initializeSomeInstancias();
 	void showInstancia(Instancia* instancia);
 	void showInstancias();
 	/*
