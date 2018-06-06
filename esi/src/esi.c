@@ -111,7 +111,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 
 	char * line = NULL;
 	char ** scriptsSplitted = string_split(script, "\n");
-	size_t len = sizeof(scriptsSplitted);
+	size_t len = numberOfElementsOnArray(scriptsSplitted);
 	int esiPC = 0; // ESI program counter
 
 	int response;
@@ -139,6 +139,8 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 	if (line) {
 		free(line);
 	}
+
+	// REVIEW hace falta hacer free de lo splitteado?
 }
 
 void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len) {

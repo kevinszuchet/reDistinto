@@ -33,6 +33,12 @@
 	void initializeOperationResponse(OperationResponse * operationResponse, char coordinadorResponse, char status);
 	void destroy_operation(Operation * operation);
 
+	int numberOfElementsOnArray(char ** array) {
+		int size = 0;
+		for (; array[size] != NULL; size++);
+		return size;
+	}
+
 	int empty_string(char * str) {
 		return (str != NULL && strcmp(str, "") != 0 ? 0 : 1);
 	}
