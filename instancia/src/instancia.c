@@ -402,11 +402,13 @@ char storeKeyAndValue(entryTableInfo * selectedEntryByKey) {
 		free(filePath);
 		free(valueToStore);
 		fclose(file);
+
 	} else {
 		log_error(logger, "Couldn't open the file: %s", strerror(errno));
 		return INSTANCIA_STORE_FAILED;
 	}
 
+	log_info(logger, "The key: %s, was successfully stored", getKey(selectedEntryByKey));
 	return INSTANCIA_RESPONSE_SUCCESS;
 
 }
@@ -418,20 +420,7 @@ char store(char *key) {
 	t_link_element * selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
 	entryTableInfo * selectedEntryByKey = selectedElemByKey->data;
 
-	char storeKeyResponse = storeKeyAndValue(selectedEntryByKey);
-
-	if (storeKeyResponse == INSTANCIA_RESPONSE_SUCCESS) {
-
-		// The store operation releases the memory (storage)
-		int entriesForValue = wholeUpperDivision(getValueSize(selectedEntryByKey), entrySize);
-		biMapUpdate(getValueStart(selectedEntryByKey), entriesForValue, IS_EMPTY);
-		selectedEntryByKey->valueStart = 0;
-		selectedEntryByKey->valueSize = 0;
-
-		log_info(logger, "The key: %s, was successfully stored", key);
-	}
-
-	return storeKeyResponse;
+	return storeKeyAndValue(selectedEntryByKey);
 }
 
 char dump() {
