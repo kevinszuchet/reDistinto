@@ -199,6 +199,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 		exit(-1);
 	}
 	log_info(logger, "I could send the response to planificador");
+	free(package);
 
 	if (coordinadorResponse == ABORT) {
 		log_error(logger, "I cannot keep running", line);
