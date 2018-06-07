@@ -513,11 +513,11 @@ void addKeyToGeneralKeys(char* key){
 }
 
 void blockEsi(char* lockedResource, int esiBlocked){
-	t_queue* esiQueue = malloc(sizeof(esiQueue));
+	t_queue* esiQueue;// = malloc(sizeof(t_queue));
 
 	if(!dictionary_has_key(blockedEsiDic,lockedResource)){
 		log_warning(logger,"Trying to block an ESI in a key that is not already in the dictionary");
-		queue_create(esiQueue);
+		esiQueue= queue_create();
 		queue_push(esiQueue,(void*)esiBlocked);
 		dictionary_put(blockedEsiDic,lockedResource,esiQueue);
 		log_info(logger,"Added ESI (%d) to blocked dictionary in new key (%s)",esiBlocked,lockedResource);
@@ -532,7 +532,7 @@ void blockEsi(char* lockedResource, int esiBlocked){
 }
 
 void takeResource(char* key, int esiID){
-	printf("log1\n");
+
 	if(esiID != CONSOLE_BLOCKED){
 		addLockedKey(&key,&runningEsi);
 		dictionary_put(takenResources,key,(void*)esiID);
@@ -612,12 +612,13 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 	t_config* config;
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
-	*algorithm = config_get_string_value(config, "ALGORITHM");
+	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	*alphaEstimation = config_get_int_value(config, "ALPHA_ESTIMATION");
 	*initialEstimation = config_get_int_value(config, "ESTIMATION");
-	*ipCoordinador = config_get_string_value(config, "IP_COORDINADOR");
+	*ipCoordinador = strdup(config_get_string_value(config, "IP_COORDINADOR"));
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
 	*blockedKeys = config_get_array_value(config, "BLOCKED_KEYS");
+	config_destroy(config);
 }
 
 

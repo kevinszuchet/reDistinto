@@ -50,10 +50,10 @@ void execute(char** parameters) {
 	int commandNumber = getCommandNumber(command);
 	// Borrar cuando todo funcione
 	log_info(logger,"Execute command : %s\n", command);
-	char* key;
+	char* key = malloc(40);
 	int esiID;
-	t_queue* blockedEsis;
-	Esi* esi;
+	t_queue* blockedEsis = malloc(sizeof(t_queue));
+	Esi* esi = malloc(sizeof(Esi));
 	switch(commandNumber) {
 		case PAUSAR:
 			pauseState = PAUSE;
@@ -70,8 +70,10 @@ void execute(char** parameters) {
 		case BLOQUEAR:
 		    key = parameters[1];
 		    esiID = atoi(parameters[2]);
+		    if(!isTakenResource(key))
+		    	takeResource(key,CONSOLE_BLOCKED);
 			blockEsi(key,esiID);
-			takeResource(key,CONSOLE_BLOCKED);
+
 			printf("ESI %d was blocked in %s resource:\n", esiID,key);
 		break;
 		case DESBLOQUEAR:
@@ -79,14 +81,16 @@ void execute(char** parameters) {
 		break;
 		case LISTAR:
 			 key = parameters[1];
-			 blockedEsis = dictionary_get(blockedEsiDic,key);
-			 if(queue_size(blockedEsis)==0)
-				 printf("There are no blocked esis in key %s\n",key);
+			 blockedEsis = (t_queue*)dictionary_get(blockedEsiDic,key);
+			 printf("LOGGG");
+			/* if(queue_is_empty(blockedEsis))
+				 printf("There are no blocked esis in key %s\n",key);*/
 			 for(int i=0;i<queue_size(blockedEsis);i++){
 				 esi = queue_pop(blockedEsis);
 				 printEsi(esi);
 				 queue_push(blockedEsis,esi);
 			 }
+			 printf("LOGGGGG 2");
 		break;
 		case KILL:
 
