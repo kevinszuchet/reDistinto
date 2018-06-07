@@ -52,6 +52,8 @@ void execute(char** parameters) {
 	log_info(logger,"Execute command : %s\n", command);
 	char* key;
 	int esiID;
+	t_queue* blockedEsis;
+	Esi* esi;
 	switch(commandNumber) {
 		case PAUSAR:
 			pauseState = PAUSE;
@@ -76,7 +78,15 @@ void execute(char** parameters) {
 
 		break;
 		case LISTAR:
-
+			 key = parameters[1];
+			 blockedEsis = dictionary_get(blockedEsiDic,key);
+			 if(queue_size(blockedEsis)==0)
+				 printf("There are no blocked esis in key %s\n",key);
+			 for(int i=0;i<queue_size(blockedEsis);i++){
+				 esi = queue_pop(blockedEsis);
+				 printEsi(esi);
+				 queue_push(blockedEsis,esi);
+			 }
 		break;
 		case KILL:
 
@@ -134,7 +144,7 @@ int validCommand(char** parameters) {
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
 		case LISTAR:
-			return parameterQuantityIsValid(cantExtraParameters, 1);
+			return parameterQuantityIsValid(cantExtraParameters, 1)&&keyExists(parameters[1]);
 		break;
 		case KILL:
 			return parameterQuantityIsValid(cantExtraParameters, 1);

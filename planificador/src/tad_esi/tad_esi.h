@@ -19,10 +19,12 @@ typedef struct Esi{
 	double lastBurst;
 	int waitingTime;
 	int socketConection;
-	int lastEstimation;
+	double lastEstimation;
 	t_list* lockedKeys;
 
 }Esi;
+
+void printEsi(Esi* esi);
 
 void addWaitingTime(Esi*);
 
