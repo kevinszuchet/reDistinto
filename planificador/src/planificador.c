@@ -48,6 +48,7 @@ char* keyRecieved;
 OperationResponse* esiInformation;
 Esi* nextEsi;
 
+
 t_list* instruccionsByConsoleList;
 
 int welcomeNewClients();
@@ -165,19 +166,23 @@ void unlockEsi(char* key){
 }
 
 void finishRunningEsi(){
-	//Pasa el esi a finalizados
+
 	log_info(logger,"Finishing esi (%d) \n",runningEsi->id);
 	list_add(finishedEsis,runningEsi);
-	for(int i = 0;i<list_size(runningEsi->lockedKeys);i++){
-		char* keyToFree = (char*)list_get(runningEsi->lockedKeys,i);
-		freeResource(keyToFree,runningEsi);
-		log_info(logger,"Key (%s) was freed by Esi (%d)  \n",keyToFree, runningEsi->id);
-	}
-	list_clean(runningEsi->lockedKeys);
+	freeTakenKeys(runningEsi);
 	log_info(logger,"Esi (%d) succesfully finished \n",runningEsi->id);
 	runningEsi = NULL;
 
 
+}
+
+void freeTakenKeys(Esi* esi){
+	for(int i = 0;i<list_size(esi->lockedKeys);i++){
+		char* keyToFree = (char*)list_get(esi->lockedKeys,i);
+		freeResource(keyToFree,esi);
+		log_info(logger,"Key (%s) was freed by Esi (%d)  \n",keyToFree, esi->id);
+	}
+	list_clean(esi->lockedKeys);
 }
 
 void addToFinishedList(Esi* finishedEsi){
@@ -256,7 +261,7 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 		break;
 		case FREE:
 			//Liberar la clave
-			log_info(logger,"Operation succeded, key (%c) freed",key);
+			log_info(logger,"Operation succeded, key (%s) freed",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
@@ -284,8 +289,10 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 }
 
 void abortEsi(Esi* esi){
-	//todo liberar todos sus recursos
+	log_info(logger,"Aborting esi (%d)", esi->id);
+	freeTakenKeys(esi);
 	//sacar el esi del select
+	log_info(logger,"Esi (%d) succesfully aborted", esi->id);
 }
 
 void moveFromRunningToReady(Esi* esi){
@@ -576,7 +583,14 @@ int handleConcurrence(){
 					resultRecv = recv(clientSocket, &clientMessage, sizeof(char), 0);
 					if(resultRecv <= 0){
 						if(resultRecv == 0){
-							log_error(logger, "The client disconnected from server %s\n", PLANIFICADOR);
+							if(clientSocket == coordinadorSocket){
+								log_error(logger, "Coordinador disconnected my planet needs me. Bye bye");
+								exit(-1);
+							}else{
+								log_warning(logger, "ESI disconnected. I dont need you anymore");
+								//abortEsi(getEsiBySocket(clientSocket));
+							}
+
 						}else{
 							log_error(logger, "Error in recv from %s select: %s\n", PLANIFICADOR, strerror(errno));
 							//TODO NICO sacar este exit, no deberia morir el planificador en este caso
