@@ -377,29 +377,21 @@ int wholeUpperDivision(int x, int y) {
 	return (1 + ((x - 1) / y));
 }
 
-char store(char *key) {
+char storeKeyAndValue(entryTableInfo * selectedEntryByKey) {
 
-	log_info(logger, "The key: %s, is about to being stored", key);
-
-	int valueStart, valueSize;
 	FILE *file;
-	t_link_element * selectedElemByKey;
-	char *valueToStore, *filePath = malloc(strlen(path) + strlen(key) + 1);
+	char *valueToStore, *filePath = malloc(strlen(path) + strlen(getKey(selectedEntryByKey)) + 1);
 
-	sprintf(filePath, "%s%s", path, key);
-	filePath[strlen(path) + strlen(key)] = '\0';
+	sprintf(filePath, "%s%s", path, getKey(selectedEntryByKey));
+	filePath[strlen(path) + strlen(getKey(selectedEntryByKey))] = '\0';
 
-	selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
+	log_info(logger, "Size of value: %d", getValueSize(selectedEntryByKey));
+	log_info(logger, "Value start: %d", getValueStart(selectedEntryByKey));
 
-	valueSize = getValueSize(selectedElemByKey->data);
-	log_info(logger, "Size of value: %d", valueSize);
-	valueStart = getValueStart(selectedElemByKey->data);
-	log_info(logger, "Value start: %d", valueStart);
+	valueToStore = malloc((getValueSize(selectedEntryByKey) * sizeof(char)) + 1);
+	getValue(valueToStore, getValueStart(selectedEntryByKey), getValueSize(selectedEntryByKey));
 
-	valueToStore = malloc((valueSize * sizeof(char)) + 1);
-	getValue(valueToStore, valueStart, valueSize);
-
-	// REVIEW porque rompe esto --> log_info(logger, "Value to store: %s", valueToStore);
+	log_info(logger, "Value to store: %s", valueToStore);
 
 	if ((file = fopen(filePath, "w")) != NULL) {
 
@@ -415,8 +407,31 @@ char store(char *key) {
 		return INSTANCIA_STORE_FAILED;
 	}
 
-	log_info(logger, "The key: %s, was successfully stored", key);
 	return INSTANCIA_RESPONSE_SUCCESS;
+
+}
+
+char store(char *key) {
+
+	log_info(logger, "The key: %s, is about to being stored", key);
+
+	t_link_element * selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
+	entryTableInfo * selectedEntryByKey = selectedElemByKey->data;
+
+	char storeKeyResponse = storeKeyAndValue(selectedEntryByKey);
+
+	if (storeKeyResponse == INSTANCIA_RESPONSE_SUCCESS) {
+
+		// The store operation releases the memory (storage)
+		int entriesForValue = wholeUpperDivision(getValueSize(selectedEntryByKey), entrySize);
+		biMapUpdate(getValueStart(selectedEntryByKey), entriesForValue, IS_EMPTY);
+		selectedEntryByKey->valueStart = 0;
+		selectedEntryByKey->valueSize = 0;
+
+		log_info(logger, "The key: %s, was successfully stored", key);
+	}
+
+	return storeKeyResponse;
 }
 
 char dump() {
@@ -427,8 +442,7 @@ char dump() {
 	t_link_element * element = entryTable->head;
 	while (element != NULL) {
 
-		if(store(getKey(element->data)) == INSTANCIA_STORE_FAILED) {
-
+		if(storeKeyAndValue(element->data) == INSTANCIA_STORE_FAILED) {
 			//TODO se sigue con el dump o se corta acá si falla??
 			log_error(logger, "The store number %d couldn't be done", position);
 		}
