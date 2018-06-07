@@ -1,47 +1,28 @@
-all: so-commons-library our-commons parsi readline coordinador planificador esi instancia
+.PHONY: all
+
+all: so-commons-library our-commonsRule parsi readline coordinadorRule planificadorRule instanciaRule esiRule
 
 so-commons-library:
-	cd ~
-	git clone https://github.com/sisoputnfrba/so-commons-library
-	cd so-commons-library
-	make clean
-	sudo make install
+	cd ~; git clone https://github.com/sisoputnfrba/so-commons-library; cd so-commons-library; sudo make clean; sudo make install
 
-our-commons:
-	cd ~
-	cd workspace/tp-2018-1c-youKnowNothing/our-commons/Debug
-	make clean
-	make
+our-commonsRule:
+	cd our-commons/Debug; make clean; make
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug
-  
+
 parsi:
-	cd ~
-	git clone https://github.com/sisoputnfrba/parsi
-	cd parsi
-	sudo make install
-  
+	cd ~; git clone https://github.com/sisoputnfrba/parsi; cd parsi; sudo make clean; sudo make install
+
 readline:
 	sudo apt-get install libreadline6 libreadline6-dev
-  
-coordinador:
-	cd ~/workspace/tp-2018-1c-youKnowNothing/coordinador/Debug
-	make clean
-	make
-  
-planificador:
-	cd ~/workspace/tp-2018-1c-youKnowNothing/planificador/Debug
-	make clean
-	make
-  
-esi:
-	cd ~/workspace/tp-2018-1c-youKnowNothing/esi/Debug
-	make clean
-	make
-  
-instancia:
-	cd ~/workspace/tp-2018-1c-youKnowNothing/instancia/Debug
-	make clean
-	make
 
-clean:	
-	rm -rf ../so-commons-librar
+coordinadorRule:
+	cd coordinador/Debug; make clean; make
+
+planificadorRule:
+	cd planificador/Debug; make clean; make
+
+instanciaRule:
+	cd instancia/Debug; make clean; make
+
+esiRule:
+	cd esi/Debug; make clean; make
