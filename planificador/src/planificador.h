@@ -89,6 +89,8 @@
 	void freeResource(char* key,Esi* esiTaker);
 	void takeResource(char* keyToLock, int esiTaker);
 
+	void exitPlanificador();
+
 	void blockEsi(char* lockedResource, int esiBlocked);
 	int checkKeyBlocked(char* keyRecieved);
 	char isTakenResource(char* key);

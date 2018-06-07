@@ -129,9 +129,11 @@ int validCommand(char** parameters) {
 	int id;
 	switch(commandNumber) {
 		case PAUSAR:
+			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 		case CONTINUAR:
+			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 		case BLOQUEAR:
@@ -139,29 +141,37 @@ int validCommand(char** parameters) {
 				strcpy(key,parameters[1]);
 				id = atoi(parameters[2]); //Falta validar que sea un numero
 				if(validateBloquear(key,id)){
+					free(key);
 					return 1;
 				}
 			}
+			free(key);
 			return 0;
 		break;
 		case DESBLOQUEAR:
+			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
 		case LISTAR:
+			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1)&&keyExists(parameters[1]);
 		break;
 		case KILL:
+			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
 		case STATUS:
+			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
 		case DEADLOCK:
+			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 
 		default:
 			printf("%s: command not found\n", command);
+			free(key);
 			return 0;
 		break;
 	}
