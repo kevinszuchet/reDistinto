@@ -311,7 +311,7 @@ void abortEsi(Esi* esi){
 	sleep(3);
 	log_info(logger,"Aborting esi (%d)", esi->id);
 	freeTakenKeys(esi);
-	removeFdFromSelect(esi->id);
+
 	if(runningEsi!=NULL&& runningEsi->id==esi->id){
 		log_info(logger,"Trying to abort running esi, lets save the execution mi lord");
 		sem_post(&esiInformationRecievedSemaphore);
@@ -321,9 +321,7 @@ void abortEsi(Esi* esi){
 	log_info(logger,"Esi (%d) succesfully aborted", esi->id);
 }
 
-void removeFdFromSelect(int socket){
-	FD_CLR(socket,&master);
-}
+
 
 void deleteEsiFromSystemBySocket(int socket){
 	bool isEsiBySocket(void* esi){
@@ -331,7 +329,7 @@ void deleteEsiFromSystemBySocket(int socket){
 		}
 		t_queue* blockedEsis;
 		Esi* actualEsi;
-
+		t_list* filteredList;
 		switch(getEsiPlaceBySocket(socket)){
 			case INREADYLIST:
 				pthread_mutex_lock(&mutexReadyList);
@@ -341,7 +339,8 @@ void deleteEsiFromSystemBySocket(int socket){
 			break;
 			case INFINISHEDLIST:
 				//actualEsi = list_remove_by_condition(finishedEsis,&isEsiBySocket);
-				actualEsi = list_find(finishedEsis,&isEsiBySocket);
+				filteredList= list_filter(finishedEsis,&isEsiBySocket);
+				actualEsi = list_get(filteredList,list_size(filteredList)-1);
 				log_info(logger,"Esi with id (%d) was on finished list lets keep it there", actualEsi->id);
 			break;
 			case INRUNNING:
@@ -422,7 +421,7 @@ char getEsiPlaceBySocket(int socket){
 	}
 	t_queue* blockedEsis;
 	Esi* actualEsi;
-	printf("log1");
+
 	for(int i = 0;i<list_size(allKeys);i++){
 		blockedEsis = dictionary_get(blockedEsiDic,list_get(allKeys,i));
 		for(int j = 0;j<queue_size(blockedEsis);j++){
@@ -433,7 +432,7 @@ char getEsiPlaceBySocket(int socket){
 			queue_push(blockedEsis,actualEsi);
 		}
 	}
-	printf("log2");
+
 	if(list_size(list_filter(finishedEsis,&isEsiBySocket))>0){
 		return INFINISHEDLIST;
 	}
