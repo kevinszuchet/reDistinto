@@ -34,6 +34,11 @@
 	#define PAUSE 0
 	#define CONTINUE 1
 
+	#define INREADYLIST 'a'
+	#define INFINISHEDLIST 's'
+	#define INRUNNING 'd'
+	#define INBLOCKEDDIC 'e'
+	#define NOWHERE 'e'
 
 	int pauseState;
 
@@ -67,8 +72,9 @@
 	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
 
 	void abortEsi(Esi* esi);
-
-
+	void removeFdFromSelect(int socket);
+	Esi* getEsiBySocket(int socket);
+	char getEsiPlaceBySocket(int socket);
 	OperationResponse *waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char* key);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
@@ -76,6 +82,7 @@
 	void generateTestEsi();
 	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation,int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
+	void deleteEsiFromSystemBySocket(int socket);
 	void moveFromRunningToReady(Esi* esi);
 
 	void freeTakenKeys(Esi* esi);
@@ -85,8 +92,8 @@
 	void blockEsi(char* lockedResource, int esiBlocked);
 	int checkKeyBlocked(char* keyRecieved);
 	char isTakenResource(char* key);
+	void addKeyToGeneralKeys(char* key);
 	void removeFromReady(Esi* esi);
-
 	void addEsiToReady(Esi* esi);
 	int welcomeEsi();
 	int welcomeNewClients();
