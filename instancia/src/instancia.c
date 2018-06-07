@@ -154,6 +154,24 @@ char interpretateStatement(Operation * operation) {
 	return INSTANCIA_RESPONSE_FALLEN;
 }
 
+void showStorage() {
+	int position = 0;
+	t_link_element * element = entryTable->head;
+	char * value = malloc((entrySize * sizeof(char)) + 1);
+
+	while (element != NULL) {
+		getValue(value, getValueStart(element->data) * entrySize, getValueSize(element->data));
+
+		printf("Value of entry %d is: %s\n", position, value);
+
+		element = element->next;
+		position++;
+
+	}
+
+	free(value);
+}
+
 int finish() {
 
 	list_destroy_and_destroy_elements(entryTable, (void *) destroyTableInfo);
@@ -327,7 +345,7 @@ char compact() {
 		 j = 0;
 
 		 valueSize = getValueSize(element->data);
-		 valueStart = getValueStart(element->data);
+		 valueStart = getValueStart(element->data) * entrySize;
 		 char * value = malloc((valueSize * sizeof(char)) + 1);
 		 getValue(value, valueStart, valueSize);
 
@@ -389,7 +407,7 @@ char storeKeyAndValue(entryTableInfo * selectedEntryByKey) {
 	log_info(logger, "Value start: %d", getValueStart(selectedEntryByKey));
 
 	valueToStore = malloc((getValueSize(selectedEntryByKey) * sizeof(char)) + 1);
-	getValue(valueToStore, getValueStart(selectedEntryByKey), getValueSize(selectedEntryByKey));
+	getValue(valueToStore, getValueStart(selectedEntryByKey) * entrySize, getValueSize(selectedEntryByKey));
 
 	log_info(logger, "Value to store: %s", valueToStore);
 

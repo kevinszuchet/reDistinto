@@ -39,6 +39,7 @@
 	void initialize(int entraces, int entryStorage);
 	void waitForCoordinadorStatements(int coordinadorSocket);
 	char interpretateStatement(Operation * operation);
+	void showStorage();
 	int finish();
 
 	void biMapInitialize(int entraces);
