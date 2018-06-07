@@ -111,10 +111,12 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 
 	char * line = NULL;
 	char ** scriptsSplitted = string_split(script, "\n");
-	size_t len = sizeof(scriptsSplitted);
+	size_t len = numberOfElementsOnArray(scriptsSplitted);
 	int esiPC = 0; // ESI program counter
 
 	int response;
+
+	log_info(logger, "Number of sentences: %d", len);
 
 	while (esiPC < len && empty_string(line = scriptsSplitted[esiPC]) == 0) {
 
@@ -134,11 +136,15 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
 		}
 		//TODO que hacer cuando se recibe distinto a RUN?
+
+		log_info(logger, "esiPC: %d", esiPC);
 	}
 
 	if (line) {
 		free(line);
 	}
+
+	// REVIEW hace falta hacer free de lo splitteado?
 }
 
 void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len) {
@@ -173,7 +179,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 
 	*esiPC += (coordinadorResponse == SUCCESS || coordinadorResponse == LOCK || coordinadorResponse == FREE ? 1 : 0);
 
-	status = (*esiPC == (len - 1) ? FINISHED : NOTFINISHED);
+	status = (*esiPC == len ? FINISHED : NOTFINISHED);
 
 	// Create and send the operationResponse
 	OperationResponse operationResponse;

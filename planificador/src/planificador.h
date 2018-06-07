@@ -68,6 +68,7 @@
 
 	void abortEsi(Esi* esi);
 
+
 	OperationResponse *waitEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char* key);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
@@ -77,6 +78,7 @@
 
 	void moveFromRunningToReady(Esi* esi);
 
+	void freeTakenKeys(Esi* esi);
 	void freeResource(char* key,Esi* esiTaker);
 	void takeResource(char* keyToLock, int esiTaker);
 

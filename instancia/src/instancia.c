@@ -52,13 +52,7 @@ int main(void) {
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
-	//waitForCoordinadorStatements(coordinadorSocket);
-
-	set("key1", "valor que ocupa 2 entradas");
-
-	while(1){
-		store("key1");
-	}
+	waitForCoordinadorStatements(coordinadorSocket);
 
 	free(ipCoordinador);
 	free(algorithm);
@@ -230,7 +224,9 @@ char set(char *key, char *value){
 
 		log_info(logger, "The key: %s already exists, so we are about to update it.", key);
 
-		entryInfo = list_find_with_param(entryTable, key, hasKey);
+		t_link_element * findedElement = list_find_with_param(entryTable, key, hasKey);
+
+		entryInfo = findedElement->data;
 
 		entryInfo->valueSize = valueSize;
 		entryInfo->valueStart = valueStart;
