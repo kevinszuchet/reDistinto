@@ -110,7 +110,7 @@ void initialize(int entraces, int entryStorage){
 	entryTable = list_create();
 
 	// REVIEW Hace falta un +1 para el \0?
-	storage = malloc(entraces * entryStorage);
+	storage = calloc(1, entraces * entryStorage);
 	biMapInitialize(entraces);
 
 	log_info(logger, "Instancia was intialized correctly");
@@ -151,7 +151,7 @@ char interpretateStatement(Operation * operation) {
 			break;
 	}
 
-	return INSTANCIA_RESPONSE_FALLEN;
+	return INSTANCIA_RESPONSE_FAILED;
 }
 
 void showStorage() {
@@ -213,7 +213,7 @@ char set(char *key, char *value){
 	// Asks if the size of the value can be stored
 	if (valueSize > (entriesAmount * entrySize)) {
 		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
-		return INSTANCIA_RESPONSE_FALLEN;
+		return INSTANCIA_RESPONSE_FAILED;
 	}
 
 	// Get the amount of entries that is needed to store the value
@@ -225,7 +225,7 @@ char set(char *key, char *value){
 
 	if (valueStart == ENTRY_START_ERROR) {
 		log_error(logger, "There was an error trying to set, no valid entry start was found");
-		return INSTANCIA_RESPONSE_FALLEN;
+		return INSTANCIA_RESPONSE_FAILED;
 	}
 
 	else if (valueStart == I_NEED_TO_COMPACT) {
@@ -245,6 +245,8 @@ char set(char *key, char *value){
 		t_link_element * findedElement = list_find_with_param(entryTable, key, hasKey);
 
 		entryInfo = findedElement->data;
+
+		biMapUpdate(entryInfo->valueStart, wholeUpperDivision(entryInfo->valueSize, entrySize), IS_EMPTY);
 
 		entryInfo->valueSize = valueSize;
 		entryInfo->valueStart = valueStart;
@@ -372,7 +374,7 @@ char compact() {
 }
 
 void getValue(char * value, int valueStart, int valueSize) {
-	char * storageValue = string_substring(storage, valueStart, valueStart + valueSize);
+	char * storageValue = string_substring(storage, valueStart, valueSize);
 	strcpy(value, storageValue);
 	value[valueSize] = '\0';
 	free(storageValue);
@@ -423,12 +425,11 @@ char storeKeyAndValue(entryTableInfo * selectedEntryByKey) {
 
 	} else {
 		log_error(logger, "Couldn't open the file: %s", strerror(errno));
-		return INSTANCIA_STORE_FAILED;
+		return INSTANCIA_RESPONSE_FAILED;
 	}
 
 	log_info(logger, "The key: %s, was successfully stored", getKey(selectedEntryByKey));
 	return INSTANCIA_RESPONSE_SUCCESS;
-
 }
 
 char store(char *key) {
@@ -436,6 +437,11 @@ char store(char *key) {
 	log_info(logger, "The key: %s, is about to being stored", key);
 
 	t_link_element * selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
+
+	if (selectedElemByKey == NULL) {
+		return INSTANCIA_RESPONSE_FAILED;
+	}
+
 	entryTableInfo * selectedEntryByKey = selectedElemByKey->data;
 
 	return storeKeyAndValue(selectedEntryByKey);
@@ -449,7 +455,7 @@ char dump() {
 	t_link_element * element = entryTable->head;
 	while (element != NULL) {
 
-		if(storeKeyAndValue(element->data) == INSTANCIA_STORE_FAILED) {
+		if(storeKeyAndValue(element->data) == INSTANCIA_RESPONSE_FAILED) {
 			//TODO se sigue con el dump o se corta acá si falla??
 			log_error(logger, "The store number %d couldn't be done", position);
 		}
