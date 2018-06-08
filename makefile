@@ -7,7 +7,7 @@ so-commons-library:
 
 our-commonsRule:
 	cd our-commons/Debug; make clean; make
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2018-1c-youKnowNothing/our-commons/Debug
+	our-commons/Debug/makeOurCommonsUsable.sh
 
 parsi:
 	cd ~; git clone https://github.com/sisoputnfrba/parsi; cd parsi; sudo make clean; sudo make install
