@@ -533,7 +533,7 @@ int recieveStentenceToProcess(int esiSocket){
 	pthread_mutex_unlock(&esisMutex);
 
 	destroyOperation(esiRequest.operation);
-	sleep(delay);
+	usleep(delay * 1000);
 	return operationResult == 0 ? 1 : -1;
 }
 
