@@ -106,7 +106,6 @@ void getNextEsi(){
 	if(runningEsi==NULL){
 		pthread_mutex_lock(&mutexReadyList);
 		nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
-		printf("ID = %d\n",nextEsi->id);
 		pthread_mutex_unlock(&mutexReadyList);
 		runningEsi = nextEsi;
 		removeFromReady(nextEsi);
@@ -154,20 +153,20 @@ void executionProcedure(){
 
 			sendEsiIdToCoordinador(runningEsi->id);
 			sendMessageExecuteToEsi(runningEsi);
-			log_info(logger,"Waiting coordinador request\n");
+			log_info(logger,"Waiting coordinador request");
 			sem_wait(&keyRecievedFromCoordinadorSemaphore);
 
-			log_info(logger,"Key received = %s\n",keyRecieved);
+			log_info(logger,"Key received = %s",keyRecieved);
 			sendKeyStatusToCoordinador(keyRecieved);
 
-			log_info(logger,"Waiting esi information\n");
+			log_info(logger,"Waiting esi information");
 			sem_wait(&esiInformationRecievedSemaphore);
 			if(esiInformation==NULL){
 				log_warning(logger,"Darling, you didn't recieve info because esi has been aborted keep trying with anotherone");
 			}else{
 				log_info(logger,"Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)",getCoordinadorResponseName(esiInformation->coordinadorResponse),getEsiInformationResponseName(esiInformation->esiStatus));
 				handleEsiInformation(esiInformation,keyRecieved);
-				log_info(logger,"Finish executing one instruction from ESI %d\n",nextEsi->id);
+				log_info(logger,"Finish executing one instruction from ESI %d",nextEsi->id);
 			}
 		}else{
 			pthread_mutex_unlock(&mutexReadyList);
@@ -325,7 +324,6 @@ void abortEsi(Esi* esi){
 	freeTakenKeys(esi);
 	if(runningEsi!=NULL&& runningEsi->id==esi->id){
 		sem_post(&esiInformationRecievedSemaphore);
-
 	}
 	deleteEsiFromSystemBySocket(esi->socketConection);
 	list_remove_by_condition(allSystemEsis,&isEsiById);
@@ -348,7 +346,6 @@ void deleteEsiFromSystemBySocket(int socket){
 				pthread_mutex_unlock(&mutexReadyList);
 			break;
 			case INFINISHEDLIST:
-				//actualEsi = list_remove_by_condition(finishedEsis,&isEsiBySocket);
 				filteredList= list_filter(finishedEsis,&isEsiBySocket);
 				actualEsi = list_get(filteredList,list_size(filteredList)-1);
 			break;
@@ -356,7 +353,6 @@ void deleteEsiFromSystemBySocket(int socket){
 				 runningEsi = NULL;
 			break;
 			case INBLOCKEDDIC:
-
 				for(int i = 0;i<list_size(allSystemTakenKeys);i++){
 					blockedEsis = malloc(sizeof(t_queue));
 					blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
@@ -368,13 +364,15 @@ void deleteEsiFromSystemBySocket(int socket){
 							//free(actualEsi);
 						}
 					}
-
 				}
 
 			break;
+			case NOWHERE:
+
+			break;
 			default:
-				log_error(logger,"Couldn't remove ESI with socket (%d)",socket);
-				exitPlanificador();
+				/*log_error(logger,"Couldn't remove ESI with socket (%d)",socket);
+				exitPlanificador();*/
 			break;
 		}
 }
@@ -391,9 +389,11 @@ Esi* getEsiBySocket(int socket){
 			return list_get(list_filter(readyEsis,&isEsiBySocket),0);
 		break;
 		case INFINISHEDLIST:
-			return NULL;
+
+			return nextEsi; //NO SE USA , ES PARA QUE NO ROMPA
 		break;
 		case INRUNNING:
+
 			return runningEsi;
 		break;
 		case INBLOCKEDDIC:
@@ -411,11 +411,10 @@ Esi* getEsiBySocket(int socket){
 			//free(blockedEsis);
 			return targetEsi;
 		break;
-		default:
-			log_error(logger,"Couldn't find ESI by socket (%d)",socket);
-			exitPlanificador();
-			exit(-1);
+		case NOWHERE:
+			return nextEsi; //NO SE USA , ES PARA QUE NO ROMPA
 		break;
+
 	}
 }
 
@@ -423,11 +422,14 @@ char getEsiPlaceBySocket(int socket){
 	bool isEsiBySocket(void* esi){
 		return ((Esi*)esi)->socketConection == socket;
 	}
+
 	if(list_size(list_filter(readyEsis,&isEsiBySocket))>0){
+
 		return INREADYLIST;
 	}
 
 	if(runningEsi!=NULL && runningEsi->socketConection == socket){
+
 		return INRUNNING;
 	}
 	t_queue* blockedEsis;
@@ -438,6 +440,7 @@ char getEsiPlaceBySocket(int socket){
 		for(int j = 0;j<queue_size(blockedEsis);j++){
 			actualEsi = (Esi*)queue_pop(blockedEsis);
 			if(actualEsi->socketConection==socket){
+
 				return INBLOCKEDDIC;
 			}
 			queue_push(blockedEsis,actualEsi);
@@ -445,8 +448,10 @@ char getEsiPlaceBySocket(int socket){
 	}
 
 	if(list_size(list_filter(finishedEsis,&isEsiBySocket))>0){
+
 		return INFINISHEDLIST;
 	}
+
 	return NOWHERE;
 
 }
@@ -461,7 +466,7 @@ OperationResponse *waitEsiInformation(int esiSocket){
 	OperationResponse* finishInformation = malloc(sizeof(OperationResponse));
 	int resultRecv = recv(esiSocket, finishInformation, sizeof(OperationResponse), 0);
 	if(resultRecv <= 0){
-		log_error(logger, "recv failed on %s, while waiting ESI message %s\n", ESI, strerror(errno));
+		log_error(logger, "recv failed on %s, while waiting ESI message %s", ESI, strerror(errno));
 		exitPlanificador();
 		exit(-1);
 	}else{
@@ -551,7 +556,7 @@ void lockKey(char* key, int esiID){
 
 Esi* getEsiById(int id){
 	bool isId(void* element){
-		printf("Holiiis");
+
 		if(((Esi*)element)->id==id)
 			return 1;
 		return 0;
@@ -610,7 +615,7 @@ void addEsiToReady(Esi* esi){
 
 
 void exitPlanificador(){
-	dictionary_destroy(blockedEsiDic);
+	/*dictionary_destroy(blockedEsiDic);
 	list_destroy(readyEsis);
 	list_destroy(finishedEsis);
 	list_destroy(allSystemTakenKeys);
@@ -623,7 +628,7 @@ void exitPlanificador(){
 	log_destroy(logger);
 	pthread_cancel(threadConsole);
 	pthread_cancel(threadConsoleInstructions);
-	pthread_cancel(threadExecution);
+	pthread_cancel(threadExecution);*/
 	exit(-1);
 
 }
@@ -684,18 +689,18 @@ int clientHandler(char clientMessage, int clientSocket){
 		}
 		sem_post(&keyRecievedFromCoordinadorSemaphore);
 	}else if(clientMessage == ESIINFORMATIONMESSAGE){
-		log_info(logger,"I recieved a esi information message\n");
+		log_info(logger,"I recieved a esi information message");
 
 		esiInformation = waitEsiInformation(nextEsi->socketConection);
 
 		sem_post(&esiInformationRecievedSemaphore);
 	}else if(clientMessage == CORDINADORCONSOLERESPONSEMESSAGE){
-		log_info(logger,"I recieved a coordinador console response message\n");
+		log_info(logger,"I recieved a coordinador console response message");
 
 	}else{
 		log_info(logger, "I received a strange in socket %d", clientSocket);
 		//NICO aca esta el problema, esta llegando el 9 que es lock (lo que manda el esi)
-		printf("Lo que me llego es %c\n", clientMessage);
+		printf("Lo que me llego es %c", clientMessage);
 		//TODO sacar este exit, esta para probar
 		exitPlanificador();
 	}
@@ -773,21 +778,13 @@ int handleConcurrence(){
 					// handle data from a client
 					resultRecv = recv(clientSocket, &clientMessage, sizeof(char), 0);
 					if(resultRecv <= 0){
-						if(resultRecv == 0){
-							if(clientSocket == coordinadorSocket){
-								log_error(logger, "Coordinador disconnected my planet needs me. Bye bye");
-								exitPlanificador();
-							}else{
-								log_warning(logger, "ESI disconnected. I dont need you anymore");
-								abortEsi(getEsiBySocket(clientSocket));
-							}
-
-						}else{
-							log_error(logger, "Error in recv from %s select: %s\n", PLANIFICADOR, strerror(errno));
-							//TODO NICO sacar este exit, no deberia morir el planificador en este caso
+						if(clientSocket == coordinadorSocket){
+							log_error(logger, "Coordinador disconnected my planet needs me. Bye bye");
 							exitPlanificador();
+						}else{
+							log_warning(logger, "ESI disconnected. I dont need you anymore");
+							abortEsi(getEsiBySocket(clientSocket));
 						}
-
 						close(clientSocket);
 						FD_CLR(clientSocket, &master);
 					}else{
