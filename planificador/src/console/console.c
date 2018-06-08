@@ -51,9 +51,10 @@ void execute(char** parameters) {
 	// Borrar cuando todo funcione
 	log_info(logger,"Execute command : %s\n", command);
 	char* key = malloc(40);
-	//int esiID;
+	int esiID;
 	t_queue* blockedEsis = malloc(sizeof(t_queue));
-	Esi* esi = malloc(sizeof(Esi));
+
+
 	switch(commandNumber) {
 		case PAUSAR:
 			pauseState = PAUSE;
@@ -68,29 +69,30 @@ void execute(char** parameters) {
 
 		break;
 		case BLOQUEAR:
-		   /* key = parameters[1];
+		    key = parameters[1];
 		    esiID = atoi(parameters[2]);
-		    if(!isTakenResource(key))
+		    if(!isLockedKey(key))
 		    	lockKey(key,CONSOLE_BLOCKED);
 			blockEsi(key,esiID);
 
-			printf("ESI %d was blocked in %s resource:\n", esiID,key);*/
+			log_info(logger,"ESI (%d) was blocked in (%s) key:\n", esiID,key);
 		break;
 		case DESBLOQUEAR:
-
+			 key = parameters[1];
+			unlockEsi(key);
 		break;
 		case LISTAR:
 			 key = parameters[1];
 			 blockedEsis = (t_queue*)dictionary_get(blockedEsiDic,key);
-			 printf("LOGGG");
-			/* if(queue_is_empty(blockedEsis))
-				 printf("There are no blocked esis in key %s\n",key);*/
+
+			 if(queue_is_empty(blockedEsis))
+				 printf("There are no blocked esis in key (%s)\n",key);
 			 for(int i=0;i<queue_size(blockedEsis);i++){
-				 esi = queue_pop(blockedEsis);
-				 printEsi(esi);
-				 queue_push(blockedEsis,esi);
+				 esiID =(int) queue_pop(blockedEsis);
+				 printEsi(getEsiById(esiID));
+				 queue_push(blockedEsis,(void*)esiID);
 			 }
-			 printf("LOGGGGG 2");
+
 		break;
 		case KILL:
 
@@ -146,15 +148,29 @@ int validCommand(char** parameters) {
 				}
 			}
 			free(key);
+			printf("Invalid command\n");
 			return 0;
 		break;
 		case DESBLOQUEAR:
+			if(parameterQuantityIsValid(cantExtraParameters, 1)){
+				strcpy(key,parameters[1]);
+				if(validateDesbloquear(key)){
+					free(key);
+					return 1;
+				}
+			}
+			printf("Invalid command\n");
+			return 0;
 			free(key);
-			return parameterQuantityIsValid(cantExtraParameters, 1);
+
 		break;
 		case LISTAR:
 			free(key);
-			return parameterQuantityIsValid(cantExtraParameters, 1)&&keyExists(parameters[1]);
+			if(parameterQuantityIsValid(cantExtraParameters, 1)&&keyExists(parameters[1])){
+				return 1;
+			}
+			printf("Invalid command\n");
+			return 0;
 		break;
 		case KILL:
 			free(key);
@@ -176,6 +192,11 @@ int validCommand(char** parameters) {
 		break;
 	}
 }
+int validateDesbloquear(char* key){
+	if(keyExists(key))
+		return 1;
+	return 0;
+}
 
 int validateBloquear(char* key,int id){
 	if(keyExists(key)&&(isReady(id)||isRunning(id))){
@@ -186,34 +207,27 @@ int validateBloquear(char* key,int id){
 
 int keyExists(char* key){
 	if(dictionary_has_key(blockedEsiDic,key)){
-		printf("key %s exists\n",key);
 		return 1;
 
 	}
-	printf("key %s doesn't exists\n",key);
 	return 0;
 
 }
 int isReady(int idEsi){
 	if(list_is_empty(readyEsis)){
-		printf("Ready list is empty\n");
 		return 0;
 	}
 	for(int i = 0;i<list_size(readyEsis);i++){
-		if(((Esi*)list_get(readyEsis,i))->id==idEsi){
-			printf("Esi %d is  ready\n",idEsi);
+		if(((Esi*)list_get(readyEsis,i))->id==idEsi){;
 			return 1;
 		}
 	}
-	printf("Esi %d is not ready\n",idEsi);
 	return 0;
 }
 int isRunning(int idEsi){
 	if(runningEsi!=NULL && runningEsi->id==idEsi){
-		printf("Esi %d is running\n",idEsi);
 		return 1;
 	}
-	printf("Esi %d is not running\n",idEsi);
 	return 0;
 }
 

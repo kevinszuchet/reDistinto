@@ -115,7 +115,7 @@ void getNextEsi(){
 		if(strcmp(algorithm,"SJF-CD")==0){
 			if(mustDislodgeRunningEsi())
 			{
-				dislodgeEsi(runningEsi);
+				dislodgeEsi(runningEsi,true);
 				pthread_mutex_lock(&mutexReadyList);
 				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 				runningEsi = nextEsi;
@@ -201,10 +201,6 @@ void executeConsoleInstruccions(){
 
 }
 
-void unlockEsi(char* key){
-	//Saca al esi del diccionario de bloqueados y lo pasa a listos
-	log_info(logger,"An ESI was unlocked from key %s (NOT IMPLEMENTED)\n",key);
-}
 
 void finishRunningEsi(){
 	list_add(finishedEsis,runningEsi);
@@ -251,8 +247,10 @@ void sendEsiIdToCoordinador(int id){
 	}
 }
 
-void dislodgeEsi(Esi* esi){
-	addEsiToReady(runningEsi);
+void dislodgeEsi(Esi* esi,bool addToReady){
+	if(addToReady){
+		addEsiToReady(runningEsi);
+	}
 	updateLastBurst(sentenceCounter,&esi);
 	runningEsi = NULL;
 }
@@ -285,9 +283,6 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 				break;
 				case NOTFINISHED:
 					log_info(logger,"Esi didn't finish execution");
-					if(strcmp(algorithm,"SJF-CD")==0){
-						dislodgeEsi(runningEsi);
-					}
 				break;
 			}
 
@@ -295,7 +290,8 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 		case BLOCK:
 			log_info(logger,"Operation didn't succed, esi (%d) blocked in key (%c)",runningEsi->id,key);
 			//todo ADD ESI TO BLOCKED DIC
-			//todo REMOVE ESI FROM RUNNING
+			blockEsi(key,runningEsi->id);
+			dislodgeEsi(runningEsi,false);
 
 		break;
 		case FREE:
@@ -308,9 +304,6 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 				break;
 				case NOTFINISHED:
 					log_info(logger,"Esi didn't finish execution");
-					if(strcmp(algorithm,"SJF-CD")==0){
-						dislodgeEsi(runningEsi);
-					}
 				break;
 			}
 		break;
@@ -415,7 +408,7 @@ Esi* getEsiBySocket(int socket){
 					queue_push(blockedEsis,actualEsi);
 				}
 			}
-			free(blockedEsis);
+			//free(blockedEsis);
 			return targetEsi;
 		break;
 		default:
@@ -529,19 +522,12 @@ void blockEsi(char* lockedResource, int esiBlocked){
 
 	if(!dictionary_has_key(blockedEsiDic,lockedResource)){
 		log_warning(logger,"Trying to block an ESI in a key that is not already in the dictionary");
-		esiQueue= queue_create();
-		queue_push(esiQueue,(void*)esiBlocked);
-		dictionary_put(blockedEsiDic,lockedResource,esiQueue);
-		log_info(logger,"Added ESI (%d) to blocked dictionary in new key (%s)",esiBlocked,lockedResource);
-
 	}else{
-
 		esiQueue = dictionary_get(blockedEsiDic,lockedResource);
 		queue_push(esiQueue,(void*)esiBlocked);
 		log_info(logger,"Added ESI (%d) to blocked dictionary in existing key (%s)",esiBlocked,lockedResource);
 	}
-	free(esiQueue);
-
+	removeFromReady(getEsiById(esiBlocked));
 }
 
 void lockKey(char* key, int esiID){
@@ -587,12 +573,18 @@ void freeKey(char* key,Esi* esiTaker){
 	}
 	list_remove_by_condition(allSystemTakenKeys,&keyCompare);
 	removeLockedKey(key,esiTaker);
+	unlockEsi(key);
+}
+
+void unlockEsi(char* key){
 	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic,key);
-	Esi* unblockedEsi = NULL;
+	int unlockedEsi;
 	if(!queue_is_empty(blockedEsisQueue)){
-		unblockedEsi = (Esi*)queue_pop(blockedEsisQueue);
-		log_info(logger,"Unblocked ESI %d from key (%s)",unblockedEsi->id,key);
-		addEsiToReady(unblockedEsi);
+		unlockedEsi = (int)queue_pop(blockedEsisQueue);
+		log_info(logger,"Unblocked ESI %d from key (%s)",unlockedEsi,key);
+		addEsiToReady(getEsiById(unlockedEsi));
+	}else{
+		log_info(logger,"There are no ESIs to unlock from key (%s)",key);
 	}
 }
 

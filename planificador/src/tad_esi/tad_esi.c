@@ -60,9 +60,14 @@ void printEsi(Esi* esi){
 	printf("Last estimation = (%f)\n",esi->lastEstimation);
 	printf("Waiting time = (%d)\n",esi->waitingTime);
 	printf("Locked keys =\n");
-	for(int i = 0;i<list_size(esi->lockedKeys);i++){
-		printf("%s\n",(char*)list_get(esi->lockedKeys,i));
+	if(list_is_empty(esi->lockedKeys)){
+		printf("There are no locked keys \n");
+	}else{
+		for(int i = 0;i<list_size(esi->lockedKeys);i++){
+			printf("%s\n",(char*)list_get(esi->lockedKeys,i));
+		}
 	}
+
 	printf("=============");
 }
 

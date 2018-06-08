@@ -92,12 +92,13 @@
 	void exitPlanificador();
 	Esi* getEsiById(int id);
 	bool mustDislodgeRunningEsi();
-	void dislodgeEsi(Esi* esi);
+	void dislodgeEsi(Esi* esi,bool moveToReady);
 
 	//Keys Functions
 	void blockEsi(char* lockedKey, int esiBlocked);
 	char isLockedKey(char* key);
 	void addKeyToGeneralKeys(char* key);
+	void unlockEsi(char* key);
 
 	//Place in system functions
 	void removeFromReady(Esi* esi);

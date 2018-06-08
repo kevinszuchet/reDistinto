@@ -34,6 +34,7 @@
 	int parameterQuantity(char**);
 	int parameterQuantityIsValid(int, int);
 	int validateBloquear(char* key,int id);
+	int validateDesbloquear(char* key);
 	int keyExists(char* key);
 	int isReady(int idEsi);
 	int isRunning(int idEsi);
