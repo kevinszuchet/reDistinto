@@ -51,7 +51,7 @@ void execute(char** parameters) {
 	// Borrar cuando todo funcione
 	log_info(logger,"Execute command : %s\n", command);
 	char* key = malloc(40);
-	int esiID;
+	//int esiID;
 	t_queue* blockedEsis = malloc(sizeof(t_queue));
 	Esi* esi = malloc(sizeof(Esi));
 	switch(commandNumber) {
@@ -68,13 +68,13 @@ void execute(char** parameters) {
 
 		break;
 		case BLOQUEAR:
-		    key = parameters[1];
+		   /* key = parameters[1];
 		    esiID = atoi(parameters[2]);
 		    if(!isTakenResource(key))
-		    	takeResource(key,CONSOLE_BLOCKED);
+		    	lockKey(key,CONSOLE_BLOCKED);
 			blockEsi(key,esiID);
 
-			printf("ESI %d was blocked in %s resource:\n", esiID,key);
+			printf("ESI %d was blocked in %s resource:\n", esiID,key);*/
 		break;
 		case DESBLOQUEAR:
 

@@ -7,16 +7,17 @@
 
 #include "tad_esi.h"
 
-void addWaitingTime(Esi* esi){
-	esi->waitingTime++;
+void addWaitingTime(void* esi){
+
+	((Esi*)esi)->waitingTime++;
 }
 
-void addWaitingTimeToAll(Esi** esiList){
-	int i = 0;
-	while(esiList[i]){
-		addWaitingTime(esiList[i]);
-		i++;
-	}
+void addWaitingTimeToAll(t_list* esis){
+	list_iterate(esis,&addWaitingTime);
+}
+
+void reduceWaitingTime(Esi** esi){
+	(*esi)->waitingTime--;
 }
 
 Esi *createEsi(int id,double initialEstimation,int socketConection){
@@ -34,8 +35,8 @@ int id(Esi* esi){
 	return esi->id;
 }
 
-void addLockedKey(char** key, Esi** esi){
-	printf("to locked keys by ESI (%d)",(*esi)->id);
+
+void addLockedKeyToEsi(char** key, Esi** esi){
 	list_add((*esi)->lockedKeys,(void*)*key);
 }
 void removeLockedKey(char* key, Esi* esi){
@@ -44,6 +45,9 @@ void removeLockedKey(char* key, Esi* esi){
 			return true;
 		}
 		return false;
+	}
+	void destroyer(void* element){
+		free(element);
 	}
 	list_remove_by_condition(esi->lockedKeys,&keyCompare);
 }
@@ -60,5 +64,9 @@ void printEsi(Esi* esi){
 		printf("%s\n",(char*)list_get(esi->lockedKeys,i));
 	}
 	printf("=============");
+}
+
+void updateLastBurst(int burst,Esi** esi){
+	(*esi)->lastBurst = burst;
 }
 
