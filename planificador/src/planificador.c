@@ -337,28 +337,28 @@ void deleteEsiFromSystemBySocket(int socket){
 			return ((Esi*)esi)->socketConection == socket;
 		}
 		t_queue* blockedEsis;
-		Esi* actualEsi;
+		int* actualEsi;
 		t_list* filteredList;
 		switch(getEsiPlaceBySocket(socket)){
 			case INREADYLIST:
 				pthread_mutex_lock(&mutexReadyList);
-				actualEsi = list_remove_by_condition(readyEsis,&isEsiBySocket);
+				list_remove_by_condition(readyEsis,&isEsiBySocket);
 				pthread_mutex_unlock(&mutexReadyList);
 			break;
 			case INFINISHEDLIST:
 				filteredList= list_filter(finishedEsis,&isEsiBySocket);
-				actualEsi = list_get(filteredList,list_size(filteredList)-1);
+				list_get(filteredList,list_size(filteredList)-1);
 			break;
 			case INRUNNING:
 				 runningEsi = NULL;
 			break;
 			case INBLOCKEDDIC:
 				for(int i = 0;i<list_size(allSystemTakenKeys);i++){
-					blockedEsis = malloc(sizeof(t_queue));
+
 					blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
 					for(int j = 0;j<queue_size(blockedEsis);j++){
-						actualEsi = (Esi*)queue_pop(blockedEsis);
-						if(actualEsi->socketConection!=socket){
+						actualEsi = (int*) queue_pop(blockedEsis);
+						if(getEsiById(*actualEsi)->socketConection!=socket){
 							queue_push(blockedEsis,actualEsi);
 						}else{
 							//free(actualEsi);
@@ -382,14 +382,13 @@ Esi* getEsiBySocket(int socket){
 		return ((Esi*)esi)->socketConection == socket;
 	}
 	t_queue* blockedEsis;
-	Esi* actualEsi;
+	int* actualEsi;
 	Esi* targetEsi = NULL;
 	switch(getEsiPlaceBySocket(socket)){
 		case INREADYLIST:
 			return list_get(list_filter(readyEsis,&isEsiBySocket),0);
 		break;
 		case INFINISHEDLIST:
-
 			return nextEsi; //NO SE USA , ES PARA QUE NO ROMPA
 		break;
 		case INRUNNING:
@@ -401,9 +400,9 @@ Esi* getEsiBySocket(int socket){
 			for(int i = 0;i<list_size(allSystemTakenKeys);i++){
 				blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
 				for(int j = 0;j<queue_size(blockedEsis);j++){
-					actualEsi = (Esi*)queue_pop(blockedEsis);
-					if(actualEsi->socketConection==socket){
-						*targetEsi = *actualEsi;
+					actualEsi = (int*)queue_pop(blockedEsis);
+					if(getEsiById(*actualEsi)->socketConection==socket){
+						targetEsi = getEsiById(*actualEsi);
 					}
 					queue_push(blockedEsis,actualEsi);
 				}
@@ -433,17 +432,17 @@ char getEsiPlaceBySocket(int socket){
 		return INRUNNING;
 	}
 	t_queue* blockedEsis;
-	Esi* actualEsi;
+	int* actualEsi;
 
 	for(int i = 0;i<list_size(allSystemTakenKeys);i++){
 		blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
 		for(int j = 0;j<queue_size(blockedEsis);j++){
-			actualEsi = (Esi*)queue_pop(blockedEsis);
-			if(actualEsi->socketConection==socket){
+			actualEsi = (int*) queue_pop(blockedEsis);
+			if(getEsiById(*actualEsi)->socketConection==socket){
 
 				return INBLOCKEDDIC;
 			}
-			queue_push(blockedEsis,actualEsi);
+			queue_push(blockedEsis, actualEsi);
 		}
 	}
 
@@ -522,15 +521,17 @@ void addKeyToGeneralKeys(char* key){
 		list_add(allSystemTakenKeys,key);
 }
 
-void blockEsi(char* lockedResource, int esiBlocked){
+void blockEsi(char* lockedKey, int esiBlocked){
 	t_queue* esiQueue;
-
-	if(!dictionary_has_key(blockedEsiDic,lockedResource)){
+	int* esiBlockedCopy = malloc(sizeof(int));
+	if(!dictionary_has_key(blockedEsiDic,lockedKey)){
 		log_warning(logger,"Trying to block an ESI in a key that is not already in the dictionary");
 	}else{
-		esiQueue = dictionary_get(blockedEsiDic,lockedResource);
-		queue_push(esiQueue,(void*)esiBlocked);
-		log_info(logger,"Added ESI (%d) to blocked dictionary in existing key (%s)",esiBlocked,lockedResource);
+		esiQueue = dictionary_get(blockedEsiDic,lockedKey);
+		*esiBlockedCopy = esiBlocked;
+		queue_push(esiQueue,esiBlockedCopy);
+		 printf("BLOCKING ESI WITH ID = %d\n",*((int*) queue_peek(esiQueue)));
+		log_info(logger,"Added ESI (%d) to blocked dictionary in existing key (%s)",*esiBlockedCopy,lockedKey);
 	}
 	removeFromReady(getEsiById(esiBlocked));
 }
@@ -556,7 +557,6 @@ void lockKey(char* key, int esiID){
 
 Esi* getEsiById(int id){
 	bool isId(void* element){
-
 		if(((Esi*)element)->id==id)
 			return 1;
 		return 0;
@@ -583,11 +583,11 @@ void freeKey(char* key,Esi* esiTaker){
 
 void unlockEsi(char* key){
 	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic,key);
-	int unlockedEsi;
+	int* unlockedEsi;
 	if(!queue_is_empty(blockedEsisQueue)){
-		unlockedEsi = (int)queue_pop(blockedEsisQueue);
-		log_info(logger,"Unblocked ESI %d from key (%s)",unlockedEsi,key);
-		addEsiToReady(getEsiById(unlockedEsi));
+		unlockedEsi = (int*)queue_pop(blockedEsisQueue);
+		log_info(logger,"Unblocked ESI %d from key (%s)", *unlockedEsi, key);
+		addEsiToReady(getEsiById(*unlockedEsi));
 	}else{
 		log_info(logger,"There are no ESIs to unlock from key (%s)",key);
 	}

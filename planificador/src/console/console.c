@@ -52,7 +52,8 @@ void execute(char** parameters) {
 	log_info(logger,"Execute command : %s\n", command);
 	char* key = malloc(40);
 	int esiID;
-	t_queue* blockedEsis = malloc(sizeof(t_queue));
+	int* esiIDpointer;
+	t_queue* blockedEsis;
 
 
 	switch(commandNumber) {
@@ -88,9 +89,11 @@ void execute(char** parameters) {
 			 if(queue_is_empty(blockedEsis))
 				 printf("There are no blocked esis in key (%s)\n",key);
 			 for(int i=0;i<queue_size(blockedEsis);i++){
-				 esiID =(int) queue_pop(blockedEsis);
-				 printEsi(getEsiById(esiID));
-				 queue_push(blockedEsis,(void*)esiID);
+				 printf("ID BEFORE POP = %d\n", *((int*) queue_peek(blockedEsis)));
+				 esiIDpointer =(int*) queue_pop(blockedEsis);
+				 printf("ID BEFORE PRINT = %d\n",*esiIDpointer);
+				 printEsi(getEsiById(*esiIDpointer));
+				 queue_push(blockedEsis,esiIDpointer);
 			 }
 
 		break;
