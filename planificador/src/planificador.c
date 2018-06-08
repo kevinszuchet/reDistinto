@@ -13,12 +13,15 @@ fd_set master;
 
 int pauseState = CONTINUE; //1 is running, 0 is paussed
 
-t_dictionary* blockedEsiDic; //Key->esiQueue  if queue is empty, no one have take the resource
+t_dictionary* blockedEsiDic;
 t_list* readyEsis;
 t_list* finishedEsis;
 Esi* runningEsi;
 
-t_list* allKeys;
+t_list* allSystemTakenKeys;
+t_list* allSystemEsis;
+
+t_list* instruccionsByConsoleList;
 
 int listeningPort;
 char* algorithm;
@@ -42,7 +45,7 @@ sem_t readyEsisSemaphore;
 
 sem_t consoleInstructionSemaphore;
 
-
+int sentenceCounter = 0;
 
 int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
@@ -53,7 +56,7 @@ OperationResponse* esiInformation = NULL;
 Esi* nextEsi;
 
 
-t_list* instruccionsByConsoleList;
+
 
 int welcomeNewClients();
 
@@ -61,11 +64,11 @@ int main(void) {
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
-	takenResources=dictionary_create();
-	allKeys = list_create();
-
+	allSystemTakenKeys = list_create();
 	blockedEsiDic = dictionary_create();
 	addConfigurationLockedKeys(blockedKeys);
+
+	allSystemEsis = list_create();
 	readyEsis = list_create();
 	finishedEsis = list_create();
 	runningEsi = NULL;
@@ -99,6 +102,39 @@ int main(void) {
 
 //General execute ESI functions
 
+void getNextEsi(){
+	if(runningEsi==NULL){
+		pthread_mutex_lock(&mutexReadyList);
+		nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+		printf("ID = %d\n",nextEsi->id);
+		pthread_mutex_unlock(&mutexReadyList);
+		runningEsi = nextEsi;
+		removeFromReady(nextEsi);
+
+	}else{
+		if(strcmp(algorithm,"SJF-CD")==0){
+			if(mustDislodgeRunningEsi())
+			{
+				dislodgeEsi(runningEsi,true);
+				pthread_mutex_lock(&mutexReadyList);
+				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+				runningEsi = nextEsi;
+				pthread_mutex_unlock(&mutexReadyList);
+				removeFromReady(nextEsi);
+			}else{
+				nextEsi = runningEsi;
+			}
+		}else{
+			nextEsi = runningEsi;
+		}
+	}
+}
+
+bool mustDislodgeRunningEsi(){
+	//todo ver si tengo que desalojar
+	return false;
+}
+
 //Core execute function
 void executionProcedure(){
 	log_info(logger,"Starting to check if an ESI is ready to run");
@@ -110,25 +146,14 @@ void executionProcedure(){
 		sem_wait(&executionSemaphore);
 		pthread_mutex_lock(&mutexReadyList);
 		if((list_size(readyEsis)>0 ||runningEsi!=NULL)&&pauseState==CONTINUE){
+			pthread_mutex_unlock(&mutexReadyList);
 
-			if(runningEsi==NULL){
-				log_info(logger,"At least an ESI is ready to run\n");
+			getNextEsi();
 
-				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+			log_info(logger,"Executing ESI (%d)",runningEsi->id);
 
-				runningEsi = nextEsi;
-				pthread_mutex_unlock(&mutexReadyList);
-				removeFromReady(nextEsi);
-			}else{
-				log_info(logger,"Running ESI is ready to run\n");
-				nextEsi = runningEsi;
-				pthread_mutex_unlock(&mutexReadyList);
-			}
-
-			log_info(logger,"Esi %d was selected to execute\n",nextEsi->id);
-			sendEsiIdToCoordinador(nextEsi->id);
-
-			sendMessageExecuteToEsi(nextEsi);
+			sendEsiIdToCoordinador(runningEsi->id);
+			sendMessageExecuteToEsi(runningEsi);
 			log_info(logger,"Waiting coordinador request\n");
 			sem_wait(&keyRecievedFromCoordinadorSemaphore);
 
@@ -144,12 +169,11 @@ void executionProcedure(){
 				handleEsiInformation(esiInformation,keyRecieved);
 				log_info(logger,"Finish executing one instruction from ESI %d\n",nextEsi->id);
 			}
-			sem_post(&consoleInstructionSemaphore);
 		}else{
 			pthread_mutex_unlock(&mutexReadyList);
-			sem_post(&consoleInstructionSemaphore);
-		}
 
+		}
+		sem_post(&consoleInstructionSemaphore);
 
 
 	}
@@ -177,29 +201,20 @@ void executeConsoleInstruccions(){
 
 }
 
-void unlockEsi(char* key){
-	//Saca al esi del diccionario de bloqueados y lo pasa a listos
-	log_info(logger,"An ESI was unlocked from key %s (NOT IMPLEMENTED)\n",key);
-}
 
 void finishRunningEsi(){
-
-	log_info(logger,"Finishing esi (%d) \n",runningEsi->id);
 	list_add(finishedEsis,runningEsi);
 	freeTakenKeys(runningEsi);
-	log_info(logger,"Esi (%d) succesfully finished \n",runningEsi->id);
+	log_info(logger,"Esi (%d) succesfully finished",runningEsi->id);
 	runningEsi = NULL;
-
-
 }
 
 void freeTakenKeys(Esi* esi){
 	for(int i = 0;i<list_size(esi->lockedKeys);i++){
 		char* keyToFree = (char*)list_get(esi->lockedKeys,i);
-		freeResource(keyToFree,esi);
-		log_info(logger,"Key (%s) was freed by Esi (%d)  \n",keyToFree, esi->id);
+		freeKey(keyToFree,esi);
+
 	}
-	list_clean(esi->lockedKeys);
 }
 
 void addToFinishedList(Esi* finishedEsi){
@@ -219,43 +234,47 @@ void removeFromReady(Esi* esi){
 			idToRemove = i;
 		}
 	}
-	list_remove(readyEsis,idToRemove);
+	list_remove(readyEsis, idToRemove);
 	pthread_mutex_unlock(&mutexReadyList);
-	log_info(logger,"ESI %d removed from ready\n",esi->id);
 }
 
 void sendEsiIdToCoordinador(int id){
 	if (send(coordinadorSocket, &id, sizeof(int), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about ESI id");
+	   exitPlanificador();
 	}else{
 		log_info(logger,"Send esi ID = %d to coordinador",id);
 	}
 }
 
+void dislodgeEsi(Esi* esi,bool addToReady){
+	if(addToReady){
+		addEsiToReady(runningEsi);
+	}
+	updateLastBurst(sentenceCounter,&esi);
+	runningEsi = NULL;
+}
+
 void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
+	sentenceCounter++;
+	addWaitingTimeToAll(readyEsis);
+	reduceWaitingTime(&runningEsi);
+
 	switch(esiExecutionInformation->coordinadorResponse){
 		case SUCCESS:
-			//Se hizo un SET y salio bien
 			log_info(logger,"Operation succeded, nothing to do");
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
 					finishRunningEsi();
-					log_info(logger,"Esi finished execution");
 				break;
 				case NOTFINISHED:
 					log_info(logger,"Esi didn't finish execution");
-					if(strcmp(algorithm,"SJF-CD")==0){
-						//todo Pasar el esi a ready
-						//todo Sacar el esi de running
-					}
 				break;
 			}
 		break;
 
 		case LOCK:
-			log_info(logger,"Operation succeded");
-			takeResource(key,runningEsi->id);
-			addKeyToGeneralKeys(key);
+			lockKey(key,runningEsi->id);
 			log_info(logger,"Key (%s) locked",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
@@ -264,9 +283,6 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 				break;
 				case NOTFINISHED:
 					log_info(logger,"Esi didn't finish execution");
-					if(strcmp(algorithm,"SJF-CD")==0){
-						moveFromRunningToReady(runningEsi);
-					}
 				break;
 			}
 
@@ -274,11 +290,12 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 		case BLOCK:
 			log_info(logger,"Operation didn't succed, esi (%d) blocked in key (%c)",runningEsi->id,key);
 			//todo ADD ESI TO BLOCKED DIC
-			//todo REMOVE ESI FROM RUNNING
+			blockEsi(key,runningEsi->id);
+			dislodgeEsi(runningEsi,false);
 
 		break;
 		case FREE:
-			//Liberar la clave
+			freeKey(key,runningEsi);
 			log_info(logger,"Operation succeded, key (%s) freed",key);
 			switch(esiExecutionInformation->esiStatus){
 				case FINISHED:
@@ -287,19 +304,11 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 				break;
 				case NOTFINISHED:
 					log_info(logger,"Esi didn't finish execution");
-					if(strcmp(algorithm,"SJF-CD")==0){
-						//todo Pasar el esi a ready
-						//todo Sacar el esi de running
-					}
 				break;
 			}
 		break;
 		case ABORT:
-			log_info(logger,"Aborting esi");
-			abortEsi(runningEsi);
 			runningEsi = NULL;
-
-
 		break;
 
 
@@ -308,17 +317,18 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 }
 
 void abortEsi(Esi* esi){
-	log_info(logger,"Waiting to abort esi (%d)", esi->id);
-	sleep(3);
+	bool isEsiById(void* element){
+		return ((Esi*) element)->id == esi->id;
+	}
+	sleep(1);
 	log_info(logger,"Aborting esi (%d)", esi->id);
 	freeTakenKeys(esi);
-
 	if(runningEsi!=NULL&& runningEsi->id==esi->id){
-		log_info(logger,"Trying to abort running esi, lets save the execution mi lord");
 		sem_post(&esiInformationRecievedSemaphore);
 
 	}
 	deleteEsiFromSystemBySocket(esi->socketConection);
+	list_remove_by_condition(allSystemEsis,&isEsiById);
 	log_info(logger,"Esi (%d) succesfully aborted", esi->id);
 }
 
@@ -336,32 +346,29 @@ void deleteEsiFromSystemBySocket(int socket){
 				pthread_mutex_lock(&mutexReadyList);
 				actualEsi = list_remove_by_condition(readyEsis,&isEsiBySocket);
 				pthread_mutex_unlock(&mutexReadyList);
-				log_info(logger,"Esi with id (%d) deleted from ready list", actualEsi->id);
 			break;
 			case INFINISHEDLIST:
 				//actualEsi = list_remove_by_condition(finishedEsis,&isEsiBySocket);
 				filteredList= list_filter(finishedEsis,&isEsiBySocket);
 				actualEsi = list_get(filteredList,list_size(filteredList)-1);
-				log_info(logger,"Esi with id (%d) was on finished list lets keep it there", actualEsi->id);
 			break;
 			case INRUNNING:
-				 log_info(logger,"Esi with id (%d) deleted from running", runningEsi->id);
 				 runningEsi = NULL;
 			break;
 			case INBLOCKEDDIC:
 
-				for(int i = 0;i<list_size(allKeys);i++){
-					blockedEsis  = malloc(sizeof(t_queue));
-					blockedEsis = dictionary_get(blockedEsiDic,list_get(allKeys,i));
+				for(int i = 0;i<list_size(allSystemTakenKeys);i++){
+					blockedEsis = malloc(sizeof(t_queue));
+					blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
 					for(int j = 0;j<queue_size(blockedEsis);j++){
 						actualEsi = (Esi*)queue_pop(blockedEsis);
 						if(actualEsi->socketConection!=socket){
 							queue_push(blockedEsis,actualEsi);
 						}else{
-							log_info(logger,"Esi with id (%d) deleted from blocked dic", actualEsi->id);
+							//free(actualEsi);
 						}
 					}
-					free(blockedEsis);
+
 				}
 
 			break;
@@ -384,16 +391,15 @@ Esi* getEsiBySocket(int socket){
 			return list_get(list_filter(readyEsis,&isEsiBySocket),0);
 		break;
 		case INFINISHEDLIST:
-			//return list_get(list_filter(finishedEsis,&isEsiBySocket),0);
 			return NULL;
 		break;
 		case INRUNNING:
 			return runningEsi;
 		break;
 		case INBLOCKEDDIC:
-			blockedEsis = malloc(sizeof(t_queue));
-			for(int i = 0;i<list_size(allKeys);i++){
-				blockedEsis = dictionary_get(blockedEsiDic,list_get(allKeys,i));
+
+			for(int i = 0;i<list_size(allSystemTakenKeys);i++){
+				blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
 				for(int j = 0;j<queue_size(blockedEsis);j++){
 					actualEsi = (Esi*)queue_pop(blockedEsis);
 					if(actualEsi->socketConection==socket){
@@ -402,7 +408,7 @@ Esi* getEsiBySocket(int socket){
 					queue_push(blockedEsis,actualEsi);
 				}
 			}
-			free(blockedEsis);
+			//free(blockedEsis);
 			return targetEsi;
 		break;
 		default:
@@ -427,8 +433,8 @@ char getEsiPlaceBySocket(int socket){
 	t_queue* blockedEsis;
 	Esi* actualEsi;
 
-	for(int i = 0;i<list_size(allKeys);i++){
-		blockedEsis = dictionary_get(blockedEsiDic,list_get(allKeys,i));
+	for(int i = 0;i<list_size(allSystemTakenKeys);i++){
+		blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
 		for(int j = 0;j<queue_size(blockedEsis);j++){
 			actualEsi = (Esi*)queue_pop(blockedEsis);
 			if(actualEsi->socketConection==socket){
@@ -456,12 +462,9 @@ OperationResponse *waitEsiInformation(int esiSocket){
 	int resultRecv = recv(esiSocket, finishInformation, sizeof(OperationResponse), 0);
 	if(resultRecv <= 0){
 		log_error(logger, "recv failed on %s, while waiting ESI message %s\n", ESI, strerror(errno));
-		//Que pasa si recibo mal el mensaje del ESI?
 		exitPlanificador();
 		exit(-1);
 	}else{
-
-		//free(finishInformation);
 		return finishInformation;
 	}
 }
@@ -472,15 +475,14 @@ char waitEsiInformationDummie(int esiSocket){
 }
 
 void sendKeyStatusToCoordinador(char* key){
-	bool keyCompare(void* takenKeys){
-		if(strcmp((char*)takenKeys,key)==0){
+	bool keyCompare(void* takenKey){
+		if(strcmp((char*)takenKey,key)==0){
 			return true;
 		}
 		return false;
 	}
-	char keyStatus = isTakenResource(key);
+	char keyStatus = isLockedKey(key);
 	if(keyStatus==BLOCKED){
-		log_info(logger,"Key is blocked, lets check if its taken by the ESI");
 		if(list_filter(runningEsi->lockedKeys,&keyCompare)){
 			keyStatus = LOCKED;
 		}
@@ -488,7 +490,7 @@ void sendKeyStatusToCoordinador(char* key){
 	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	}else{
-		log_info(logger,"Send key status to coordinador: %s", getKeyStatusName(keyStatus));
+		log_info(logger,"Send key status to coordinador (%s)", getKeyStatusName(keyStatus));
 	}
 }
 void sendKeyStatusToCoordinadorDummie(char status){
@@ -503,19 +505,16 @@ void sendMessageExecuteToEsi(Esi* nextEsi){
     	log_info(logger,"Send execute message to ESI %d in socket %d",nextEsi->id,nextEsi->socketConection);
     }
 }
-void sendMessageExecuteToEsiDummie(Esi* nextEsi){
-
-}
-
 
 //General use functions
+
 
 void addKeyToGeneralKeys(char* key){
 	bool itemIsKey(void* item){
 		return strcmp(key,(char*)item)==0;
 	}
-	if(!list_any_satisfy(allKeys,&itemIsKey))
-		list_add(allKeys,key);
+	if(!list_any_satisfy(allSystemTakenKeys,&itemIsKey))
+		list_add(allSystemTakenKeys,key);
 }
 
 void blockEsi(char* lockedResource, int esiBlocked){
@@ -523,72 +522,77 @@ void blockEsi(char* lockedResource, int esiBlocked){
 
 	if(!dictionary_has_key(blockedEsiDic,lockedResource)){
 		log_warning(logger,"Trying to block an ESI in a key that is not already in the dictionary");
-		esiQueue= queue_create();
-		queue_push(esiQueue,(void*)esiBlocked);
-		dictionary_put(blockedEsiDic,lockedResource,esiQueue);
-		log_info(logger,"Added ESI (%d) to blocked dictionary in new key (%s)",esiBlocked,lockedResource);
-
 	}else{
-		esiQueue = malloc(sizeof(t_queue));
 		esiQueue = dictionary_get(blockedEsiDic,lockedResource);
 		queue_push(esiQueue,(void*)esiBlocked);
 		log_info(logger,"Added ESI (%d) to blocked dictionary in existing key (%s)",esiBlocked,lockedResource);
 	}
-	free(esiQueue);
-
+	removeFromReady(getEsiById(esiBlocked));
 }
 
-void takeResource(char* key, int esiID){
+void lockKey(char* key, int esiID){
+
+	addKeyToGeneralKeys(key);
 
 	if(esiID != CONSOLE_BLOCKED){
-		addLockedKey(&key,&runningEsi);
-		dictionary_put(takenResources,key,(void*)esiID);
-		t_queue* esiQueue = queue_create();
-		dictionary_put(blockedEsiDic,key,esiQueue);
-		log_info(logger,"Resource (%s) was taken by ESI (%d)",key,esiID);
-		//free(esiQueue);
-	}else{
-		dictionary_put(takenResources,key,(void*)CONSOLE_BLOCKED);
-		t_queue* esiQueue = queue_create();
-		dictionary_put(blockedEsiDic,key,esiQueue);
-		log_info(logger,"Resource (%s) was taken Console",key);
-		//free(esiQueue);
+		addLockedKeyToEsi(&key,&runningEsi);
 	}
+	if(!dictionary_has_key(blockedEsiDic,key)){
+		t_queue* esiQueue = queue_create();
+		dictionary_put(blockedEsiDic,key,esiQueue);
+
+	}
+	if(isLockedKey(key)==NOTBLOCKED){
+		list_add(allSystemTakenKeys,key);
+	}
+
 
 }
 
-void freeResource(char* key,Esi* esiTaker){
-	removeLockedKey(key,esiTaker);
-
-	if(!dictionary_has_key(takenResources,key)){
-		log_error(logger,"Trying to free a resource (%s) that is not taken",key);
-	}else{
-		dictionary_remove(takenResources,key);
-		log_info(logger,"Freed resource (%s)",key);
-
+Esi* getEsiById(int id){
+	bool isId(void* element){
+		printf("Holiiis");
+		if(((Esi*)element)->id==id)
+			return 1;
+		return 0;
 	}
+	Esi* esi =list_get(list_filter(allSystemEsis,&isId),0);
+	return esi;
+}
 
-	if(dictionary_has_key(blockedEsiDic,key)){
-		t_queue* blockedEsisQueue = malloc(sizeof(t_queue));
-		blockedEsisQueue = dictionary_get(blockedEsiDic,key);
-		Esi* unblockedEsi = NULL;
-		if(!queue_is_empty(blockedEsisQueue)){
-			unblockedEsi = (Esi*)queue_pop(blockedEsisQueue);
-			log_info(logger,"Unblocked ESI %d from resource %s",unblockedEsi->id,key);
-			addEsiToReady(unblockedEsi);
-			log_info(logger,"Added ESI %d to ready",unblockedEsi->id);
+void destroyer(void* element){
+	free(element);
+}
+
+void freeKey(char* key,Esi* esiTaker){
+	bool keyCompare(void* takenKey){
+		if(string_equals_ignore_case((char*)takenKey,key)){
+			return true;
 		}
-		//free(blockedEsisQueue);
-	}else{
-		log_warning(logger,"Can't release an esi from key (%s), key isn't in the dictionary",key);
+		return false;
 	}
-
-
-
+	list_remove_by_condition(allSystemTakenKeys,&keyCompare);
+	removeLockedKey(key,esiTaker);
+	unlockEsi(key);
 }
 
-char isTakenResource(char* key){
-	if(dictionary_has_key(takenResources,key)){
+void unlockEsi(char* key){
+	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic,key);
+	int unlockedEsi;
+	if(!queue_is_empty(blockedEsisQueue)){
+		unlockedEsi = (int)queue_pop(blockedEsisQueue);
+		log_info(logger,"Unblocked ESI %d from key (%s)",unlockedEsi,key);
+		addEsiToReady(getEsiById(unlockedEsi));
+	}else{
+		log_info(logger,"There are no ESIs to unlock from key (%s)",key);
+	}
+}
+
+char isLockedKey(char* key){
+	bool itemIsKey(void* item){
+			return strcmp(key,(char*)item)==0;
+		}
+	if(list_any_satisfy(allSystemTakenKeys,&itemIsKey)){
 		return BLOCKED;
 	}else{
 		return NOTBLOCKED;
@@ -602,16 +606,14 @@ void addEsiToReady(Esi* esi){
 	list_add(readyEsis,(void*)esi);
 	pthread_mutex_unlock(&mutexReadyList);
 	sem_post(&readyEsisSemaphore);
-	log_info(logger, "Added ESI with id=%d and socket=%d to ready list \n",esi->id,esi->socketConection);
 }
 
 
 void exitPlanificador(){
 	dictionary_destroy(blockedEsiDic);
-	dictionary_destroy(takenResources);
 	list_destroy(readyEsis);
 	list_destroy(finishedEsis);
-	list_destroy(allKeys);
+	list_destroy(allSystemTakenKeys);
 	list_destroy(instruccionsByConsoleList);
 	sem_destroy(&executionSemaphore);
 	sem_destroy(&keyRecievedFromCoordinadorSemaphore);
@@ -631,10 +633,11 @@ void addConfigurationLockedKeys(char** blockedKeys){
 	int i = 0;
 
 	while(blockedKeys[i]){
-		takeResource(blockedKeys[i],CONSOLE_BLOCKED);
+		lockKey(blockedKeys[i],CONSOLE_BLOCKED);
 		addKeyToGeneralKeys(blockedKeys[i]);
 		i++;
 	}
+	log_info(logger,"All the configuration keys where locked");
 }
 
 void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys){
@@ -660,12 +663,12 @@ Esi* generateEsiStruct(int esiSocket){
 	return newEsi;
 }
 
-int welcomeEsi(int clientSocket){
-	log_info(logger, "I received an esi\n");
+void welcomeEsi(int clientSocket){
+	log_info(logger, "I received a new ESI");
 	Esi* newEsi = generateEsiStruct(clientSocket);
 	addEsiToReady(newEsi);
-	//free(newEsi);
-	return 0;
+	list_add(allSystemEsis,newEsi);
+
 }
 
 int clientHandler(char clientMessage, int clientSocket){
@@ -673,7 +676,7 @@ int clientHandler(char clientMessage, int clientSocket){
 	if (clientMessage == ESIID){
 		welcomeEsi(clientSocket);
 	}else if(clientMessage == KEYSTATUSMESSAGE){
-		log_info(logger,"I recieved a key status message\n");
+		log_info(logger,"I recieved a key status message");
 		if(recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE){
 			log_error(logger,"Couldn't recieve key to check from coordinador, quitting...");
 			exitPlanificador();

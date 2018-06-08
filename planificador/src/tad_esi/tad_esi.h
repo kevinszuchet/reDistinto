@@ -26,15 +26,16 @@ typedef struct Esi{
 
 void printEsi(Esi* esi);
 
-void addWaitingTime(Esi*);
+void addWaitingTime(void* esi);
 
-void addWaitingTimeToAll(Esi**);
-
+void addWaitingTimeToAll(t_list* esis);
+void updateLastBurst(int burst,Esi** esi);
+void reduceWaitingTime(Esi** esi);
 Esi *createEsi(int id,double initialBurst,int socketConection);
 
 int id(Esi* esi);
 
-void addLockedKey(char** key, Esi** esi);
+void addLockedKeyToEsi(char** key, Esi** esi);
 void removeLockedKey(char* key, Esi* esi);
 
 #endif /* SRC_TAD_ESI_TAD_ESI_H_ */

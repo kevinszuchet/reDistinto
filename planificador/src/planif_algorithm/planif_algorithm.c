@@ -50,5 +50,6 @@ Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList){
 	printf("List sorted\n");
 	Esi* nextEsi = list_get(esiList,0);
 	nextEsi->lastEstimation = getEstimation(nextEsi); //When an ESI is selected to run, override last estimation
+	printf("ID = %d\n",nextEsi->id);
 	return nextEsi;
 }

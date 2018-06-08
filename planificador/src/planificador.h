@@ -47,7 +47,7 @@
 	t_list* finishedEsis;
 	Esi* runningEsi;
 
-	t_dictionary* takenResources;
+
 
 	int listeningPort;
 	char* algorithm;
@@ -86,19 +86,30 @@
 	void moveFromRunningToReady(Esi* esi);
 
 	void freeTakenKeys(Esi* esi);
-	void freeResource(char* key,Esi* esiTaker);
-	void takeResource(char* keyToLock, int esiTaker);
+	void freeKey(char* key,Esi* esiTaker);
+	void lockKey(char* keyToLock, int esiTaker);
 
 	void exitPlanificador();
+	Esi* getEsiById(int id);
+	bool mustDislodgeRunningEsi();
+	void dislodgeEsi(Esi* esi,bool moveToReady);
 
-	void blockEsi(char* lockedResource, int esiBlocked);
-	int checkKeyBlocked(char* keyRecieved);
-	char isTakenResource(char* key);
+	//Keys Functions
+	void blockEsi(char* lockedKey, int esiBlocked);
+	char isLockedKey(char* key);
 	void addKeyToGeneralKeys(char* key);
+	void unlockEsi(char* key);
+
+	//Place in system functions
 	void removeFromReady(Esi* esi);
 	void addEsiToReady(Esi* esi);
-	int welcomeEsi();
-	int welcomeNewClients();
+
+	//Other functions
 	void addConfigurationLockedKeys(char**);
+	void destroyer(void* element);
+
+	//Conection Functions
+	void welcomeEsi();
+	int welcomeNewClients();
 	int handleConcurrence();
 #endif /* SRC_PLANIFICADOR_H_ */
