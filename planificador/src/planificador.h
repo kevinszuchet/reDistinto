@@ -38,7 +38,7 @@
 	#define INFINISHEDLIST 's'
 	#define INRUNNING 'd'
 	#define INBLOCKEDDIC 'e'
-	#define NOWHERE 'e'
+	#define NOWHERE 'f'
 
 	int pauseState;
 
