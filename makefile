@@ -6,8 +6,7 @@ so-commons-library:
 	cd ~; git clone https://github.com/sisoputnfrba/so-commons-library; cd so-commons-library; sudo make install
 
 our-commonsRule:
-	cd our-commons/Debug; make; chmod 777 makeOurCommonsUsable.sh
-	. our-commons/Debug/makeOurCommonsUsable.sh
+	cd our-commons/Debug; make
 
 parsi:
 	cd ~; git clone https://github.com/sisoputnfrba/parsi; cd parsi; sudo make install
