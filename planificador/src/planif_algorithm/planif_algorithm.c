@@ -28,7 +28,7 @@ bool comparatorSJFSD(void* esi_A,void* esi_B){
 }
 
 double getEstimation(Esi* esi){
-	double estimation = esi->lastBurst*alpha/100 + esi->lastEstimation * (1-alpha)/100;
+	double estimation = esi->lastBurst*alpha/100 + esi->lastEstimation * (100-alpha)/100;
 	return estimation;
 }
 
@@ -41,7 +41,8 @@ Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList){
 		printf("Use SJF-SD\n");
 		comparatorToUse= &comparatorSJFSD;
 	}else if(strcmp(algorithm,"SJF-CD")==0){
-
+		printf("Use SJF-CD\n");
+		comparatorToUse= &comparatorSJFSD;
 	}else{
 		//HRRN
 

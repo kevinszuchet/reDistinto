@@ -68,7 +68,7 @@ void printEsi(Esi* esi){
 		}
 	}
 
-	printf("=============");
+	printf("=============\n");
 }
 
 void updateLastBurst(int burst,Esi** esi){

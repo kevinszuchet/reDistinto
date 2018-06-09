@@ -114,9 +114,9 @@ void getNextEsi(){
 		if(strcmp(algorithm,"SJF-CD")==0){
 			if(mustDislodgeRunningEsi())
 			{
-				dislodgeEsi(runningEsi,true);
 				pthread_mutex_lock(&mutexReadyList);
 				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+				dislodgeEsi(runningEsi,true);
 				runningEsi = nextEsi;
 				pthread_mutex_unlock(&mutexReadyList);
 				removeFromReady(nextEsi);
@@ -130,7 +130,13 @@ void getNextEsi(){
 }
 
 bool mustDislodgeRunningEsi(){
-	//todo ver si tengo que desalojar
+	if(list_size(readyEsis)>0){
+		Esi* bestPosible = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
+		if(getEstimation(bestPosible)<getEstimation(runningEsi)){
+			log_info(logger,"Must dislodge, ESI (%d) has estimation (%f). Lower than (%f) from running ESI",bestPosible->id,getEstimation(bestPosible),getEstimation(runningEsi));
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -251,13 +257,14 @@ void dislodgeEsi(Esi* esi,bool addToReady){
 		addEsiToReady(runningEsi);
 	}
 	updateLastBurst(sentenceCounter,&esi);
+	sentenceCounter = 0;
 	runningEsi = NULL;
 }
 
 void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 	sentenceCounter++;
 	addWaitingTimeToAll(readyEsis);
-	reduceWaitingTime(&runningEsi);
+
 
 	switch(esiExecutionInformation->coordinadorResponse){
 		case SUCCESS:
