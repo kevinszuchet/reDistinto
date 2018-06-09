@@ -245,12 +245,12 @@ Instancia* chooseInstancia(char* key){
 
 Instancia* simulateChooseInstancia(char* key){
 	Instancia* chosenInstancia = NULL;
-		pthread_mutex_lock(&instanciasListMutex);
-		if(list_size(instancias) != 0){
-			chosenInstancia = (*distributionAlgorithmSimulation)(key);
-		}
-		pthread_mutex_unlock(&instanciasListMutex);
-		return chosenInstancia;
+	pthread_mutex_lock(&instanciasListMutex);
+	if(list_size(instancias) != 0){
+		chosenInstancia = (*distributionAlgorithmSimulation)(key);
+	}
+	pthread_mutex_unlock(&instanciasListMutex);
+	return chosenInstancia;
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, char response){
@@ -366,9 +366,7 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}
 
-	sendResponseToEsi(esiRequest, SUCCESS);
-
-	return 0;
+	return sendResponseToEsi(esiRequest, SUCCESS);
 }
 
 int doStore(EsiRequest* esiRequest, char keyStatus){
@@ -391,9 +389,7 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}
 
-	sendResponseToEsi(esiRequest, FREE);
-
-	return 0;
+	return sendResponseToEsi(esiRequest, FREE);
 }
 
 int doGet(EsiRequest* esiRequest, char keyStatus){
@@ -519,7 +515,7 @@ int recieveStentenceToProcess(int esiSocket){
 			}
 			break;
 		case OURSTORE:
-			if(doStore(&esiRequest, keyStatus)){
+			if(doStore(&esiRequest, keyStatus) < 0){
 				operationResult = -1;
 			}
 			break;
@@ -534,7 +530,7 @@ int recieveStentenceToProcess(int esiSocket){
 
 	destroyOperation(esiRequest.operation);
 	usleep(delay * 1000);
-	return operationResult == 0 ? 1 : -1;
+	return operationResult;
 }
 
 Instancia* initialiceArrivedInstancia(int instanciaSocket){
@@ -633,7 +629,7 @@ int handleInstancia(int instanciaSocket){
 		//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada
 		log_info(logger, "Instancia's response is gonna be processed");
 
-		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
+		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN || instanciaResponseStatus == INSTANCIA_RESPONSE_FAILED){
 			log_error(logger, "Instancia %s couldn't do %s. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
 			pthread_mutex_lock(&instanciasListMutex);
 			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);

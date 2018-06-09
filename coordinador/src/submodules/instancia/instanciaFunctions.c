@@ -141,11 +141,9 @@ char waitForInstanciaResponseDummy(){
 Instancia* createNewInstancia(int instanciaSocket, char* name){
 	Instancia* newInstancia = createInstancia(instanciaSocket, 0, 'a', 'z', name);
 
-	if(!newInstancia){
-		return newInstancia;
+	if(newInstancia){
+		list_add(instancias, newInstancia);
 	}
-
-	list_add(instancias, newInstancia);
 
 	return newInstancia;
 }
