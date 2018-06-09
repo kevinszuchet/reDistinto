@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <commons/log.h>
 
+Esi* simulateAlgoithm(char* algorithm,int alphaReceived, t_list* esiList);
 Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList);
 double getEstimation(Esi* esi);
 
