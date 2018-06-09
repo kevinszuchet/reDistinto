@@ -52,10 +52,11 @@ void removeLockedKey(char* key, Esi* esi){
 	list_remove_by_condition(esi->lockedKeys,&keyCompare);
 }
 
-void printEsi(Esi* esi){
-	printf("=============");
+void printEsi(void* esiToPrint){
+	Esi* esi = (Esi*) esiToPrint;
+	printf("=============\n");
 	printf("ID = (%d)\n",esi->id);
-	printf("Socked = (%d)\n",esi->socketConection);
+	printf("Socket = (%d)\n",esi->socketConection);
 	printf("Last burst = (%f)\n",esi->lastBurst);
 	printf("Last estimation = (%f)\n",esi->lastEstimation);
 	printf("Waiting time = (%d)\n",esi->waitingTime);
@@ -68,10 +69,13 @@ void printEsi(Esi* esi){
 		}
 	}
 
-	printf("=============");
+	printf("=============\n");
 }
 
 void updateLastBurst(int burst,Esi** esi){
 	(*esi)->lastBurst = burst;
 }
 
+void printEsiList(t_list* esiList){
+	list_iterate(esiList,&printEsi);
+}

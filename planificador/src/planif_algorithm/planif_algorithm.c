@@ -28,28 +28,34 @@ bool comparatorSJFSD(void* esi_A,void* esi_B){
 }
 
 double getEstimation(Esi* esi){
-	double estimation = esi->lastBurst*alpha/100 + esi->lastEstimation * (1-alpha)/100;
+	double estimation = esi->lastBurst*alpha/100 + esi->lastEstimation * (100-alpha)/100;
 	return estimation;
 }
 
-Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList){
-	printf("Starting...\n");
+Esi* simulateAlgoithm(char* algorithm,int alphaReceived, t_list* esiList){
+	printf("Starting simulation...\n");
 	alpha = alphaReceived;
 	Comparator comparatorToUse;
 	printf("Algorithm to use =%s\n",algorithm);
 	if(strcmp(algorithm,"SJF-SD")==0){
-		printf("Use SJF-SD\n");
 		comparatorToUse= &comparatorSJFSD;
 	}else if(strcmp(algorithm,"SJF-CD")==0){
-
+		comparatorToUse= &comparatorSJFSD;
 	}else{
 		//HRRN
 
 	}
 	list_sort(esiList,comparatorToUse);
 	printf("List sorted\n");
+	printEsiList(esiList);
 	Esi* nextEsi = list_get(esiList,0);
+	return nextEsi;
+}
+
+Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList){
+
+	Esi* nextEsi = simulateAlgoithm(algorithm,alphaReceived,esiList);
 	nextEsi->lastEstimation = getEstimation(nextEsi); //When an ESI is selected to run, override last estimation
-	printf("ID = %d\n",nextEsi->id);
+	printf("ID selected = %d\n",nextEsi->id);
 	return nextEsi;
 }

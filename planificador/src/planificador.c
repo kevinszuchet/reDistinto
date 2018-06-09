@@ -108,17 +108,20 @@ void getNextEsi(){
 		nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
 		pthread_mutex_unlock(&mutexReadyList);
 		runningEsi = nextEsi;
+		runningEsi->waitingTime = 0;
 		removeFromReady(nextEsi);
 
 	}else{
 		if(strcmp(algorithm,"SJF-CD")==0){
 			if(mustDislodgeRunningEsi())
 			{
-				dislodgeEsi(runningEsi,true);
 				pthread_mutex_lock(&mutexReadyList);
 				nextEsi = nextEsiByAlgorithm(algorithm,alphaEstimation,readyEsis);
-				runningEsi = nextEsi;
 				pthread_mutex_unlock(&mutexReadyList);
+				dislodgeEsi(runningEsi,true);
+
+				runningEsi = nextEsi;
+				runningEsi->waitingTime = 0;
 				removeFromReady(nextEsi);
 			}else{
 				nextEsi = runningEsi;
@@ -130,7 +133,14 @@ void getNextEsi(){
 }
 
 bool mustDislodgeRunningEsi(){
-	//todo ver si tengo que desalojar
+	if(list_size(readyEsis)>0){
+		Esi* bestPosible = simulateAlgoithm(algorithm,alphaEstimation,readyEsis);
+		printEsi(runningEsi);
+		if(getEstimation(bestPosible)<getEstimation(runningEsi)){
+			log_info(logger,"Must dislodge, ESI (%d) has estimation (%f). Lower than (%f) from running ESI",bestPosible->id,getEstimation(bestPosible),getEstimation(runningEsi));
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -204,7 +214,11 @@ void executeConsoleInstruccions(){
 void finishRunningEsi(){
 	list_add(finishedEsis,runningEsi);
 	freeTakenKeys(runningEsi);
+	updateLastBurst(sentenceCounter,&runningEsi);
+	sentenceCounter = 0;
 	log_info(logger,"Esi (%d) succesfully finished",runningEsi->id);
+	log_info(logger,"Printing Esi (%d) final values",runningEsi->id);
+	printEsi(runningEsi);
 	runningEsi = NULL;
 }
 
@@ -251,13 +265,14 @@ void dislodgeEsi(Esi* esi,bool addToReady){
 		addEsiToReady(runningEsi);
 	}
 	updateLastBurst(sentenceCounter,&esi);
+	sentenceCounter = 0;
 	runningEsi = NULL;
 }
 
 void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 	sentenceCounter++;
 	addWaitingTimeToAll(readyEsis);
-	reduceWaitingTime(&runningEsi);
+
 
 	switch(esiExecutionInformation->coordinadorResponse){
 		case SUCCESS:
@@ -307,6 +322,7 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation,char* key){
 			}
 		break;
 		case ABORT:
+			sentenceCounter = 0;
 			runningEsi = NULL;
 		break;
 

@@ -24,7 +24,8 @@ typedef struct Esi{
 
 }Esi;
 
-void printEsi(Esi* esi);
+void printEsi(void* esiToPrint);
+void printEsiList(t_list* esiList);
 
 void addWaitingTime(void* esi);
 
