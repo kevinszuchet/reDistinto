@@ -8,12 +8,13 @@
 #include "console.h"
 
 t_log* logger;
+t_list* instruccionsByConsoleList;
 
 void openConsole() {
 	char* line;
 	char** parameters;
 	printf("Listado de comandos\n1.Pausar\n2.Continuar\n3.Bloquear <clave> <id>\n4.Desbloquear <clave>\n5.Listar <recurso>\n6.Kill <ID>\n7.Status <clave>\n8.Deadlock\n");
-
+	instruccionsByConsoleList = list_create();
 	while(1) {
 		line = readline("> ");
 		string_to_lower(line);
@@ -34,14 +35,33 @@ void openConsole() {
 			break;
 		}*/
 
+		if(validCommand(parameters)){
+			log_info(logger,"Instruccion added to pending instruccion List");
+			list_add(instruccionsByConsoleList,parameters);
+		}
 
-		list_add(instruccionsByConsoleList,parameters);
-		log_info(logger,"Command added to instruccionsByConsole list");
+
+
+
 
 
 
 
 		free(line);
+	}
+}
+
+void executeConsoleInstruccions(){
+	void validateAndexecuteComand(void* parameters){
+		if(validCommand((char**)parameters)){
+			execute((char**)parameters);
+		}
+	}
+
+	if(list_size(instruccionsByConsoleList)>0){
+		log_info(logger,"Hay (%d) instrucciones de consola para ejecutar",list_size(instruccionsByConsoleList));
+		list_iterate(instruccionsByConsoleList,&validateAndexecuteComand);
+		list_clean(instruccionsByConsoleList);
 	}
 }
 
@@ -60,13 +80,13 @@ void execute(char** parameters) {
 		case PAUSAR:
 			pauseState = PAUSE;
 			log_info(logger,"Execution paused by console");
-			//sem_wait(&pauseStateSemaphore);
+
 
 		break;
 		case CONTINUAR:
 			pauseState = CONTINUE;
 			log_info(logger,"Execution continued by console");
-			//sem_post(&pauseStateSemaphore);
+
 
 		break;
 		case BLOQUEAR:

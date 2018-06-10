@@ -55,7 +55,7 @@ Esi* simulateAlgoithm(char* algorithm,int alphaReceived, t_list* esiList){
 Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList){
 
 	Esi* nextEsi = simulateAlgoithm(algorithm,alphaReceived,esiList);
-	nextEsi->lastEstimation = getEstimation(nextEsi); //When an ESI is selected to run, override last estimation
+
 	printf("ID selected = %d\n",nextEsi->id);
 	return nextEsi;
 }

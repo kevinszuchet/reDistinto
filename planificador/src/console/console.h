@@ -29,6 +29,7 @@
 
 	void openConsole();
 	void execute(char **);
+	void executeConsoleInstruccions();
 	int getCommandNumber(char* );
 	int validCommand(char** );
 	int parameterQuantity(char**);

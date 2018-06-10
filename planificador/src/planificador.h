@@ -58,15 +58,15 @@
 	char** blockedKeys;
 
 	t_list* instruccionsByConsoleList;
-	sem_t pauseStateSemaphore;
 
-	//DUMMIE FUNCTIONS
-	void sendKeyStatusToCoordinadorDummie(char status);
-	void sendMessageExecuteToEsiDummie(Esi* nextEsi);
-	char waitEsiInformationDummie(int esiSocket);
+	sem_t finishedExecutingInstructionSem;
+	sem_t finishedExecutingConsoleInstructionSem;
+
+	void initializePlanificador();
+
 	void sendEsiIdToCoordinador(int esiID);
 
-	void executionProcedure();
+
 
 	void executeConsoleInstruccions();
 	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
@@ -75,7 +75,7 @@
 	void removeFdFromSelect(int socket);
 	Esi* getEsiBySocket(int socket);
 	char getEsiPlaceBySocket(int socket);
-	OperationResponse *waitEsiInformation(int esiSocket);
+	OperationResponse *recieveEsiInformation(int esiSocket);
 	void sendKeyStatusToCoordinador(char* key);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
 
@@ -91,8 +91,15 @@
 
 	void exitPlanificador();
 	Esi* getEsiById(int id);
+
+	//Place in system functions
+	void takeRunningEsiOut();
+	void removeFromReady(Esi* esi);
+	void addEsiToReady(Esi* esi);
 	bool mustDislodgeRunningEsi();
 	void dislodgeEsi(Esi* esi,bool moveToReady);
+	void takeRunningEsiOut();
+	void finishEsi(Esi* esiToFinish);
 
 	//Keys Functions
 	void blockEsi(char* lockedKey, int esiBlocked);
@@ -100,9 +107,7 @@
 	void addKeyToGeneralKeys(char* key);
 	void unlockEsi(char* key);
 
-	//Place in system functions
-	void removeFromReady(Esi* esi);
-	void addEsiToReady(Esi* esi);
+
 
 	//Other functions
 	void addConfigurationLockedKeys(char**);
