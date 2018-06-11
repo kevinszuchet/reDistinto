@@ -151,6 +151,10 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		}
 
 		log_info(logger, "esiPC: %d", esiPC);
+
+		if (line) {
+			free(line);
+		}
 	}
 
 	if (scriptsSplitted) {
@@ -249,10 +253,6 @@ void interpretateOperation(Operation * operation, char * line) {
 	showOperation(operation);
 
 	destruir_operacion(parsedLine);
-
-	if (line) {
-		free(line);
-	}
 }
 
 void initializeOperation(Operation * operation, char operationCode, char * key, char * value) {
