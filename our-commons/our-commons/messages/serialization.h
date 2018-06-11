@@ -14,7 +14,9 @@
 #include "../sockets/sockets.h"
 #include <string.h>
 #include <stddef.h>
+#include <commons/log.h>
 
+void initSerializationLogger(t_log* _logger);
 int send_all(int socket, void* package, int length);
 int addToPackageGeneric(void** package, void* value, int size, int* offset);
 

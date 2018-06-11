@@ -7,13 +7,22 @@
 
 #include "serialization.h"
 
+t_log* logger;
+
+void initSerializationLogger(t_log* _logger) {
+	logger = _logger;
+}
+
 int send_all(int socket, void* package, int length)
 {
     char *auxPointer = (char*) package;
     while (length > 0)
     {
         int i = send(socket, auxPointer, length, 0);
-        if (i < 1) return CUSTOM_FAILURE;
+        if (i < 1) {
+        	if (i < 0) log_error(logger, "Error while sending all package", strerror(errno));
+        	return CUSTOM_FAILURE;
+        }
         auxPointer += i;
         length -= i;
     }
@@ -26,7 +35,10 @@ int recv_all(int socket, void* package, int length)
     while (length > 0)
     {
         int i = recv(socket, auxPointer, length, 0);
-        if (i < 1) return CUSTOM_FAILURE;
+        if (i < 1) {
+        	if (i < 0) log_error(logger, "Error while receiving all package", strerror(errno));
+        	return CUSTOM_FAILURE;
+        }
         auxPointer += i;
         length -= i;
     }

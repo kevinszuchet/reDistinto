@@ -62,6 +62,7 @@ int welcomeNewClients();
 
 int main(void) {
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
+	initSerializationLogger(logger);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 
 	allSystemTakenKeys = list_create();

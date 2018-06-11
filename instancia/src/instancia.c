@@ -13,6 +13,7 @@ char* path;
 int main(void) {
 
 	logger = log_create("../instancia.log", "tpSO", true, LOG_LEVEL_INFO);
+	initSerializationLogger(logger);
 	replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
 
 	char* ipCoordinador;

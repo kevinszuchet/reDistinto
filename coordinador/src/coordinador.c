@@ -34,6 +34,7 @@ sem_t* instanciaResponse;
 
 int main(void) {
 	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
+	initSerializationLogger(logger);
 	operationsLogger = log_create("../logOperaciones.log", "tpSO", true, LOG_LEVEL_INFO);
 
 	int listeningPort;
