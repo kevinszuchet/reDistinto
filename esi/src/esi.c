@@ -132,17 +132,29 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		}
 		log_info(logger, "I recieve the order from planificador and I will try to execute");
 
-		if (response == RUN) {
-			log_info(logger, "recv an order from planificador");
-			tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
+		switch (response) {
+			case RUN:
+				log_info(logger, "recv an order from planificador");
+				tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
+				break;
+
+			// TODO contemplar kill y que hacer en los demas casos (ni kill ni  run)
+
+			/*case KILL:
+				log_info(logger, "Planificador kill me");
+				exit(-1);
+				break;*/
+
+			/*default:
+				//TODO que hacer cuando se recibe distinto a RUN?
+				break;*/
 		}
-		//TODO que hacer cuando se recibe distinto a RUN?
 
 		log_info(logger, "esiPC: %d", esiPC);
 	}
 
-	if (line) {
-		free(line);
+	if (scriptsSplitted) {
+		free(scriptsSplitted);
 	}
 
 	// REVIEW hace falta hacer free de lo splitteado?
@@ -237,6 +249,10 @@ void interpretateOperation(Operation * operation, char * line) {
 	showOperation(operation);
 
 	destruir_operacion(parsedLine);
+
+	if (line) {
+		free(line);
+	}
 }
 
 void initializeOperation(Operation * operation, char operationCode, char * key, char * value) {
