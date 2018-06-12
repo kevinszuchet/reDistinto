@@ -22,6 +22,7 @@
 		int isFallen;
 		char* name;
 		sem_t* semaphore;
+		sem_t* compactSemaphore;
 	}Instancia;
 
 	int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger);

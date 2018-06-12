@@ -658,7 +658,7 @@ t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactationC
 
 void waitInstanciaToCompact(Instancia* instancia){
 	//TODO usar otro semaforo, sino estamos ante una condicion de carrera
-	//sem_wait(instancia->semaphore);
+	//sem_wait(instancia->compactSemaphore);
 }
 
 void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
@@ -691,7 +691,7 @@ int handleInstancia(int instanciaSocket){
 			//handleInstanciaCompactStatus(compactStatus);
 
 			//TODO usar otro semaforo, sino estamos ante una condicion de carrera
-			//sem_post(actualInstancia->semaphore);
+			//sem_post(actualInstancia->compactSemaphore);
 
 		}else{
 			log_info(logger, "%s's thread is gonna handle %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));

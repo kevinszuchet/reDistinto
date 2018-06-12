@@ -39,7 +39,7 @@ Instancia* existsInstanciaWithName(char* arrivedInstanciaName){
 	return list_find(instancias, (void*) instanciaHasName);
 }
 
-int addSemaphoreToInstancia(Instancia* instancia){
+int addSemaphoresToInstancia(Instancia* instancia){
 	sem_t* sem = malloc(sizeof(sem_t));
 	if(sem_init(sem, 0, 0) < 0){
 		return -1;
@@ -47,13 +47,20 @@ int addSemaphoreToInstancia(Instancia* instancia){
 
 	instancia->semaphore = sem;
 
+	sem_t* compactSem = malloc(sizeof(sem_t));
+	if(sem_init(compactSem, 0, 0) < 0){
+		return -1;
+	}
+
+	instancia->compactSemaphore = compactSem;
+
 	return 0;
 }
 
 void instanciaIsBack(Instancia* instancia, int instanciaSocket){
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->socket = instanciaSocket;
-	addSemaphoreToInstancia(instancia);
+	addSemaphoresToInstancia(instancia);
 }
 
 void recieveInstanciaNameDummy(char** arrivedInstanciaName){
@@ -116,9 +123,12 @@ void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 	list_add(instancia->storedKeys, strdup(key));
 }
 
-void destroyInstanciaSemaphore(Instancia* instancia){
+void destroyInstanciaSemaphores(Instancia* instancia){
 	sem_destroy(instancia->semaphore);
 	free(instancia->semaphore);
+
+	sem_destroy(instancia->compactSemaphore);
+	free(instancia->compactSemaphore);
 }
 
 //TODO donde se use esta funcion, meter tambien mutex de la lista de instancias! (esta instancia es una de esa lista!)
@@ -126,7 +136,7 @@ void destroyInstanciaSemaphore(Instancia* instancia){
 void instanciaHasFallen(Instancia* fallenInstancia){
 	fallenInstancia->isFallen = INSTANCIA_FALLEN;
 	close(fallenInstancia->socket);
-	destroyInstanciaSemaphore(fallenInstancia);
+	destroyInstanciaSemaphores(fallenInstancia);
 }
 
 char waitForInstanciaResponse(Instancia* chosenInstancia){
@@ -162,7 +172,7 @@ Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char las
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->name = strdup(name);
 
-	if(addSemaphoreToInstancia(instancia) < 0){
+	if(addSemaphoresToInstancia(instancia) < 0){
 		return NULL;
 	}
 
