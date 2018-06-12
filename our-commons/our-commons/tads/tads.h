@@ -27,8 +27,10 @@
 
 	#include <stdio.h>
 	#include <stdlib.h>
+	#include <string.h>
 	#include "../messages/operation_codes.h"
 
+	int validateOperationKeySize(Operation* operation);
 	char* getOperationName(Operation* operation);
 	void showOperation(Operation* operation);
 	char* getKeyStatusName(char keyStatus);

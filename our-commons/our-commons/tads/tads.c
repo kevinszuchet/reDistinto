@@ -7,6 +7,13 @@
 
 #include "tads.h"
 
+int validateOperationKeySize(Operation* operation){
+	if(strlen(operation->key) > 40){
+		return -1;
+	}
+	return 0;
+}
+
 char* getOperationName(Operation* operation){
 	switch(operation->operationCode){
 		case OURSET:
