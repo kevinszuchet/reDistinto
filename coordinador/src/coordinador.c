@@ -308,8 +308,12 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 
 	//TODO mariano fijate que al hacer este sleep, si matas (rapido) al esi, se hace el send igual
 	//sleep(10);
-	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
-		log_warning(operationsLogger, "Esi %d cannot do %s over %s. Instancia %s fell. Inaccessible key", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->name);
+	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN || instanciaResponseStatus == INSTANCIA_RESPONSE_FAILED){
+		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
+			log_warning(operationsLogger, "Esi %d cannot do %s over %s. Instancia %s fell. Inaccessible key", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->name);
+		}else{
+			log_warning(operationsLogger, "Esi %d cannot do %s over %s. Instancia %s couldn't do operation", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->name);
+		}
 		sendResponseToEsi(actualEsiRequest, ABORT);
 		return -1;
 	}
@@ -447,6 +451,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
+		//TODO una funcion exitGracefully para liberar todo
 		exit(-1);
 
 	}
@@ -558,9 +563,10 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 
 		if(!arrivedInstancia){
 			log_error(logger, "Couldn't initialize instancia's semaphore");
+			free(arrivedInstanciaName);
 			//TODO que deberia pasar aca? mientras dejo este exit. tener cuidado con los semaforos que el de abajo no se libera si se cambia exit por return
 			exit(-1);
-			//si hay que matar al hilo, devolver NULL !!!
+			//si se decide que hay que matar al hilo, devolver NULL!!!
 		}
 
 		if(list_size(instancias) == 1){
@@ -571,6 +577,8 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 
 		log_info(logger, "Instancia %s is new", arrivedInstanciaName);
 	}
+
+	free(arrivedInstanciaName);
 	pthread_mutex_unlock(&instanciasListMutex);
 
 	return arrivedInstancia;
@@ -599,6 +607,7 @@ Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
 		pthread_mutex_unlock(&lastInstanciaChosenMutex);
 	}
 
+	free(arrivedInstanciaName);
 	pthread_mutex_unlock(&instanciasListMutex);
 
 	return instancia;
@@ -630,8 +639,8 @@ int handleInstancia(int instanciaSocket){
 		//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada
 		log_info(logger, "Instancia's response is gonna be processed");
 
-		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN || instanciaResponseStatus == INSTANCIA_RESPONSE_FAILED){
-			log_error(logger, "Instancia %s couldn't do %s. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
+		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
+			log_error(logger, "Instancia %s couldn't do %s because it fell. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
 			pthread_mutex_lock(&instanciasListMutex);
 			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 			instanciaHasFallen(actualInstancia);
@@ -641,9 +650,15 @@ int handleInstancia(int instanciaSocket){
 			sem_post(instanciaResponse);
 
 			return -1;
+		}else if(instanciaResponseStatus == INSTANCIA_RESPONSE_FAILED){
+			log_error(logger, "Instancia %s couldn't do %s, so the key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
+			pthread_mutex_lock(&instanciasListMutex);
+			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
+			showInstancia(actualInstancia);
+			pthread_mutex_unlock(&instanciasListMutex);
+		}else if(instanciaResponseStatus == INSTANCIA_RESPONSE_SUCCESS){
+			log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 		}
-
-		log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
 		sem_post(instanciaResponse);
 	}

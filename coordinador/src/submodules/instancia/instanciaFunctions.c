@@ -9,11 +9,11 @@
 
 int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger){
 	if(recieveString(arrivedInstanciaName, instanciaSocket) == CUSTOM_FAILURE){
-		log_error(logger, "No se pudo recibir el nombre de la instancia");
+		log_error(logger, "Couldn't recieve instancia's name");
 		free(*arrivedInstanciaName);
 		return -1;
 	}else if(strlen(*arrivedInstanciaName) == 0){
-		log_error(logger, "La instancia no puede no tener nombre");
+		log_error(logger, "An Instancia must have name");
 		free(*arrivedInstanciaName);
 		return -1;
 	}
@@ -25,7 +25,7 @@ int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize
 	config.entriesAmount = cantEntry;
 	config.entrySize = entrySize;
 	if (send(instanciaSocket, &config, sizeof(InstanciaConfiguration), 0) < 0) {
-		log_error(logger, "No se pudo enviar su configuracion a la instancia");
+		log_error(logger, "Couldn't send configuration to instancia");
 		return -1;
 	}
 	return 0;
@@ -36,7 +36,7 @@ Instancia* existsInstanciaWithName(char* arrivedInstanciaName){
 		return strcmp(instancia->name, arrivedInstanciaName) == 0;
 	}
 
-	return list_find(instancias, (void*) &instanciaHasName);
+	return list_find(instancias, (void*) instanciaHasName);
 }
 
 int addSemaphoreToInstancia(Instancia* instancia){
@@ -64,7 +64,7 @@ void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* log
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
 	}else{
-		log_info(logger, "Se pudo enviar la operacion a la instancia");
+		log_info(logger, "Operation sent to instancia");
 		instanciaResponseStatus = waitForInstanciaResponse(instancia);
 	}
 }
@@ -73,7 +73,7 @@ void instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
 	}else{
-		log_info(logger, "Se pudo enviar la operacion a la instancia");
+		log_info(logger, "Operation sent to instancia");
 		instanciaResponseStatus = waitForInstanciaResponseDummy(instancia);
 	}
 }
@@ -91,13 +91,17 @@ Instancia* lookForKey(char* key){
 	}
 
 	int isKeyInInstancia(Instancia* instancia){
-		if(list_any_satisfy(instancia->storedKeys, (void*) &isLookedKey)){
+		if(list_any_satisfy(instancia->storedKeys, (void*) isLookedKey)){
 			return 1;
 		}
 		return 0;
 	}
 
-	return list_find(instancias, (void*) &isKeyInInstancia);
+	return list_find(instancias, (void*) isKeyInInstancia);
+}
+
+void keyDestroyer(char* keyToBeDestroyed){
+	free(keyToBeDestroyed);
 }
 
 void removeKeyFromFallenInstancia(char* key, Instancia* instancia){
@@ -105,7 +109,7 @@ void removeKeyFromFallenInstancia(char* key, Instancia* instancia){
 		return isLookedKeyGeneric(actualKey, key);
 	}
 
-	list_remove_by_condition(instancia->storedKeys, (void*) &isLookedKey);
+	list_remove_and_destroy_by_condition(instancia->storedKeys, (void*) isLookedKey, (void*) keyDestroyer);
 }
 
 void addKeyToInstanciaStruct(Instancia* instancia, char* key){
@@ -156,7 +160,7 @@ Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char las
 	instancia->lastLetter = lastLetter;
 	instancia->storedKeys = list_create();
 	instancia->isFallen = INSTANCIA_ALIVE;
-	instancia->name = name;
+	instancia->name = strdup(name);
 
 	if(addSemaphoreToInstancia(instancia) < 0){
 		return NULL;
