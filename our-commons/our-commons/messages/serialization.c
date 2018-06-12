@@ -20,7 +20,7 @@ int send_all(int socket, void* package, int length)
     {
         int i = send(socket, auxPointer, length, 0);
         if (i < 1) {
-        	if (i < 0) log_error(logger, "Error while sending all package", strerror(errno));
+        	if (i < 0) log_error(logger, "Error while sending all package: %s", strerror(errno));
         	return CUSTOM_FAILURE;
         }
         auxPointer += i;
@@ -36,7 +36,7 @@ int recv_all(int socket, void* package, int length)
     {
         int i = recv(socket, auxPointer, length, 0);
         if (i < 1) {
-        	if (i < 0) log_error(logger, "Error while receiving all package", strerror(errno));
+        	if (i < 0) log_error(logger, "Error while receiving all package: %s", strerror(errno));
         	return CUSTOM_FAILURE;
         }
         auxPointer += i;
