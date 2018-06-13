@@ -69,7 +69,8 @@
 
 
 	void executeConsoleInstruccions();
-	void handleEsiInformation(OperationResponse* esiExecutionInformation,char* keyOp);
+	void handleEsiInformation(OperationResponse* esiExecutionInformation, char* keyOp);
+	void handleEsiStatus(char esiStatus);
 
 	void abortEsi(Esi* esi);
 	void removeFdFromSelect(int socket);
@@ -115,6 +116,6 @@
 
 	//Conection Functions
 	void welcomeEsi();
-	int welcomeNewClients();
+	int welcomeNewClients(int newCoordinadorSocket);
 	int handleConcurrence();
 #endif /* SRC_PLANIFICADOR_H_ */
