@@ -8,7 +8,6 @@
 #ifndef SRC_PLANIFICADOR_H_
 #define SRC_PLANIFICADOR_H_
 
-
 	#include <our-commons/sockets/client.h>
 	#include <our-commons/sockets/server.h>
 	#include <our-commons/modules/names.h>
@@ -47,8 +46,6 @@
 	t_list* finishedEsis;
 	Esi* runningEsi;
 
-
-
 	int listeningPort;
 	char* algorithm;
 	int alphaEstimation;
@@ -63,59 +60,62 @@
 	sem_t finishedExecutingConsoleInstructionSem;
 
 	void initializePlanificador();
+	void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
-	void sendEsiIdToCoordinador(int esiID);
-
-
-
+	// Console functions
 	void executeConsoleInstruccions();
-	void handleEsiInformation(OperationResponse* esiExecutionInformation, char* keyOp);
-	void handleEsiStatus(char esiStatus);
 
-	void abortEsi(Esi* esi);
+	// REVIEW donde se usa esta funcion? es necesario el prototipo aca?
 	void removeFdFromSelect(int socket);
-	Esi* getEsiBySocket(int socket);
-	char getEsiPlaceBySocket(int socket);
-	OperationResponse *recieveEsiInformation(int esiSocket);
-	void sendKeyStatusToCoordinador(char* key);
-	void sendMessageExecuteToEsi(Esi* nextEsi);
 
-	void generateTestEsi();
-	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation,int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
-
-	void deleteEsiFromSystemBySocket(int socket);
-	void moveFromRunningToReady(Esi* esi);
-
-	void freeTakenKeys(Esi* esi);
-	void freeKey(char* key,Esi* esiTaker);
-	void lockKey(char* keyToLock, int esiTaker);
-
-	void exitPlanificador();
-	Esi* getEsiById(int id);
-
-	//Place in system functions
-	void takeRunningEsiOut();
-	void removeFromReady(Esi* esi);
+	// Algorithms (dispatcher) functions
 	void addEsiToReady(Esi* esi);
-	bool mustDislodgeRunningEsi();
-	void dislodgeEsi(Esi* esi,bool moveToReady);
+	void removeFromReady(Esi* esi);
+	void moveFromRunningToReady(Esi* esi);
+	void moveEsiToRunning(Esi* esiToRun);
 	void takeRunningEsiOut();
+
+	void dislodgeEsi(Esi* esi, bool addToReady);
+	bool mustDislodgeRunningEsi();
+
+	void addToFinishedList(Esi* finishedEsi);
 	void finishEsi(Esi* esiToFinish);
 
-	//Keys Functions
+	// Coordinador functions
+	void sendKeyStatusToCoordinador(char* key);
+	void sendEsiIdToCoordinador(int esiId);
+
+	// ESI functions
+	Esi* getEsiById(int id);
+	Esi* generateEsiStruct(int esiSocket);
+	void sendMessageExecuteToEsi(Esi* nextEsi);
+	OperationResponse *recieveEsiInformation(int esiSocket);
+	char getEsiPlaceBySocket(int socket);
+	Esi* getEsiBySocket(int socket);
+	void deleteEsiFromSystemBySocket(int socket);
+	void abortEsi(Esi* esi);
+	void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key);
+	void handleEsiStatus(char esiStatus);
+	Esi* getNextEsi();
+
+	// Keys Functions
 	void blockEsi(char* lockedKey, int esiBlocked);
 	char isLockedKey(char* key);
 	void addKeyToGeneralKeys(char* key);
 	void unlockEsi(char* key);
+	void freeTakenKeys(Esi* esi);
+	void freeKey(char* key, Esi* esiTaker);
+	void lockKey(char* key, int esiID);
 
-
-
-	//Other functions
-	void addConfigurationLockedKeys(char**);
-	void destroyer(void* element);
-
-	//Conection Functions
-	void welcomeEsi();
+	// Connection Functions
+	void welcomeEsi(int clientSocket);
 	int welcomeNewClients(int newCoordinadorSocket);
 	int handleConcurrence();
+	int clientMessageHandler(char clientMessage, int clientSocket);
+
+	// Other functions
+	void addConfigurationLockedKeys(char** blockedKeys);
+	void destroyer(void* element);
+	void exitPlanificador();
+
 #endif /* SRC_PLANIFICADOR_H_ */

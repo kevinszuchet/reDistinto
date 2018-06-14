@@ -11,7 +11,7 @@ t_log* logger;
 
 fd_set master;
 
-int pauseState = CONTINUE; //1 is running, 0 is paussed
+int pauseState = CONTINUE; // 1 is running, 0 is paussed
 
 t_dictionary* blockedEsiDic;
 t_list* readyEsis;
@@ -38,7 +38,7 @@ pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
 
 int sentenceCounter = 0;
 
-int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
+int actualID = 1; // ID number for ESIs, when a new one is created, this number increases by 1
 
 int coordinadorSocket;
 
@@ -60,8 +60,7 @@ int main(void) {
 	return 0;
 }
 
-//General execute ESI functions
-
+// General execute ESI functions
 Esi* getNextEsi() {
 	Esi* nextEsi;
 	pthread_mutex_lock(&mutexReadyList);
@@ -273,7 +272,6 @@ void deleteEsiFromSystemBySocket(int socket) {
 	}
 }
 
-// TODO aca me quede (soy kevin), seguir con el refactor
 Esi* getEsiBySocket(int socket) {
 	bool isEsiBySocket(void* esi) {
 		return ((Esi*)esi)->socketConection == socket;
@@ -283,35 +281,40 @@ Esi* getEsiBySocket(int socket) {
 	Esi* targetEsi = NULL;
 	t_list* filteredList = list_create();
 	switch(getEsiPlaceBySocket(socket)) {
+
 		case INREADYLIST:
 			log_info(logger, "ESI was on ready list");
-
-			return list_get(list_filter(readyEsis,&isEsiBySocket),0);
+			return list_get(list_filter(readyEsis, &isEsiBySocket), 0);
 		break;
+
 		case INFINISHEDLIST:
 			log_info(logger, "ESI was on finished list, it succesfully finished executing");
-			filteredList= list_filter(finishedEsis,&isEsiBySocket);
-			return list_get(filteredList,list_size(filteredList)-1);
+			filteredList = list_filter(finishedEsis, &isEsiBySocket);
+			return list_get(filteredList, list_size(filteredList) - 1);
 		break;
+
 		case INRUNNING:
 			log_info(logger, "ESI was running");
 			return runningEsi;
 		break;
+
 		case INBLOCKEDDIC:
 			log_info(logger, "ESI was blocked");
-			for (int i = 0;i<list_size(allSystemTakenKeys);i++) {
-				blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
-				for (int j = 0;j<queue_size(blockedEsis);j++) {
-					actualEsi = (int*)queue_pop(blockedEsis);
-					if (getEsiById(*actualEsi)->socketConection==socket) {
+			for (int i = 0; i < list_size(allSystemTakenKeys); i++) {
+				blockedEsis = dictionary_get(blockedEsiDic, list_get(allSystemTakenKeys, i));
+				for (int j = 0; j < queue_size(blockedEsis); j++) {
+					actualEsi = (int*) queue_pop(blockedEsis);
+					if (getEsiById(*actualEsi)->socketConection == socket) {
 						targetEsi = getEsiById(*actualEsi);
 					}
-					queue_push(blockedEsis,actualEsi);
+					queue_push(blockedEsis, actualEsi);
 				}
 			}
+			// REVIEW que hacemos con este free?
 			//free(blockedEsis);
 			return targetEsi;
 		break;
+
 		default:
 			log_info(logger, "ESI was nowhere");
 			return runningEsi;
@@ -324,37 +327,33 @@ char getEsiPlaceBySocket(int socket) {
 		return ((Esi*)esi)->socketConection == socket;
 	}
 
-	if (list_size(list_filter(readyEsis,&isEsiBySocket))>0) {
-
+	if (list_size(list_filter(readyEsis, &isEsiBySocket)) > 0) {
 		return INREADYLIST;
 	}
 
-	if (runningEsi!=NULL && runningEsi->socketConection == socket) {
-
+	if (runningEsi != NULL && runningEsi->socketConection == socket) {
 		return INRUNNING;
 	}
+
 	t_queue* blockedEsis;
 	int* actualEsi;
 
-	for (int i = 0;i<list_size(allSystemTakenKeys);i++) {
-		blockedEsis = dictionary_get(blockedEsiDic,list_get(allSystemTakenKeys,i));
-		for (int j = 0;j<queue_size(blockedEsis);j++) {
+	for (int i = 0; i < list_size(allSystemTakenKeys); i++) {
+		blockedEsis = dictionary_get(blockedEsiDic, list_get(allSystemTakenKeys, i));
+		for (int j = 0; j < queue_size(blockedEsis); j++) {
 			actualEsi = (int*) queue_pop(blockedEsis);
-			if (getEsiById(*actualEsi)->socketConection==socket) {
-
+			if (getEsiById(*actualEsi)->socketConection == socket) {
 				return INBLOCKEDDIC;
 			}
 			queue_push(blockedEsis, actualEsi);
 		}
 	}
 
-	if (list_size(list_filter(finishedEsis,&isEsiBySocket))>0) {
-
+	if (list_size(list_filter(finishedEsis, &isEsiBySocket)) > 0) {
 		return INFINISHEDLIST;
 	}
 
 	return NOWHERE;
-
 }
 
 void moveFromRunningToReady(Esi* esi) {
@@ -363,7 +362,6 @@ void moveFromRunningToReady(Esi* esi) {
 }
 
 OperationResponse *recieveEsiInformation(int esiSocket) {
-
 	OperationResponse* finishInformation = malloc(sizeof(OperationResponse));
 	int resultRecv = recv(esiSocket, finishInformation, sizeof(OperationResponse), 0);
 	if (resultRecv <= 0) {
@@ -377,17 +375,16 @@ OperationResponse *recieveEsiInformation(int esiSocket) {
 
 void sendKeyStatusToCoordinador(char* key) {
 	bool keyCompare(void* takenKey) {
-		if (strcmp((char*)takenKey,key)==0) {
-			return true;
-		}
-		return false;
+		return strcmp((char*) takenKey, key) == 0;
 	}
 	char keyStatus = isLockedKey(key);
-	if (keyStatus==BLOCKED) {
-		if (list_size(list_filter(runningEsi->lockedKeys,&keyCompare))>0) {
+
+	if (keyStatus == BLOCKED) {
+		if (list_size(list_filter(runningEsi->lockedKeys, &keyCompare)) > 0) {
 			keyStatus = LOCKED;
 		}
 	}
+
 	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0) {
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	} else {
@@ -398,40 +395,39 @@ void sendKeyStatusToCoordinador(char* key) {
 void sendMessageExecuteToEsi(Esi* nextEsi) {
 	int socketEsi = nextEsi->socketConection;
 	int message = RUN;
-    if (sendInt(message,socketEsi)== CUSTOM_FAILURE) {
+    if (sendInt(message,socketEsi) == CUSTOM_FAILURE) {
 	   log_error(logger, "Coultn't send message to ESI %d", nextEsi->id);
     } else {
-    	log_info(logger, "Send execute message to ESI %d in socket %d",nextEsi->id,nextEsi->socketConection);
+    	log_info(logger, "Send execute message to ESI %d in socket %d", nextEsi->id, nextEsi->socketConection);
     }
 }
 
-//General use functions
-
-
+// General use functions
 void addKeyToGeneralKeys(char* key) {
 	bool itemIsKey(void* item) {
-		return strcmp(key,(char*)item)==0;
+		return strcmp(key, (char*) item) == 0;
 	}
-	if (!list_any_satisfy(allSystemTakenKeys,&itemIsKey))
-		list_add(allSystemTakenKeys,key);
+
+	if (!list_any_satisfy(allSystemTakenKeys, &itemIsKey))
+		list_add(allSystemTakenKeys, key);
 }
 
 void blockEsi(char* lockedKey, int esiBlocked) {
 	t_queue* esiQueue;
 	int* esiBlockedCopy = malloc(sizeof(int));
-	if (!dictionary_has_key(blockedEsiDic,lockedKey)) {
+	if (!dictionary_has_key(blockedEsiDic, lockedKey)) {
 		log_warning(logger, "Trying to block an ESI in a key that is not already in the dictionary");
 	} else {
-		esiQueue = dictionary_get(blockedEsiDic,lockedKey);
+		esiQueue = dictionary_get(blockedEsiDic, lockedKey);
 		*esiBlockedCopy = esiBlocked;
-		queue_push(esiQueue,esiBlockedCopy);
+		queue_push(esiQueue, esiBlockedCopy);
 
-		log_info(logger, "Added ESI (%d) to blocked dictionary in existing key (%s)",*esiBlockedCopy,lockedKey);
+		log_info(logger, "Added ESI (%d) to blocked dictionary in existing key (%s)", *esiBlockedCopy, lockedKey);
 	}
-	if (runningEsi->id!=esiBlocked) {
+
+	if (runningEsi->id != esiBlocked) {
 		removeFromReady(getEsiById(esiBlocked));
 	}
-
 }
 
 void lockKey(char* key, int esiID) {
@@ -439,78 +435,71 @@ void lockKey(char* key, int esiID) {
 	addKeyToGeneralKeys(key);
 
 	if (esiID != CONSOLE_BLOCKED) {
-		addLockedKeyToEsi(&key,&runningEsi);
+		addLockedKeyToEsi(&key, &runningEsi);
 	}
-	if (!dictionary_has_key(blockedEsiDic,key)) {
+
+	if (!dictionary_has_key(blockedEsiDic, key)) {
 		t_queue* esiQueue = queue_create();
-		dictionary_put(blockedEsiDic,key,esiQueue);
-
-	}
-	if (isLockedKey(key)==NOTBLOCKED) {
-		list_add(allSystemTakenKeys,key);
+		dictionary_put(blockedEsiDic, key, esiQueue);
 	}
 
-
+	if (isLockedKey(key) == NOTBLOCKED) {
+		list_add(allSystemTakenKeys, key);
+	}
 }
 
 Esi* getEsiById(int id) {
 	bool isId(void* element) {
-		if (((Esi*)element)->id==id)
-			return 1;
-		return 0;
+		return (((Esi*) element)->id == id ? 1 : 0);
 	}
-	Esi* esi =list_get(list_filter(allSystemEsis,&isId),0);
+	Esi* esi = list_get(list_filter(allSystemEsis, &isId), 0);
 	return esi;
 }
 
+// REVIEW hace falta esta funcion?
 void destroyer(void* element) {
 	free(element);
 }
 
-void freeKey(char* key,Esi* esiTaker) {
-
-
-	removeLockedKey(key,esiTaker);
+void freeKey(char* key, Esi* esiTaker) {
+	removeLockedKey(key, esiTaker);
 	unlockEsi(key);
 }
 
 void unlockEsi(char* key) {
 	bool keyCompare(void* takenKey) {
-		if (string_equals_ignore_case((char*)takenKey,key)) {
-			return true;
-		}
-		return false;
+		return string_equals_ignore_case((char*) takenKey, key);
 	}
-	list_remove_by_condition(allSystemTakenKeys,&keyCompare);
-	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic,key);
+
+	list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic, key);
 	int* unlockedEsi;
+
 	if (!queue_is_empty(blockedEsisQueue)) {
-		unlockedEsi = (int*)queue_pop(blockedEsisQueue);
+		unlockedEsi = (int*) queue_pop(blockedEsisQueue);
 		log_info(logger, "Unblocked ESI %d from key (%s)", *unlockedEsi, key);
 		addEsiToReady(getEsiById(*unlockedEsi));
 	} else {
-		log_info(logger, "There are no ESIs to unlock from key (%s)",key);
+		log_info(logger, "There are no ESIs to unlock from key (%s)", key);
 	}
 }
 
 char isLockedKey(char* key) {
 	bool itemIsKey(void* item) {
-			return strcmp(key,(char*)item)==0;
-		}
-	if (list_any_satisfy(allSystemTakenKeys,&itemIsKey)) {
-		return BLOCKED;
-	} else {
-		return NOTBLOCKED;
+		return strcmp(key,(char*)item) == 0;
 	}
+
+	return (list_any_satisfy(allSystemTakenKeys, &itemIsKey) ? BLOCKED : NOTBLOCKED);
 }
 
 void addEsiToReady(Esi* esi) {
 	pthread_mutex_lock(&mutexReadyList);
-	list_add(readyEsis,(void*)esi);
+	list_add(readyEsis, (void*) esi);
 	pthread_mutex_unlock(&mutexReadyList);
 }
 
 void exitPlanificador() {
+	// REVIEW que paso aca? se puede borrar lo comentado?
 	/*dictionary_destroy(blockedEsiDic);
 	list_destroy(readyEsis);
 	list_destroy(finishedEsis);
@@ -526,25 +515,24 @@ void exitPlanificador() {
 	pthread_cancel(threadConsoleInstructions);
 	pthread_cancel(threadExecution);*/
 	exit(-1);
-
 }
 
-//Planificador setup functions
+// Planificador setup functions
 void addConfigurationLockedKeys(char** blockedKeys) {
 	int i = 0;
 
 	while(blockedKeys[i]) {
-		lockKey(blockedKeys[i],CONSOLE_BLOCKED);
+		lockKey(blockedKeys[i], CONSOLE_BLOCKED);
 		addKeyToGeneralKeys(blockedKeys[i]);
 		i++;
 	}
+
 	log_info(logger, "All the configuration keys where locked");
 }
 
-
-//New esi functions
+// New esi functions
 Esi* generateEsiStruct(int esiSocket) {
-	Esi* newEsi = createEsi(actualID,initialEstimation,esiSocket);
+	Esi* newEsi = createEsi(actualID, initialEstimation, esiSocket);
 	actualID++;
 	return newEsi;
 }
@@ -554,45 +542,42 @@ void welcomeEsi(int clientSocket) {
 	Esi* newEsi = generateEsiStruct(clientSocket);
 	addEsiToReady(newEsi);
 	list_add(allSystemEsis,newEsi);
-
 }
 
 int clientMessageHandler(char clientMessage, int clientSocket) {
 	if (clientSocket == coordinadorSocket) {
 		if (clientMessage == KEYSTATUSMESSAGE) {
 			log_info(logger, "I recieved a key status message");
-			if (recieveString(&keyRecieved,coordinadorSocket)==CUSTOM_FAILURE) {
+
+			if (recieveString(&keyRecieved,coordinadorSocket) == CUSTOM_FAILURE) {
 				log_error(logger, "Couldn't recieve key to check from coordinador, quitting...");
 				exitPlanificador();
 			} else {
-				log_info(logger, "Key received = %s",keyRecieved);
+				log_info(logger, "Key received = %s", keyRecieved);
 				sendKeyStatusToCoordinador(keyRecieved);
 			}
 
-
-		}else if (clientMessage == CORDINADORCONSOLERESPONSEMESSAGE) {
+		} else if (clientMessage == CORDINADORCONSOLERESPONSEMESSAGE) {
 			log_info(logger, "I recieved a coordinador console response message");
-			//todo Para el status
+			// TODO Para el status
 		}
 	} else {
 		if (clientMessage == ESIID) {
-				welcomeEsi(clientSocket);
-		}else if (clientMessage == ESIINFORMATIONMESSAGE) {
-				log_info(logger, "I recieved a esi information message");
-				esiInformation = recieveEsiInformation(runningEsi->socketConection);
-				log_info(logger, "Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)",getCoordinadorResponseName(esiInformation->coordinadorResponse),getEsiInformationResponseName(esiInformation->esiStatus));
-				handleEsiInformation(esiInformation,keyRecieved);
-				log_info(logger, "Finish handling one instruction from ESI");
-				executeConsoleInstruccions();
-				finishedExecutingInstruccion = true;
-
+			welcomeEsi(clientSocket);
+		} else if (clientMessage == ESIINFORMATIONMESSAGE) {
+			log_info(logger, "I recieved a esi information message");
+			esiInformation = recieveEsiInformation(runningEsi->socketConection);
+			log_info(logger, "Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)", getCoordinadorResponseName(esiInformation->coordinadorResponse), getEsiInformationResponseName(esiInformation->esiStatus));
+			handleEsiInformation(esiInformation, keyRecieved);
+			log_info(logger, "Finish handling one instruction from ESI");
+			executeConsoleInstruccions();
+			finishedExecutingInstruccion = true;
 		} else {
 			log_info(logger, "I received a strange in socket %d", clientSocket);
 			printf("Lo que me llego es %c", clientMessage);
 			exitPlanificador();
 		}
 	}
-
 
 	return 0;
 }
@@ -604,7 +589,6 @@ int welcomeNewClients(int newCoordinadorSocket) {
 }
 
 int handleConcurrence() {
-
 	initializePlanificador();
 
 	fd_set readfds;
@@ -612,10 +596,10 @@ int handleConcurrence() {
 	char clientMessage = 0;
 	int resultRecv = 0, serverSocket = 0, clientSocket = 0;
 
-	//revisar el hardcodeo
+	// TODO revisar el hardcodeo
 	serverSocket = openConnection(listeningPort, PLANIFICADOR, "UNKNOWN_CLIENT", logger);
 	if (serverSocket < 0) {
-		//no se pudo conectar!
+		// no se pudo conectar!
 		return -1;
 	}
 
@@ -627,7 +611,6 @@ int handleConcurrence() {
 	FD_SET(coordinadorSocket, &master);
 	fdmax = serverSocket;
 
-
 	while(1) {
 
 		struct timeval tv;
@@ -635,8 +618,8 @@ int handleConcurrence() {
 		 tv.tv_sec = 0;
 		 tv.tv_usec = 500000;
 
-
 		readfds = master; // copy it
+
 		if (select(fdmax+1, &readfds, NULL, NULL, &tv) == -1) {
 			perror("select");
 		}
@@ -645,10 +628,9 @@ int handleConcurrence() {
 			continue;
 		}
 
-
 		// run through the existing connections looking for data to read
 		for (i = 0; i <= fdmax + 1; i++) {
-			if (i!=fdmax+1) {
+			if (i != fdmax+1) {
 				if (FD_ISSET(i, &readfds)) { // we got one!!
 					if (i == serverSocket) {
 
@@ -684,37 +666,31 @@ int handleConcurrence() {
 				}
 			} else {
 
-
-
-
 				Esi* nextEsi;
-				if (pauseState==CONTINUE) {
+				if (pauseState == CONTINUE) {
 					if (finishedExecutingInstruccion) {
-
-						if (runningEsi==NULL) {
-							if (list_size(readyEsis)>0) {
+						if (runningEsi == NULL) {
+							if (list_size(readyEsis) > 0) {
 								nextEsi = getNextEsi();
 								moveEsiToRunning(nextEsi);
-
 							}
 						} else {
-							if (strcmp(algorithm,"SJF-CD")==0) {
+							if (strcmp(algorithm, "SJF-CD") == 0) {
 								if (mustDislodgeRunningEsi()) {
-									dislodgeEsi(runningEsi,true);
+									dislodgeEsi(runningEsi, true);
 									nextEsi = getNextEsi();
 									moveEsiToRunning(nextEsi);
 								}
 							}
 						}
 
-						if (runningEsi!=NULL) {
+						if (runningEsi != NULL) {
 							finishedExecutingInstruccion = false;
-							log_info(logger, "Executing ESI (%d)",runningEsi->id);
+							log_info(logger, "Executing ESI (%d)", runningEsi->id);
 							sendEsiIdToCoordinador(runningEsi->id);
 							sendMessageExecuteToEsi(runningEsi);
 							log_info(logger, "Waiting coordinador request");
 						} else {
-
 							executeConsoleInstruccions();
 						}
 					}
@@ -723,7 +699,6 @@ int handleConcurrence() {
 					executeConsoleInstruccions();
 				}
 			}
-
 		}
 	}
 
@@ -744,6 +719,7 @@ void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* i
 
 	config_destroy(config);
 }
+
 void initializePlanificador() {
 	allSystemTakenKeys = list_create();
 	blockedEsiDic = dictionary_create();
