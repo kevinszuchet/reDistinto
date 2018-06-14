@@ -15,8 +15,13 @@
 #include <stdio.h>
 #include <commons/log.h>
 
-Esi* simulateAlgoithm(char* algorithm,int alphaReceived, t_list* esiList);
-Esi* nextEsiByAlgorithm(char* algorithm,int alphaReceived, t_list* esiList);
+bool comparatorSJFSD(void* esi_A, void* esi_B);
+bool comparatorHRRN(void* esi_A, void* esi_B);
+
+double getResponseRatio(Esi* esi);
 double getEstimation(Esi* esi);
+
+Esi* simulateAlgoithm(char* algorithm, int alphaReceived, t_list* esiList);
+Esi* nextEsiByAlgorithm(char* algorithm, int alphaReceived, t_list* esiList);
 
 #endif /* SRC_PLANIF_ALGORITHM_PLANIF_ALGORITHM_H_ */
