@@ -27,6 +27,19 @@ bool comparatorSJFSD(void* esi_A,void* esi_B){
 	}
 }
 
+bool comparatorHRRN(void* esi_A,void* esi_B){
+	Esi* esiA = (Esi*)esi_A;
+	Esi* esiB = (Esi*)esi_B;
+	double nextResponseRatioA =(esiA->waitingTime+ getEstimation(esiA))/esiA->waitingTime;
+	double nextResponseRatioB =(esiB->waitingTime+ getEstimation(esiB))/esiB->waitingTime;
+	if(nextResponseRatioA>=nextResponseRatioB){
+		return 1;
+	}else{
+		return 0;
+	}
+}
+
+
 double getEstimation(Esi* esi){
 	double estimation = esi->lastBurst*alpha/100 + esi->lastEstimation * (100-alpha)/100;
 	return estimation;
@@ -42,8 +55,7 @@ Esi* simulateAlgoithm(char* algorithm,int alphaReceived, t_list* esiList){
 	}else if(strcmp(algorithm,"SJF-CD")==0){
 		comparatorToUse= &comparatorSJFSD;
 	}else{
-		//HRRN
-
+		comparatorToUse= &comparatorHRRN;
 	}
 	list_sort(esiList,comparatorToUse);
 	printf("List sorted\n");
