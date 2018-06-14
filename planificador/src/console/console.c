@@ -150,71 +150,87 @@ int validCommand(char** parameters) {
 	int commandNumber = getCommandNumber(command);
 	int cantExtraParameters = parameterQuantity(parameters) - 1;
 
-	char* key = malloc(40);
+	char* key;
 	int id;
 	switch(commandNumber) {
 		case PAUSAR:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 		case CONTINUAR:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 		case BLOQUEAR:
 			if(parameterQuantityIsValid(cantExtraParameters, 2)){
-				strcpy(key,parameters[1]);
-				id = atoi(parameters[2]); //Falta validar que sea un numero
-				if(validateBloquear(key,id)){
-					free(key);
-					return 1;
+				if(validKey(parameters[1])){
+					key = malloc(40);
+					strcpy(key,parameters[1]);
+					id = atoi(parameters[2]); //Falta validar que sea un numero
+					if(validateBloquear(key,id)){
+						free(key);
+						return 1;
+					}
 				}
+
 			}
-			free(key);
 			printf("Invalid command\n");
 			return 0;
 		break;
 		case DESBLOQUEAR:
+
 			if(parameterQuantityIsValid(cantExtraParameters, 1)){
-				strcpy(key,parameters[1]);
-				if(validateDesbloquear(key)){
-					free(key);
-					return 1;
+				if(validKey(parameters[1])){
+					key = malloc(40);
+					strcpy(key,parameters[1]);
+					if(validateDesbloquear(key)){
+						free(key);
+						return 1;
+					}
 				}
+
 			}
 			printf("Invalid command\n");
 			return 0;
-			free(key);
-
 		break;
 		case LISTAR:
-			free(key);
-			if(parameterQuantityIsValid(cantExtraParameters, 1)&&keyExists(parameters[1])){
-				return 1;
+			if(parameterQuantityIsValid(cantExtraParameters, 1)){
+				if(validKey(parameters[1])){
+					key = malloc(40);
+					key = strcpy(key,parameters[1]);
+					if(keyExists(key)){
+						free(key);
+						return 1;
+					}
+				}
 			}
+
 			printf("Invalid command\n");
 			return 0;
 		break;
 		case KILL:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
 		case STATUS:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
 		case DEADLOCK:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 
 		default:
 			printf("%s: command not found\n", command);
-			free(key);
 			return 0;
 		break;
 	}
 }
+
+int validKey(char* key){
+	if(strlen(key) > 40){
+		printf("Invalid key lenght\n");
+		return 0;
+	}
+	return 1;
+}
+
 int validateDesbloquear(char* key){
 	if(keyExists(key))
 		return 1;
@@ -222,7 +238,7 @@ int validateDesbloquear(char* key){
 }
 
 int validateBloquear(char* key,int id){
-	if(keyExists(key)&&(isReady(id)||isRunning(id))){
+	if((isReady(id)||isRunning(id))){
 		return 1;
 	}
 	return 0;
@@ -231,11 +247,10 @@ int validateBloquear(char* key,int id){
 int keyExists(char* key){
 	if(dictionary_has_key(blockedEsiDic,key)){
 		return 1;
-
 	}
 	return 0;
-
 }
+
 int isReady(int idEsi){
 	if(list_is_empty(readyEsis)){
 		return 0;
@@ -285,3 +300,4 @@ int parameterQuantityIsValid(int cantExtraParameters, int necessaryParameters) {
 	}
 	return 1;
 }
+

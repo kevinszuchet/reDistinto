@@ -39,5 +39,5 @@
 	int keyExists(char* key);
 	int isReady(int idEsi);
 	int isRunning(int idEsi);
-
+	int validKey(char* key);
 #endif /* CONSOLA_H_ */
