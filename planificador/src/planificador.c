@@ -208,152 +208,48 @@ void abortEsi(Esi* esi) {
 	}
 
 	freeTakenKeys(esi);
-	deleteEsiFromSystemBySocket(esi->socketConection);
+	deleteEsiFromSystem(esi);
 	list_remove_by_condition(allSystemEsis, &isEsiById);
 }
 
-void deleteEsiFromSystemBySocket(int socket) {
+void deleteEsiFromSystem(Esi* esiToDelete) {
 
-	bool isEsiBySocket(void* esi) {
-		return ((Esi*)esi)->socketConection == socket;
+	bool isEsiByID(void* esi) {
+		return ((Esi*)esi)->id == esiToDelete->id;
 	}
 	t_queue* blockedEsis;
 	int* actualEsi;
 
-	switch(getEsiPlaceBySocket(socket)) {
-
-		case INREADYLIST:
-			log_info(logger, "Aborting esi (%d)", getEsiBySocket(socket)->id);
-			pthread_mutex_lock(&mutexReadyList);
-			list_remove_by_condition(readyEsis, &isEsiBySocket);
-			pthread_mutex_unlock(&mutexReadyList);
-		break;
-
-		case INFINISHEDLIST:
-			// REVIEW no hace nada?
-		break;
-
-		case INRUNNING:
-			log_info(logger, "Aborting esi (%d)", getEsiBySocket(socket)->id);
-			finishedExecutingInstruccion = true;
-			runningEsi = NULL;
-		break;
-
-		case INBLOCKEDDIC:
-			log_info(logger, "Aborting esi (%d)", getEsiBySocket(socket)->id);
-
-			for (int i = 0; i < list_size(allSystemTakenKeys); i++) {
-				blockedEsis = dictionary_get(blockedEsiDic, list_get(allSystemTakenKeys, i));
-
-				for (int j = 0; j < queue_size(blockedEsis); j++) {
-					actualEsi = (int*) queue_pop(blockedEsis);
-
-					if (getEsiById(*actualEsi)->socketConection != socket) {
-						queue_push(blockedEsis, actualEsi);
-					} else {
-						// REVIEW porque esta el free comentado?
-						//free(actualEsi);
-					}
-				}
-			}
-		break;
-
-		case NOWHERE:
-			log_info(logger, "Aborting esi (%d)", getEsiBySocket(socket)->id);
-		break;
-
-		default:
-			// REVIEW el default no hace nada?
-			/*
-			 * log_error(logger, "Couldn't remove ESI with socket (%d)",socket);
-			 * exitPlanificador();
-			*/
-		break;
-	}
-}
-
-Esi* getEsiBySocket(int socket) {
-	bool isEsiBySocket(void* esi) {
-		return ((Esi*)esi)->socketConection == socket;
-	}
-	t_queue* blockedEsis;
-	int* actualEsi;
-	Esi* targetEsi = NULL;
-	t_list* filteredList = list_create();
-	switch(getEsiPlaceBySocket(socket)) {
-
-		case INREADYLIST:
-			log_info(logger, "ESI was on ready list");
-			return list_get(list_filter(readyEsis, &isEsiBySocket), 0);
-		break;
-
-		case INFINISHEDLIST:
-			log_info(logger, "ESI was on finished list, it succesfully finished executing");
-			filteredList = list_filter(finishedEsis, &isEsiBySocket);
-			return list_get(filteredList, list_size(filteredList) - 1);
-		break;
-
-		case INRUNNING:
-			log_info(logger, "ESI was running");
-			return runningEsi;
-		break;
-
-		case INBLOCKEDDIC:
-			log_info(logger, "ESI was blocked");
-			for (int i = 0; i < list_size(allSystemTakenKeys); i++) {
-				blockedEsis = dictionary_get(blockedEsiDic, list_get(allSystemTakenKeys, i));
-				for (int j = 0; j < queue_size(blockedEsis); j++) {
-					actualEsi = (int*) queue_pop(blockedEsis);
-					if (getEsiById(*actualEsi)->socketConection == socket) {
-						targetEsi = getEsiById(*actualEsi);
-					}
-					queue_push(blockedEsis, actualEsi);
-				}
-			}
-			// REVIEW que hacemos con este free?
-			//free(blockedEsis);
-			return targetEsi;
-		break;
-
-		default:
-			log_info(logger, "ESI was nowhere");
-			return runningEsi;
-		break;
-	}
-}
-
-char getEsiPlaceBySocket(int socket) {
-	bool isEsiBySocket(void* esi) {
-		return ((Esi*)esi)->socketConection == socket;
+	if (list_size(list_filter(readyEsis, &isEsiByID)) > 0) {
+		log_info(logger, "Aborting esi (%d) from ready list", esiToDelete->id);
+		pthread_mutex_lock(&mutexReadyList);
+		list_remove_by_condition(readyEsis, &isEsiByID);
+		pthread_mutex_unlock(&mutexReadyList);
 	}
 
-	if (list_size(list_filter(readyEsis, &isEsiBySocket)) > 0) {
-		return INREADYLIST;
+	if (runningEsi != NULL && runningEsi->id == esiToDelete->id) {
+		log_info(logger, "Aborting esi (%d) from running", esiToDelete->id);
+		finishedExecutingInstruccion = true;
+		runningEsi = NULL;
 	}
 
-	if (runningEsi != NULL && runningEsi->socketConection == socket) {
-		return INRUNNING;
+	if (list_size(list_filter(finishedEsis, &isEsiByID)) > 0) {
+		//nothing to do, is in finished list
 	}
-
-	t_queue* blockedEsis;
-	int* actualEsi;
 
 	for (int i = 0; i < list_size(allSystemTakenKeys); i++) {
-		blockedEsis = dictionary_get(blockedEsiDic, list_get(allSystemTakenKeys, i));
+		char* key = list_get(allSystemTakenKeys, i);
+		blockedEsis = dictionary_get(blockedEsiDic, key);
 		for (int j = 0; j < queue_size(blockedEsis); j++) {
 			actualEsi = (int*) queue_pop(blockedEsis);
-			if (getEsiById(*actualEsi)->socketConection == socket) {
-				return INBLOCKEDDIC;
+			if (getEsiById(*actualEsi)->id == esiToDelete->id) {
+				log_info(logger, "Aborting esi (%d) from blocked at key (%s)", esiToDelete->id, key);
+			}else{
+				queue_push(blockedEsis, actualEsi);
 			}
-			queue_push(blockedEsis, actualEsi);
+
 		}
 	}
-
-	if (list_size(list_filter(finishedEsis, &isEsiBySocket)) > 0) {
-		return INFINISHEDLIST;
-	}
-
-	return NOWHERE;
 }
 
 void moveFromRunningToReady(Esi* esi) {
@@ -455,7 +351,13 @@ Esi* getEsiById(int id) {
 	Esi* esi = list_get(list_filter(allSystemEsis, &isId), 0);
 	return esi;
 }
-
+Esi* getEsiBySocket(int socket) {
+	bool isSocket(void* element) {
+		return (((Esi*) element)->socketConection == socket ? 1 : 0);
+	}
+	Esi* esi = list_get(list_filter(allSystemEsis, &isSocket), 0);
+	return esi;
+}
 // REVIEW hace falta esta funcion?
 void destroyer(void* element) {
 	free(element);

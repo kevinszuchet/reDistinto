@@ -90,9 +90,9 @@
 	Esi* generateEsiStruct(int esiSocket);
 	void sendMessageExecuteToEsi(Esi* nextEsi);
 	OperationResponse *recieveEsiInformation(int esiSocket);
-	char getEsiPlaceBySocket(int socket);
+
 	Esi* getEsiBySocket(int socket);
-	void deleteEsiFromSystemBySocket(int socket);
+	void deleteEsiFromSystem(Esi* esiToDelete);
 	void abortEsi(Esi* esi);
 	void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key);
 	void handleEsiStatus(char esiStatus);
