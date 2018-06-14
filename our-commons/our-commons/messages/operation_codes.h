@@ -45,6 +45,10 @@
 #define ESIINFORMATIONMESSAGE 'z'
 #define CORDINADORCONSOLERESPONSEMESSAGE 'x'
 
+#define INSTANCIA_COMPACT_SUCCESS 'c'
+#define INSTANCIA_COMPACT_FAILURE 'v'
+#define INSTANCIA_DO_COMPACT 'b'
+
 char* getCoordinadorResponseName(char coordinadorResponse);
 char* getEsiInformationResponseName(char esiInformation);
 

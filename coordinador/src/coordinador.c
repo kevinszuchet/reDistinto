@@ -34,6 +34,9 @@ sem_t* instanciaResponse;
 
 int activeCompactation = 0;
 
+//TODO sacar, esta para probar
+int instanciaId = 0;
+
 int main(void) {
 	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
@@ -310,7 +313,7 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 	showInstancia(chosenInstancia);
 
 	actualEsiRequest = esiRequest;
-	sem_post(chosenInstancia->semaphore);
+	sem_post(chosenInstancia->executionSemaphore);
 	log_info(logger, "Esi's thread advised instancia's thread, waiting to continue...");
 	sem_wait(instanciaResponse);
 	log_info(logger, "Esi's thread is gonna process instancia's thread response");
@@ -567,7 +570,6 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket, logger) < 0){
 		return NULL;
 	}
-	/*recieveInstanciaNameDummy(&arrivedInstanciaName);*/
 	log_info(logger, "Arrived instancia's name is %s", arrivedInstanciaName);
 
 	if(sendInstanciaConfiguration(instanciaSocket, cantEntry, entrySize, logger) < 0){
@@ -622,7 +624,13 @@ Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
 	log_info(logger, "Sent configuration to instancia %s", arrivedInstanciaName);
 
 	pthread_mutex_lock(&instanciasListMutex);
-	Instancia* instancia = createNewInstancia(instanciaSocket, arrivedInstanciaName);
+	char* harcodedNameForTesting = malloc(strlen(arrivedInstanciaName) + 5);
+	strcpy(harcodedNameForTesting, arrivedInstanciaName);
+	char* instanciaNumberInString = malloc(4);
+	sprintf(instanciaNumberInString, "%d", instanciaId);
+	strcat(harcodedNameForTesting, instanciaNumberInString);
+	Instancia* instancia = createNewInstancia(instanciaSocket, harcodedNameForTesting);
+	instanciaId++;
 
 	if(list_size(instancias) == 1){
 		pthread_mutex_lock(&lastInstanciaChosenMutex);
@@ -631,44 +639,81 @@ Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
 	}
 
 	free(arrivedInstanciaName);
+	free(harcodedNameForTesting);
+	free(instanciaNumberInString);
 	pthread_mutex_unlock(&instanciasListMutex);
 
 	return instancia;
 }
 
 void sendCompactRequest(Instancia* instanciaToBeCompacted){
-	sem_post(instanciaToBeCompacted->semaphore);
+	sem_post(instanciaToBeCompacted->executionSemaphore);
 }
 
 t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactationCausative){
 	int instanciaIsAliveAndNotCausative(Instancia* instancia){
+		//TODO evaluar por que es que no esta andando bien la comparacion de punteros a Instancia
 		return instanciaIsAlive(instancia) && instancia != compactationCausative;
 	}
 
 	activeCompactation = 1;
 
 	pthread_mutex_lock(&instanciasListMutex);
-	t_list* aliveInstanciasButCausative = list_filter(instancias, (void*) instanciaIsAliveAndNotCausative);
+	//TODO el filter no esta filtrando...
+	t_list* aliveInstanciasButCausative  = list_filter(instancias, (void*) instanciaIsAliveAndNotCausative);
+	showInstancias(aliveInstanciasButCausative);
 	pthread_mutex_unlock(&instanciasListMutex);
 
-	list_iterate(aliveInstanciasButCausative, (void*) sendCompactRequest);
+	list_iterate(aliveInstanciasButCausative , (void*) sendCompactRequest);
 
 	return aliveInstanciasButCausative;
 }
 
 void waitInstanciaToCompact(Instancia* instancia){
 	sem_wait(instancia->compactSemaphore);
+	log_info(logger, "Instancia %s compacted", instancia->name);
 }
 
 void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 	list_iterate(instanciasThatNeededToCompact, (void*) waitInstanciaToCompact);
+
+	list_destroy(instanciasThatNeededToCompact);
+}
+
+char instanciaDoCompact(Instancia* instancia){
+	char instanciaDoCompactCode = INSTANCIA_DO_COMPACT;
+	if(send(instancia->socket, &instanciaDoCompactCode, sizeof(char), 0) < 0){
+		return INSTANCIA_RESPONSE_FALLEN;
+	}else{
+		log_info(logger, "Compactation order sent to instancia %s", instancia->name);
+		return waitForInstanciaResponse(instancia);
+	}
+}
+
+void handleInstanciaCompactStatus(char compactStatus){
+	if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
+		//marcar la instancia como caida, sincronizar lista instancias
+	}else if(compactStatus == INSTANCIA_COMPACT_SUCCESS){
+
+	}else{
+
+	}
+}
+
+void handleInstanciaCompactation(Instancia* instancia){
+	char compactStatus = '\0';
+	compactStatus = instanciaDoCompact(instancia);
+	handleInstanciaCompactStatus(compactStatus);
 }
 
 int handleInstancia(int instanciaSocket){
+	int imTheCompactationCausative = 0;
+	t_list* instanciasToBeCompactedButCausative = NULL;
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos cuando puede haber varios activos (compactacion)
 
-	Instancia* actualInstancia = initialiceArrivedInstancia(instanciaSocket);
-	//Instancia* actualInstancia = initialiceArrivedInstanciaDummy(instanciaSocket);
+	Instancia* actualInstancia;
+	//actualInstancia = initialiceArrivedInstancia(instanciaSocket);
+	actualInstancia = initialiceArrivedInstanciaDummy(instanciaSocket);
 
 	if(!actualInstancia){
 		return -1;
@@ -680,23 +725,31 @@ int handleInstancia(int instanciaSocket){
 	pthread_mutex_unlock(&instanciasListMutex);
 
 	while(1){
-		sem_wait(actualInstancia->semaphore);
+		sem_wait(actualInstancia->executionSemaphore);
 
 		if(activeCompactation){
 
-			char compactStatus = '\0';
-			//compactStatus = instanciaDoCompact(actualInstancia);
-			//compactStatus = instanciaDoCompactDummy(actualInstancia);
-			//handleInstanciaCompactStatus(compactStatus);
+			log_info(logger, "Instancia %s is gonna compact", actualInstancia->name);
+			handleInstanciaCompactation(actualInstancia);
 
-			sem_post(actualInstancia->compactSemaphore);
+			if(!imTheCompactationCausative){
+				sem_post(actualInstancia->compactSemaphore);
+			}else{
+				log_info(logger, "Instancia %s is waiting the others to compact", actualInstancia->name);
+				waitInstanciasToCompact(instanciasToBeCompactedButCausative);
+				log_info(logger, "All instancias did compactation");
+
+				activeCompactation = 0;
+
+				sem_post(actualInstancia->executionSemaphore);
+			}
 
 		}else{
 			log_info(logger, "%s's thread is gonna handle %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
 			//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
-			instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
-			//instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
+			//instanciaResponseStatus = instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
+			instanciaResponseStatus = instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
 
 			//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada
 			log_info(logger, "Instancia's response is gonna be processed");
@@ -720,28 +773,15 @@ int handleInstancia(int instanciaSocket){
 				showInstancia(actualInstancia);
 				pthread_mutex_unlock(&instanciasListMutex);
 			}else if(instanciaResponseStatus == INSTANCIA_NEED_TO_COMPACT){
-				log_info(logger, "Instancia %s needs to compact, so every active instancia will do the same");
+				log_info(logger, "Instancia %s needs to compact, so every active instancia will do the same", actualInstancia->name);
 
-				t_list* aliveInstanciasButActual = sendCompactRequestToEveryAliveInstaciaButActual(actualInstancia);
+				imTheCompactationCausative = 1;
 
-				//sincronizar instancias, considerando que se pueden caer durante el compact
-				char compactStatus = '\0';
-				//compactStatus = instanciaDoCompact(actualInstancia);
-				//compactStatus = instanciaDoCompactDummy(actualInstancia);
-				//handleInstanciaCompactStatus(compactStatus);
+				instanciasToBeCompactedButCausative = sendCompactRequestToEveryAliveInstaciaButActual(actualInstancia);
 
-				log_info(logger, "Causative instancia already compacted, waiting for the others...");
+				sendCompactRequest(actualInstancia);
 
-				waitInstanciasToCompact(aliveInstanciasButActual);
-				log_info(logger, "All the other instancias returned from compactation");
-
-				activeCompactation = 0;
-
-				//TODO evaluar si hay que destruir esta lista, si no rompe la lista real
-				//list_destroy_and_destroy_elements(aliveInstancias, instanciaDestroyer);
-
-				instanciaResponseStatus = compactStatus;
-
+				continue;
 			}else if(instanciaResponseStatus == INSTANCIA_RESPONSE_SUCCESS){
 				log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 			}

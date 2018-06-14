@@ -45,7 +45,7 @@ int addSemaphoresToInstancia(Instancia* instancia){
 		return -1;
 	}
 
-	instancia->semaphore = sem;
+	instancia->executionSemaphore = sem;
 
 	sem_t* compactSem = malloc(sizeof(sem_t));
 	if(sem_init(compactSem, 0, 0) < 0){
@@ -67,22 +67,20 @@ void recieveInstanciaNameDummy(char** arrivedInstanciaName){
 	*arrivedInstanciaName = "instanciaDePrueba";
 }
 
-void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
+char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
-		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
-	}else{
-		log_info(logger, "Operation sent to instancia");
-		instanciaResponseStatus = waitForInstanciaResponse(instancia);
+		return INSTANCIA_RESPONSE_FALLEN;
 	}
+	log_info(logger, "Operation sent to instancia");
+	return waitForInstanciaResponse(instancia);
 }
 
-void instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger){
-	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
-		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
-	}else{
-		log_info(logger, "Operation sent to instancia");
-		instanciaResponseStatus = waitForInstanciaResponseDummy(instancia);
-	}
+char instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger){
+	/*if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
+		return INSTANCIA_RESPONSE_FALLEN;
+	}*/
+	log_info(logger, "Operation sent to instancia");
+	return waitForInstanciaResponseDummy(instancia);
 }
 
 int isLookedKeyGeneric(char* actualKey, char* key){
@@ -124,8 +122,8 @@ void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 }
 
 void destroyInstanciaSemaphores(Instancia* instancia){
-	sem_destroy(instancia->semaphore);
-	free(instancia->semaphore);
+	sem_destroy(instancia->executionSemaphore);
+	free(instancia->executionSemaphore);
 
 	sem_destroy(instancia->compactSemaphore);
 	free(instancia->compactSemaphore);
@@ -149,7 +147,7 @@ char waitForInstanciaResponse(Instancia* chosenInstancia){
 }
 
 char waitForInstanciaResponseDummy(){
-	return INSTANCIA_RESPONSE_SUCCESS;
+	return INSTANCIA_NEED_TO_COMPACT;
 }
 
 Instancia* createNewInstancia(int instanciaSocket, char* name){
