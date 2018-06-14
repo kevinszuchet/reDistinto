@@ -28,16 +28,19 @@
 	#define INVALID_COMMAND 9
 
 	void openConsole();
-	void execute(char **);
 	void executeConsoleInstruccions();
-	int getCommandNumber(char* );
-	int validCommand(char** );
-	int parameterQuantity(char**);
-	int parameterQuantityIsValid(int, int);
-	int validateBloquear(char* key,int id);
+	void execute(char ** parameters);
+
+	int parameterQuantity(char** parameters);
+	int validCommand(char** parameters);
+	int validKey(char* key);
 	int validateDesbloquear(char* key);
+	int validateBloquear(char* key, int id);
 	int keyExists(char* key);
+	int parameterQuantityIsValid(int cantExtraParameters, int necessaryParameters);
+
 	int isReady(int idEsi);
 	int isRunning(int idEsi);
-	int validKey(char* key);
+
+	int getCommandNumber(char* command);
 #endif /* CONSOLA_H_ */
