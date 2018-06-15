@@ -32,7 +32,7 @@ pthread_mutex_t lastInstanciaChosenMutex = PTHREAD_MUTEX_INITIALIZER;
 EsiRequest* actualEsiRequest;
 sem_t* instanciaResponse;
 
-int activeCompactation = 0;
+int activeCompact = 0;
 
 //TODO sacar, esta para probar
 int instanciaId = 0;
@@ -650,16 +650,14 @@ void sendCompactRequest(Instancia* instanciaToBeCompacted){
 	sem_post(instanciaToBeCompacted->executionSemaphore);
 }
 
-t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactationCausative){
+t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactCausative){
 	int instanciaIsAliveAndNotCausative(Instancia* instancia){
-		//TODO evaluar por que es que no esta andando bien la comparacion de punteros a Instancia
-		return instanciaIsAlive(instancia) && instancia != compactationCausative;
+		return instanciaIsAlive(instancia) && instancia != compactCausative;
 	}
 
-	activeCompactation = 1;
+	activeCompact = 1;
 
 	pthread_mutex_lock(&instanciasListMutex);
-	//TODO el filter no esta filtrando...
 	t_list* aliveInstanciasButCausative  = list_filter(instancias, (void*) instanciaIsAliveAndNotCausative);
 	showInstancias(aliveInstanciasButCausative);
 	pthread_mutex_unlock(&instanciasListMutex);
@@ -671,7 +669,7 @@ t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactationC
 
 void waitInstanciaToCompact(Instancia* instancia){
 	sem_wait(instancia->compactSemaphore);
-	log_info(logger, "Instancia %s compacted", instancia->name);
+	log_info(logger, "Instancia %s came back from compact", instancia->name);
 }
 
 void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
@@ -682,32 +680,33 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 
 char instanciaDoCompact(Instancia* instancia){
 	char instanciaDoCompactCode = INSTANCIA_DO_COMPACT;
+	log_info(logger, "About to send instancia compact orden to %s", instancia->name);
 	if(send(instancia->socket, &instanciaDoCompactCode, sizeof(char), 0) < 0){
+		log_warning(logger, "Couldn't send compact order to instancia %s, so it fell", instancia->name);
 		return INSTANCIA_RESPONSE_FALLEN;
-	}else{
-		log_info(logger, "Compactation order sent to instancia %s", instancia->name);
-		return waitForInstanciaResponse(instancia);
 	}
+	log_info(logger, "Compact order sent to instancia %s", instancia->name);
+	return waitForInstanciaResponse(instancia);
 }
 
-void handleInstanciaCompactStatus(char compactStatus){
+void handleInstanciaCompactStatus(Instancia* instancia, char compactStatus){
 	if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
-		//marcar la instancia como caida, sincronizar lista instancias
+		log_info(logger, "Instancia %s couldn't compact, it fell", instancia->name);
+		//TODO descomentar
+		//instanciaHasFallen(instancia);
 	}else if(compactStatus == INSTANCIA_COMPACT_SUCCESS){
-
+		log_info(logger, "Instancia %s could compact", instancia->name);
 	}else{
-
+		log_info(logger, "Instancia %s couldn't compact", instancia->name);
 	}
 }
 
-void handleInstanciaCompactation(Instancia* instancia){
-	char compactStatus = '\0';
-	compactStatus = instanciaDoCompact(instancia);
-	handleInstanciaCompactStatus(compactStatus);
+char instanciaDoCompactDummy(){
+	return INSTANCIA_RESPONSE_FALLEN;
 }
 
 int handleInstancia(int instanciaSocket){
-	int imTheCompactationCausative = 0;
+	int imTheCompactCausative = 0;
 	t_list* instanciasToBeCompactedButCausative = NULL;
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos cuando puede haber varios activos (compactacion)
 
@@ -721,25 +720,37 @@ int handleInstancia(int instanciaSocket){
 
 	//TODO no pude pasar el semaforo a coordinador.h para reutilizar en instancisaFunctions porque me tiraba error de definicion multiple
 	pthread_mutex_lock(&instanciasListMutex);
-	showInstancias();
+	showInstancias(instancias);
 	pthread_mutex_unlock(&instanciasListMutex);
 
 	while(1){
 		sem_wait(actualInstancia->executionSemaphore);
 
-		if(activeCompactation){
-
+		if(activeCompact){
 			log_info(logger, "Instancia %s is gonna compact", actualInstancia->name);
-			handleInstanciaCompactation(actualInstancia);
+			char compactStatus;
+			compactStatus = instanciaDoCompact(actualInstancia);
+			//compactStatus = handleInstanciaCompactDummy();
+			handleInstanciaCompactStatus(actualInstancia, compactStatus);
 
-			if(!imTheCompactationCausative){
+			if(!imTheCompactCausative){
 				sem_post(actualInstancia->compactSemaphore);
+				/*if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
+					return -1;
+				}*/
 			}else{
 				log_info(logger, "Instancia %s is waiting the others to compact", actualInstancia->name);
 				waitInstanciasToCompact(instanciasToBeCompactedButCausative);
-				log_info(logger, "All instancias did compactation");
+				log_info(logger, "All instancias came back from compact");
 
-				activeCompactation = 0;
+				activeCompact = 0;
+				imTheCompactCausative = 0;
+
+				/*if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
+					instanciaResponseStatus = compactStatus;
+					sem_post(instanciaResponse);
+					return -1;
+				}*/
 
 				sem_post(actualInstancia->executionSemaphore);
 			}
@@ -775,7 +786,7 @@ int handleInstancia(int instanciaSocket){
 			}else if(instanciaResponseStatus == INSTANCIA_NEED_TO_COMPACT){
 				log_info(logger, "Instancia %s needs to compact, so every active instancia will do the same", actualInstancia->name);
 
-				imTheCompactationCausative = 1;
+				imTheCompactCausative = 1;
 
 				instanciasToBeCompactedButCausative = sendCompactRequestToEveryAliveInstaciaButActual(actualInstancia);
 

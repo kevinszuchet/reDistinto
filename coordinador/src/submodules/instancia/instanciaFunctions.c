@@ -67,6 +67,7 @@ void recieveInstanciaNameDummy(char** arrivedInstanciaName){
 	*arrivedInstanciaName = "instanciaDePrueba";
 }
 
+//TODO agregar el send de INSTANCIA_DO_OPERATION
 char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		return INSTANCIA_RESPONSE_FALLEN;
@@ -218,11 +219,9 @@ void showInstancia(Instancia* instancia){
 	}
 }
 
-void showInstancias(){
+void showInstancias(t_list* instanciasList){
 	printf("----- INSTANCIAS -----\n");
-	//pthread_mutex_lock(&instanciasListMutex);
-	list_iterate(instancias, (void*) &showInstancia);
-	//pthread_mutex_unlock(&instanciasListMutex);
+	list_iterate(instanciasList, (void*) &showInstancia);
 }
 /*
  * TEST FUNCTIONS

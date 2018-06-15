@@ -48,6 +48,7 @@
 #define INSTANCIA_COMPACT_SUCCESS 'c'
 #define INSTANCIA_COMPACT_FAILURE 'v'
 #define INSTANCIA_DO_COMPACT 'b'
+#define INSTANCIA_DO_OPERATION 'n'
 
 char* getCoordinadorResponseName(char coordinadorResponse);
 char* getEsiInformationResponseName(char esiInformation);
