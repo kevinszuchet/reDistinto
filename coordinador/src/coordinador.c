@@ -680,7 +680,7 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 
 char instanciaDoCompact(Instancia* instancia){
 	char instanciaDoCompactCode = INSTANCIA_DO_COMPACT;
-	log_info(logger, "About to send instancia compact orden to %s", instancia->name);
+	log_info(logger, "About to send instancia compact order to %s", instancia->name);
 	if(send(instancia->socket, &instanciaDoCompactCode, sizeof(char), 0) < 0){
 		log_warning(logger, "Couldn't send compact order to instancia %s, so it fell", instancia->name);
 		return INSTANCIA_RESPONSE_FALLEN;

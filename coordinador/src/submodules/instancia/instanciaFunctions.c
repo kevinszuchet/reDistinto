@@ -67,8 +67,12 @@ void recieveInstanciaNameDummy(char** arrivedInstanciaName){
 	*arrivedInstanciaName = "instanciaDePrueba";
 }
 
-//TODO agregar el send de INSTANCIA_DO_OPERATION
 char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
+	//TODO mariano revisar esto
+	char message = INSTANCIA_DO_OPERATION;
+	if(send(instancia->socket, &message, sizeof(char), 0) < 0){
+		return INSTANCIA_RESPONSE_FALLEN;
+	}
 	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
 		return INSTANCIA_RESPONSE_FALLEN;
 	}
