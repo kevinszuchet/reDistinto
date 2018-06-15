@@ -626,7 +626,7 @@ Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
 	pthread_mutex_lock(&instanciasListMutex);
 	char* harcodedNameForTesting = malloc(strlen(arrivedInstanciaName) + 5);
 	strcpy(harcodedNameForTesting, arrivedInstanciaName);
-	char* instanciaNumberInString = malloc(4);
+	char* instanciaNumberInString = malloc(sizeof(int));
 	sprintf(instanciaNumberInString, "%d", instanciaId);
 	strcat(harcodedNameForTesting, instanciaNumberInString);
 	Instancia* instancia = createNewInstancia(instanciaSocket, harcodedNameForTesting);
@@ -747,6 +747,9 @@ int handleInstancia(int instanciaSocket){
 				imTheCompactCausative = 0;
 
 				/*if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
+					pthread_mutex_lock(&instanciasListMutex);
+					removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
+					pthread_mutex_unlock(&instanciasListMutex);
 					instanciaResponseStatus = compactStatus;
 					sem_post(instanciaResponse);
 					return -1;
@@ -785,13 +788,9 @@ int handleInstancia(int instanciaSocket){
 				pthread_mutex_unlock(&instanciasListMutex);
 			}else if(instanciaResponseStatus == INSTANCIA_NEED_TO_COMPACT){
 				log_info(logger, "Instancia %s needs to compact, so every active instancia will do the same", actualInstancia->name);
-
 				imTheCompactCausative = 1;
-
 				instanciasToBeCompactedButCausative = sendCompactRequestToEveryAliveInstaciaButActual(actualInstancia);
-
 				sendCompactRequest(actualInstancia);
-
 				continue;
 			}else if(instanciaResponseStatus == INSTANCIA_RESPONSE_SUCCESS){
 				log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
