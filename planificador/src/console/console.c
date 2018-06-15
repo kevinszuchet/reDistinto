@@ -30,17 +30,24 @@ void openConsole() {
 			add_history(line);
 		}*/
 
-		/*if (!strncmp(line, "exit", 4)) {
+		if (!strncmp(line, "exit", 4)) {
 			free(line);
+			exitPlanificador();
 			break;
-		}*/
+		}
 
 		if (validCommand(parameters)) {
 			log_info(logger, "Instruccion added to pending instruccion List");
 			list_add(instruccionsByConsoleList, parameters);
+		} else {
+			int i = 0;
+			while(parameters[i]) {
+				free(parameters[i]);
+				i++;
+			}
 		}
 
-		// TODO free de parameters y de cada uno de sus elementos
+		free(parameters);
 		free(line);
 	}
 }
@@ -53,10 +60,10 @@ void executeConsoleInstruccions() {
 	}
 
 	if (list_size(instruccionsByConsoleList) > 0) {
-		log_info(logger,"Hay (%d) instrucciones de consola para ejecutar", list_size(instruccionsByConsoleList));
+		log_info(logger, "Hay (%d) instrucciones de consola para ejecutar", list_size(instruccionsByConsoleList));
 		list_iterate(instruccionsByConsoleList, &validateAndexecuteComand);
-		// TODO seria mejor usar list_destory... para poder liberar todos sus elementos?
-		list_clean(instruccionsByConsoleList);
+
+		list_clean_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
 	}
 }
 
@@ -64,7 +71,7 @@ void execute(char** parameters) {
 	char* command = parameters[0];
 	int commandNumber = getCommandNumber(command);
 	// TODO Borrar cuando funcione completamente
-	log_info(logger,"Execute command : %s\n", command);
+	log_info(logger, "Execute command : %s\n", command);
 	char* key = malloc(40);
 	int esiID;
 	int* esiIDpointer;
@@ -73,12 +80,12 @@ void execute(char** parameters) {
 	switch(commandNumber) {
 		case PAUSAR:
 			pauseState = PAUSE;
-			log_info(logger,"Execution paused by console");
+			log_info(logger, "Execution paused by console");
 		break;
 
 		case CONTINUAR:
 			pauseState = CONTINUE;
-			log_info(logger,"Execution continued by console");
+			log_info(logger, "Execution continued by console");
 		break;
 
 		case BLOQUEAR:
@@ -88,7 +95,7 @@ void execute(char** parameters) {
 		    	lockKey(key, CONSOLE_BLOCKED);
 			blockEsi(key,esiID);
 
-			log_info(logger,"ESI (%d) was blocked in (%s) key:\n", esiID, key);
+			log_info(logger, "ESI (%d) was blocked in (%s) key:\n", esiID, key);
 		break;
 
 		case DESBLOQUEAR:
@@ -129,7 +136,7 @@ void execute(char** parameters) {
 
 int parameterQuantity(char** parameters) {
 	int i = 0;
-	while(parameters[i]) {
+	while (parameters[i] != NULL) {
 		i++;
 	}
 	return i;
@@ -288,4 +295,10 @@ int parameterQuantityIsValid(int cantExtraParameters, int necessaryParameters) {
 		return 0;
 	}
 	return 1;
+}
+
+// Destroy functions
+void destroyConsoleParam(void * param) {
+	if (param)
+		free(param);
 }

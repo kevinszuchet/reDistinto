@@ -39,4 +39,8 @@ void updateLastBurst(int burst, Esi** esi);
 void printEsi(void* esiToPrint);
 void printEsiList(t_list* esiList);
 
+// Destroy (free) functions
+void destroyKey(void * key);
+void destroyEsi(void * voidEsi);
+
 #endif /* SRC_TAD_ESI_TAD_ESI_H_ */

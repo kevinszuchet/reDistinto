@@ -57,6 +57,17 @@ int main(void) {
 		exitPlanificador();
 	}
 
+	exitPlanificador();
+
+	free(algorithm);
+	free(ipCoordinador);
+
+	int i = 0;
+	while (blockedKeys[i])
+		free(blockedKeys[i]);
+
+	free(blockedKeys);
+
 	return 0;
 }
 
@@ -83,7 +94,7 @@ bool mustDislodgeRunningEsi() {
 }
 
 void finishEsi(Esi* esiToFinish) {
-	list_add(finishedEsis,esiToFinish);
+	list_add(finishedEsis, esiToFinish);
 	freeTakenKeys(esiToFinish);
 	log_info(logger, "Esi (%d) succesfully finished", esiToFinish->id);
 	log_info(logger, "Printing Esi (%d) final values", esiToFinish->id);
@@ -97,7 +108,7 @@ void freeTakenKeys(Esi* esi) {
 		freeKey(keyToFree, esi);
 	}
 
-	list_clean(esi->lockedKeys);
+	list_clean_and_destroy_elements(esi->lockedKeys, destroyKey);
 }
 
 void addToFinishedList(Esi* finishedEsi) {
@@ -209,23 +220,28 @@ void abortEsi(Esi* esi) {
 
 	freeTakenKeys(esi);
 	deleteEsiFromSystem(esi);
-	list_remove_by_condition(allSystemEsis, &isEsiById);
+	list_remove_and_destroy_by_condition(allSystemEsis, &isEsiById, destroyEsi);
 }
 
 void deleteEsiFromSystem(Esi* esiToDelete) {
 
 	bool isEsiByID(void* esi) {
-		return ((Esi*)esi)->id == esiToDelete->id;
+		return ((Esi*) esi)->id == esiToDelete->id;
 	}
+
 	t_queue* blockedEsis;
 	int* actualEsi;
 
-	if (list_size(list_filter(readyEsis, &isEsiByID)) > 0) {
+	t_list * filteredList = list_filter(readyEsis, &isEsiByID);
+
+	if (list_size(filteredList) > 0) {
 		log_info(logger, "Aborting esi (%d) from ready list", esiToDelete->id);
 		pthread_mutex_lock(&mutexReadyList);
-		list_remove_by_condition(readyEsis, &isEsiByID);
+		list_remove_and_destroy_by_condition(readyEsis, &isEsiByID, destroyEsi);
 		pthread_mutex_unlock(&mutexReadyList);
 	}
+
+	list_destroy(filteredList);
 
 	if (runningEsi != NULL && runningEsi->id == esiToDelete->id) {
 		log_info(logger, "Aborting esi (%d) from running", esiToDelete->id);
@@ -233,9 +249,13 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 		runningEsi = NULL;
 	}
 
-	if (list_size(list_filter(finishedEsis, &isEsiByID)) > 0) {
+	filteredList = list_filter(finishedEsis, &isEsiByID);
+
+	if (list_size(filteredList) > 0) {
 		//nothing to do, is in finished list
 	}
+
+	list_destroy(filteredList);
 
 	for (int i = 0; i < list_size(allSystemTakenKeys); i++) {
 		char* key = list_get(allSystemTakenKeys, i);
@@ -244,10 +264,10 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 			actualEsi = (int*) queue_pop(blockedEsis);
 			if (getEsiById(*actualEsi)->id == esiToDelete->id) {
 				log_info(logger, "Aborting esi (%d) from blocked at key (%s)", esiToDelete->id, key);
-			}else{
+				// REVIEW se deberia hacer free del actualEsi?
+			} else {
 				queue_push(blockedEsis, actualEsi);
 			}
-
 		}
 	}
 }
@@ -276,9 +296,11 @@ void sendKeyStatusToCoordinador(char* key) {
 	char keyStatus = isLockedKey(key);
 
 	if (keyStatus == BLOCKED) {
-		if (list_size(list_filter(runningEsi->lockedKeys, &keyCompare)) > 0) {
+		t_list * filteredList = list_filter(runningEsi->lockedKeys, &keyCompare);
+		if (list_size(filteredList) > 0) {
 			keyStatus = LOCKED;
 		}
+		list_destroy(filteredList);
 	}
 
 	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0) {
@@ -346,21 +368,20 @@ void lockKey(char* key, int esiID) {
 
 Esi* getEsiById(int id) {
 	bool isId(void* element) {
-		return (((Esi*) element)->id == id ? 1 : 0);
+		return ((Esi*) element)->id == id;
 	}
-	Esi* esi = list_get(list_filter(allSystemEsis, &isId), 0);
+	// Esi* esi = list_get(list_filter(allSystemEsis, &isId), 0);
+	Esi* esi = list_find(allSystemEsis, &isId); // REVIEW ver que funcione
 	return esi;
 }
+
 Esi* getEsiBySocket(int socket) {
 	bool isSocket(void* element) {
-		return (((Esi*) element)->socketConection == socket ? 1 : 0);
+		return ((Esi*) element)->socketConection == socket;
 	}
-	Esi* esi = list_get(list_filter(allSystemEsis, &isSocket), 0);
+	//Esi* esi = list_get(list_filter(allSystemEsis, &isSocket), 0);
+	Esi* esi = list_find(allSystemEsis, &isSocket); // REVIEW ver que funcione
 	return esi;
-}
-// REVIEW hace falta esta funcion?
-void destroyer(void* element) {
-	free(element);
 }
 
 void freeKey(char* key, Esi* esiTaker) {
@@ -373,7 +394,7 @@ void unlockEsi(char* key) {
 		return string_equals_ignore_case((char*) takenKey, key);
 	}
 
-	list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+	list_remove_and_destroy_by_condition(allSystemTakenKeys, &keyCompare, destroyKey);
 	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic, key);
 	int* unlockedEsi;
 
@@ -388,7 +409,7 @@ void unlockEsi(char* key) {
 
 char isLockedKey(char* key) {
 	bool itemIsKey(void* item) {
-		return strcmp(key,(char*)item) == 0;
+		return strcmp(key,(char*) item) == 0;
 	}
 
 	return (list_any_satisfy(allSystemTakenKeys, &itemIsKey) ? BLOCKED : NOTBLOCKED);
@@ -400,31 +421,13 @@ void addEsiToReady(Esi* esi) {
 	pthread_mutex_unlock(&mutexReadyList);
 }
 
-void exitPlanificador() {
-	// REVIEW que paso aca? se puede borrar lo comentado?
-	/*dictionary_destroy(blockedEsiDic);
-	list_destroy(readyEsis);
-	list_destroy(finishedEsis);
-	list_destroy(allSystemTakenKeys);
-	list_destroy(instruccionsByConsoleList);
-	sem_destroy(&executionSemaphore);
-	sem_destroy(&keyRecievedFromCoordinadorSemaphore);
-	sem_destroy(&esiInformationRecievedSemaphore);
-	sem_destroy(&readyEsisSemaphore);
-	sem_destroy(&consoleInstructionSemaphore);
-	log_destroy(logger);
-	pthread_cancel(threadConsole);
-	pthread_cancel(threadConsoleInstructions);
-	pthread_cancel(threadExecution);*/
-	exit(-1);
-}
-
 // Planificador setup functions
 void addConfigurationLockedKeys(char** blockedKeys) {
 	int i = 0;
 
-	while(blockedKeys[i]) {
+	while (blockedKeys[i]) {
 		lockKey(blockedKeys[i], CONSOLE_BLOCKED);
+		// REVIEW esto lo hace aca y dentro de la funcion lockKey
 		addKeyToGeneralKeys(blockedKeys[i]);
 		i++;
 	}
@@ -513,7 +516,7 @@ int handleConcurrence() {
 	FD_SET(coordinadorSocket, &master);
 	fdmax = serverSocket;
 
-	while(1) {
+	while (1) {
 
 		struct timeval tv;
 
@@ -607,7 +610,7 @@ int handleConcurrence() {
 	return 0;
 }
 
-void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys) {
+void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys) {
 
 	t_config* config;
 	config = config_create(CFG_FILE);
@@ -633,4 +636,43 @@ void initializePlanificador() {
 	runningEsi = NULL;
 
 	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
+}
+
+void exitPlanificador() {
+
+	void destroyer(void * elem) {
+		if (elem)
+			free(elem);
+	}
+
+	 list_destroy_and_destroy_elements(allSystemTakenKeys, destroyKey);
+	 dictionary_destroy_and_destroy_elements(blockedEsiDic, destroyEsiQueue);
+	 list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
+	 list_destroy_and_destroy_elements(readyEsis, destroyEsi);
+	 list_destroy_and_destroy_elements(finishedEsis, destroyEsi);
+
+	 log_destroy(logger);
+
+	/* TODO destuir listas y sus elementos
+	 * sem_destroy(&executionSemaphore);
+	 * sem_destroy(&keyRecievedFromCoordinadorSemaphore);
+	 * sem_destroy(&esiInformationRecievedSemaphore);
+	 * sem_destroy(&readyEsisSemaphore);
+	 * sem_destroy(&consoleInstructionSemaphore);
+	 * log_destroy(logger);
+	 * pthread_cancel(threadConsole);
+	 * pthread_cancel(threadConsoleInstructions);
+	 * pthread_cancel(threadExecution); */
+	exit(-1);
+}
+
+// Destroy functions
+void destroyEsiQueue(void * queueVoid) {
+	void destroyBlockedEsi(void * blockedEsi) {
+		if (blockedEsi)
+			free(blockedEsi);
+	}
+
+	t_queue * queue = queueVoid;
+	queue_destroy_and_destroy_elements(queue, &destroyBlockedEsi);
 }

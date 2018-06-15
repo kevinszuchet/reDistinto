@@ -43,12 +43,7 @@ void removeLockedKey(char* key, Esi* esi) {
 		return string_equals_ignore_case((char*) takenKeys, key);
 	}
 
-	// REVIEW se puede eliminar?
-	void destroyer(void* element) {
-		free(element);
-	}
-
-	list_remove_by_condition(esi->lockedKeys, &keyCompare);
+	list_remove_and_destroy_by_condition(esi->lockedKeys, &keyCompare, destroyKey);
 }
 
 void printEsi(void* esiToPrint) {
@@ -78,4 +73,16 @@ void updateLastBurst(int burst, Esi** esi) {
 
 void printEsiList(t_list* esiList) {
 	list_iterate(esiList, &printEsi);
+}
+
+// Destroy (free) functions
+void destroyKey(void * key) {
+	if (key)
+		free(key);
+}
+
+void destroyEsi(void * voidEsi) {
+	Esi * esi = voidEsi;
+	if (esi)
+		list_destroy_and_destroy_elements(esi->lockedKeys, destroyKey);
 }

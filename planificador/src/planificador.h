@@ -60,7 +60,7 @@
 	sem_t finishedExecutingConsoleInstructionSem;
 
 	void initializePlanificador();
-	void getConfig(int* listeningPort, char** algorithm,int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
+	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
 
 	// Console functions
 	void executeConsoleInstruccions();
@@ -115,7 +115,9 @@
 
 	// Other functions
 	void addConfigurationLockedKeys(char** blockedKeys);
-	void destroyer(void* element);
 	void exitPlanificador();
+
+	// Destroy functions
+	void destroyEsiQueue(void * queueVoid);
 
 #endif /* SRC_PLANIFICADOR_H_ */

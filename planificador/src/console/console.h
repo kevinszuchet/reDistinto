@@ -43,4 +43,7 @@
 	int isRunning(int idEsi);
 
 	int getCommandNumber(char* command);
+
+	// Destroy functions
+	void destroyConsoleParam(void * param);
 #endif /* CONSOLA_H_ */
