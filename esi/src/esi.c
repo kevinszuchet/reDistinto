@@ -126,7 +126,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		 * */
 
 		log_info(logger, "Waiting planificador order...");
-		if (recv(planificadorSocket, &response, sizeof(int), 0) <= 0) {
+		if (recieveInt(&response, planificadorSocket) == CUSTOM_FAILURE) {
 			log_error(logger, "recv failed on trying to connect with planificador %s", strerror(errno));
 			exit(-1);
 		}

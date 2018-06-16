@@ -280,7 +280,7 @@ int sendResponseToEsi(EsiRequest* esiRequest, char response){
 
 int getActualEsiID(){
 	int esiId = 0;
-	int recvResult = recv(planificadorSocket, &esiId, sizeof(int), 0);
+	int recvResult = recieveInt(&esiId, planificadorSocket);
 	if(recvResult <= 0){
 		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		exit(-1);
