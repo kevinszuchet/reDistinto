@@ -20,12 +20,6 @@ void openConsole() {
 		string_to_lower(line);
 		parameters = string_split(line, " ");
 
-		// TODO Borrar estos printf cuando funcione completamente
-		printf("Parameter quantity = %d\n", parameterQuantity(parameters));
-		for (int i = 0; i < parameterQuantity(parameters); i++) {
-			printf("Parametro %d = %s\n", i + 1, parameters[i]);
-		}
-
 		/*if (line) {
 			add_history(line);
 		}*/
@@ -42,12 +36,12 @@ void openConsole() {
 		} else {
 			int i = 0;
 			while(parameters[i]) {
-				free(parameters[i]);
+				 free(parameters[i]);
 				i++;
 			}
+			free(parameters);
 		}
 
-		//free(parameters);
 		free(line);
 	}
 }
@@ -63,15 +57,15 @@ void executeConsoleInstruccions() {
 		log_info(logger, "Hay (%d) instrucciones de consola para ejecutar", list_size(instruccionsByConsoleList));
 		list_iterate(instruccionsByConsoleList, &validateAndexecuteComand);
 
-		list_clean_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
+		//list_clean_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
+		list_clean(instruccionsByConsoleList);
 	}
 }
 
 void execute(char** parameters) {
 	char* command = parameters[0];
 	int commandNumber = getCommandNumber(command);
-	// TODO Borrar cuando funcione completamente
-	log_info(logger, "Execute command : %s\n", command);
+
 	char* key = malloc(40);
 	int esiID;
 	int* esiIDpointer;
@@ -222,11 +216,9 @@ int getEsiTakerIDByKeyTaken(char* key){
 }
 
 int parameterQuantity(char** parameters) {
-	int i = 0;
-	while (parameters[i] != NULL) {
-		i++;
-	}
-	return i;
+	int size = 0;
+	for (; parameters[size] != NULL; size++);
+	return size;
 }
 
 int validCommand(char** parameters) {
@@ -386,7 +378,12 @@ int parameterQuantityIsValid(int cantExtraParameters, int necessaryParameters) {
 
 // Destroy functions
 void destroyConsoleParam(void * param) {
-	//char** parameters = (char**) param;
-	//free(parameters);
-	//todo liberar los parametros que incresan por consola, rompe como estaba
+	// char** parameters = (char**) param;
+	// free(parameters);
+	// TODO liberar los parametros que incresan por consola, rompe como estaba
+}
+
+void destroyConsole() {
+	list_destroy_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
+	// REVIEW porque rompe aca? log_destroy(logger);
 }

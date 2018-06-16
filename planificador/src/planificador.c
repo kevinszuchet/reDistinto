@@ -643,29 +643,27 @@ void initializePlanificador() {
 
 void exitPlanificador() {
 
-	void destroyer(void * elem) {
-		if (elem)
-			free(elem);
-	}
-	 list_destroy_and_destroy_elements(allSystemKeys, destroyKey);
-	 list_destroy_and_destroy_elements(allSystemTakenKeys, destroyKey);
-	 dictionary_destroy_and_destroy_elements(blockedEsiDic, destroyEsiQueue);
-	 list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
-	 list_destroy_and_destroy_elements(readyEsis, destroyEsi);
-	 list_destroy_and_destroy_elements(finishedEsis, destroyEsi);
+	list_destroy_and_destroy_elements(allSystemKeys, destroyKey);
+	list_destroy_and_destroy_elements(allSystemTakenKeys, destroyKey);
+	dictionary_destroy_and_destroy_elements(blockedEsiDic, destroyEsiQueue);
+	list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
+	list_destroy_and_destroy_elements(readyEsis, destroyEsi);
+	list_destroy_and_destroy_elements(finishedEsis, destroyEsi);
 
-	 log_destroy(logger);
+	log_destroy(logger);
+
+	destroyConsole();
+
+	pthread_cancel(threadConsole);
+	pthread_cancel(threadConsoleInstructions);
 
 	/* TODO destuir listas y sus elementos
-	 * sem_destroy(&executionSemaphore);
-	 * sem_destroy(&keyRecievedFromCoordinadorSemaphore);
-	 * sem_destroy(&esiInformationRecievedSemaphore);
-	 * sem_destroy(&readyEsisSemaphore);
-	 * sem_destroy(&consoleInstructionSemaphore);
-	 * log_destroy(logger);
-	 * pthread_cancel(threadConsole);
-	 * pthread_cancel(threadConsoleInstructions);
-	 * pthread_cancel(threadExecution); */
+		 * sem_destroy(&executionSemaphore);
+		 * sem_destroy(&keyRecievedFromCoordinadorSemaphore);
+		 * sem_destroy(&esiInformationRecievedSemaphore);
+		 * sem_destroy(&readyEsisSemaphore);
+		 * sem_destroy(&consoleInstructionSemaphore); */
+
 	exit(-1);
 }
 

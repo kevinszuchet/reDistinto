@@ -49,4 +49,5 @@
 
 	// Destroy functions
 	void destroyConsoleParam(void * param);
+	void destroyConsole();
 #endif /* CONSOLA_H_ */
