@@ -13,15 +13,16 @@
 
 #include "../sockets/sockets.h"
 #include <string.h>
-#include <stddef.h>
+#include <stdlib.h>
 #include <commons/log.h>
 
 void initSerializationLogger(t_log* _logger);
 int send_all(int socket, void* package, int length);
+int recv_all(int socket, void* package, int length);
 int addToPackageGeneric(void** package, void* value, int size, int* offset);
 
 int sendInt(int value, int sendSocket);
-int recieveInt(int** value, int recvSocket);
+int recieveInt(int* value, int recvSocket);
 
 int sendString(char* value, int sendSocket);
 int recieveString(char** string, int recvSocket);

@@ -92,7 +92,7 @@ void receiveCoordinadorConfiguration(int coordinadorSocket) {
 
 	log_info(logger, "I am waiting for the last details (sent by coordinador)");
 
-	if (recv(coordinadorSocket, &instanciaConfiguration, sizeof(InstanciaConfiguration), 0) <= 0) {
+	if (recv_all(coordinadorSocket, &instanciaConfiguration, sizeof(InstanciaConfiguration)) == CUSTOM_FAILURE) {
 		log_error(logger, "recv failed on trying to connect with coordinador %s", strerror(errno));
 		exit(-1);
 	}

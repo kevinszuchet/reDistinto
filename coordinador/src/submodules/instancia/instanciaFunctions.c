@@ -24,7 +24,7 @@ int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize
 	InstanciaConfiguration config;
 	config.entriesAmount = cantEntry;
 	config.entrySize = entrySize;
-	if (send(instanciaSocket, &config, sizeof(InstanciaConfiguration), 0) < 0) {
+	if (send_all(instanciaSocket, &config, sizeof(InstanciaConfiguration)) == CUSTOM_FAILURE) {
 		log_error(logger, "Couldn't send configuration to instancia");
 		return -1;
 	}

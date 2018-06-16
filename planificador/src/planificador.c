@@ -253,7 +253,7 @@ void removeFromReady(Esi* esi){
 }
 
 void sendEsiIdToCoordinador(int id){
-	if (send(coordinadorSocket, &id, sizeof(int), 0) < 0){
+	if (sendInt(id, coordinadorSocket) == CUSTOM_FAILURE){
 	   log_error(logger, "Coultn't send message to Coordinador about ESI id");
 	   exitPlanificador();
 	}else{
@@ -482,8 +482,7 @@ void moveFromRunningToReady(Esi* esi){
 OperationResponse *waitEsiInformation(int esiSocket){
 
 	OperationResponse* finishInformation = malloc(sizeof(OperationResponse));
-	int resultRecv = recv(esiSocket, finishInformation, sizeof(OperationResponse), 0);
-	if(resultRecv <= 0){
+	if(recv_all(esiSocket, finishInformation, sizeof(OperationResponse)) == CUSTOM_FAILURE){
 		log_error(logger, "recv failed on %s, while waiting ESI message %s", ESI, strerror(errno));
 		exitPlanificador();
 		exit(-1);
@@ -522,7 +521,7 @@ void sendKeyStatusToCoordinadorDummie(char status){
 void sendMessageExecuteToEsi(Esi* nextEsi){
 	int socketEsi = nextEsi->socketConection;
 	int message = RUN;
-    if (send(socketEsi, &message, sizeof(int), 0) < 0){
+    if (sendInt(message, socketEsi) == CUSTOM_FAILURE){
 	   log_error(logger, "Coultn't send message to ESI %d", nextEsi->id);
     }else{
     	log_info(logger,"Send execute message to ESI %d in socket %d",nextEsi->id,nextEsi->socketConection);
