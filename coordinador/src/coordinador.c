@@ -681,7 +681,7 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 char instanciaDoCompact(Instancia* instancia){
 	char instanciaDoCompactCode = INSTANCIA_DO_COMPACT;
 	log_info(logger, "About to send instancia compact order to %s", instancia->name);
-	if(send(instancia->socket, &instanciaDoCompactCode, sizeof(char), 0) < 0){
+	if(send_all(instancia->socket, &instanciaDoCompactCode, sizeof(char)) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send compact order to instancia %s, so it fell", instancia->name);
 		return INSTANCIA_RESPONSE_FALLEN;
 	}
@@ -692,8 +692,7 @@ char instanciaDoCompact(Instancia* instancia){
 void handleInstanciaCompactStatus(Instancia* instancia, char compactStatus){
 	if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
 		log_info(logger, "Instancia %s couldn't compact, it fell", instancia->name);
-		//TODO descomentar
-		//instanciaHasFallen(instancia);
+		instanciaHasFallen(instancia);
 	}else if(compactStatus == INSTANCIA_COMPACT_SUCCESS){
 		log_info(logger, "Instancia %s could compact", instancia->name);
 	}else{
@@ -730,14 +729,14 @@ int handleInstancia(int instanciaSocket){
 			log_info(logger, "Instancia %s is gonna compact", actualInstancia->name);
 			char compactStatus;
 			compactStatus = instanciaDoCompact(actualInstancia);
-			//compactStatus = handleInstanciaCompactDummy();
+			//compactStatus = instanciaDoCompactDummy();
 			handleInstanciaCompactStatus(actualInstancia, compactStatus);
 
 			if(!imTheCompactCausative){
 				sem_post(actualInstancia->compactSemaphore);
-				/*if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
+				if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
 					return -1;
-				}*/
+				}
 			}else{
 				log_info(logger, "Instancia %s is waiting the others to compact", actualInstancia->name);
 				waitInstanciasToCompact(instanciasToBeCompactedButCausative);
@@ -746,14 +745,14 @@ int handleInstancia(int instanciaSocket){
 				activeCompact = 0;
 				imTheCompactCausative = 0;
 
-				/*if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
+				if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
 					pthread_mutex_lock(&instanciasListMutex);
 					removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 					pthread_mutex_unlock(&instanciasListMutex);
 					instanciaResponseStatus = compactStatus;
 					sem_post(instanciaResponse);
 					return -1;
-				}*/
+				}
 
 				sem_post(actualInstancia->executionSemaphore);
 			}
