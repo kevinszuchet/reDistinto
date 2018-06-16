@@ -27,6 +27,7 @@ int recieveInt(int* value, int recvSocket);
 int sendString(char* value, int sendSocket);
 int recieveString(char** string, int recvSocket);
 
+void* generateOperationPackage(Operation* operation, int* offset);
 int sendOperation(Operation* operation, int sendSocket);
 int recieveOperation(Operation** operation, int recvSocket);
 

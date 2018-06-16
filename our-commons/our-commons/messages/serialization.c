@@ -18,7 +18,7 @@ int send_all(int socket, void* package, int length)
     char *auxPointer = (char*) package;
     while (length > 0)
     {
-        int i = send(socket, auxPointer, length, 0);
+        int i = send(socket, auxPointer, length, MSG_NOSIGNAL);
         if (i < 1) {
         	if (i < 0) log_error(logger, "Error while sending all package: %s", strerror(errno));
         	return CUSTOM_FAILURE;
@@ -104,12 +104,11 @@ int recieveString(char** stringRef, int recvSocket) {
 		recieveStringBySize(stringRef, sizeString, recvSocket);
 }
 
-int sendOperation(Operation* operation, int sendSocket) {
+void* generateOperationPackage(Operation* operation, int* offset) {
 	void* package = NULL;
-	int offset = 0;
 
 	int addToPackage(void* value, int size) {
-		return addToPackageGeneric(&package, value, size, &offset);
+		return addToPackageGeneric(&package, value, size, offset);
 	}
 
 	int sizeKey = strlen(operation->key) + 1;
@@ -120,6 +119,13 @@ int sendOperation(Operation* operation, int sendSocket) {
 	addToPackage(&sizeValue, sizeof(sizeValue));
 	addToPackage(operation->key, sizeKey);
 	if (sizeValue != 0) {addToPackage(operation->value, sizeValue);}
+
+	return package;
+}
+
+int sendOperation(Operation* operation, int sendSocket) {
+	int offset = 0;
+	void* package = generateOperationPackage(operation, &offset);
 
 	int result = send_all(sendSocket, package, offset);
 

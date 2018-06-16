@@ -37,6 +37,8 @@ int activeCompact = 0;
 //TODO sacar, esta para probar
 int instanciaId = 0;
 
+int planificadorConsoleSocket;
+
 int main(void) {
 	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
@@ -59,6 +61,7 @@ int main(void) {
 	}
 
 	int welcomePlanificadorResponse = welcomeClient(listeningPort, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomePlanificador, logger);
+
 	if(welcomePlanificadorResponse < 0){
 		log_error(logger, "Couldn't handshake with planificador, quitting...");
 	}
@@ -88,7 +91,7 @@ void getConfig(int* listeningPort, char** algorithm){
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
 	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	if(strcmp(*algorithm, "EL") != 0 && strcmp(*algorithm, "LSU") != 0 && strcmp(*algorithm, "KE") != 0){
-		log_error(operationsLogger, "Abortando: no se reconoce el algoritmo de distribucion");
+		log_error(operationsLogger, "Aborting: cannot recognize distribution algorithm");
 		exit(-1);
 	}
 	cantEntry = config_get_int_value(config, "CANT_ENTRY");
@@ -99,8 +102,13 @@ void getConfig(int* listeningPort, char** algorithm){
 }
 
 //TODO, estas dos deberian devolver INSTANCIA_HAS_FALLEN si se cayo
-/*char valueStatus(Instancia* instancia, char* key);
-char* valueFromKey(Instancia* instancia, char* key);*/
+char valueStatus(Instancia* instancia, char* key){
+
+}
+
+char* valueFromKey(Instancia* instancia, char* key){
+
+}
 
 Instancia* lookForInstanciaAndGetValueStatus(char* key, char* instanciaValueResponse){
 	pthread_mutex_lock(&instanciasListMutex);
@@ -115,14 +123,25 @@ Instancia* lookForInstanciaAndGetValueStatus(char* key, char* instanciaValueResp
 	return instanciaThatMightHaveValue;
 }
 
-int obtainPlanificadorConsoleResponse(char* key){
-	/*char instanciaValueResponse;
-	Instancia* instanciaThatMightHaveValue = lookForInstanciaAndGetValueStatus(key, &instanciaValueResponse);*/
+int respondStatusToPlanificador(char* key){
+	char instanciaValueResponse;
+	Instancia* instanciaThatMightHaveValue = lookForInstanciaAndGetValueStatus(key, &instanciaValueResponse);
 
-	/*if(instanciaThatMightHaveValue){
+	if(instanciaThatMightHaveValue){
 		if(instanciaValueResponse == INSTANCIA_RESPONSE_HAS_VALUE){
 			char* value = valueFromKey(instanciaThatMightHaveValue, key);
-			//TODO devolver ese value
+
+
+			if(sendString(instanciaThatMightHaveValue->name, *planificadorConsoleSocket) == CUSTOM_FAILURE){
+				log_error(logger, "Couldn't send instancia's name to planificador to respond status command");
+				planificadorFell();
+			}
+
+			if(sendString(value, *planificadorConsoleSocket) == CUSTOM_FAILURE){
+				log_error(logger, "Couldn't send key to planificador to respond status command");
+				planificadorFell();
+			}
+
 		}else if(instanciaValueResponse == INSTANCIA_RESPONSE_HAS_NOT_VALUE){
 			//devolver que no tiene valor
 		}
@@ -130,10 +149,34 @@ int obtainPlanificadorConsoleResponse(char* key){
 	}
 	else{
 		//TODO simular distribucion de la key
-	}*/
+	}
 
 	//TODO no olvidar liberar el valor una vez que se haya enviado al planificador
 	return 0;
+}
+
+void planificadorFell(){
+	log_error(logger, "Planificador disconnected from coordinador, quitting...");
+	exit(-1);
+}
+
+void handleStatusRequest(int planificadorConsoleSocketNew){
+	planificadorConsoleSocket = planificadorConsoleSocketNew;
+
+	while(1){
+		char* key;
+
+		if(recieveString(&key, *planificadorConsoleSocket) == CUSTOM_FAILURE){
+			log_error(logger, "Couldn't receive planificador key to respond status command");
+			planificadorFell();
+		}
+
+		pthread_mutex_lock(&esisMutex);
+
+		respondStatusToPlanificador(key);
+
+		pthread_mutex_unlock(&esisMutex);
+	}
 }
 
 int positionInList(Instancia* instancia){
@@ -285,8 +328,7 @@ int getActualEsiID(){
 	int esiId = 0;
 	int recvResult = recieveInt(&esiId, planificadorSocket);
 	if(recvResult <= 0){
-		log_error(logger, "Planificador disconnected from coordinador, quitting...");
-		exit(-1);
+		planificadorFell();
 	}
 
 	return esiId;
@@ -452,8 +494,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 	addToPackageGeneric(&package, key, sizeString, &offset);
 
 	if(send_all(planificadorSocket, package, offset) == CUSTOM_FAILURE){
-		log_error(logger, "Planificador disconnected from coordinador, quitting...");
-		exit(-1);
+		planificadorFell();
 	}
 
 	free(package);
@@ -462,9 +503,8 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
-		log_error(logger, "Planificador disconnected from coordinador, quitting...");
 		//TODO una funcion exitGracefully para liberar todo
-		exit(-1);
+		planificadorFell();
 
 	}
 	return response;
@@ -717,7 +757,6 @@ int handleInstancia(int instanciaSocket){
 		return -1;
 	}
 
-	//TODO no pude pasar el semaforo a coordinador.h para reutilizar en instancisaFunctions porque me tiraba error de definicion multiple
 	pthread_mutex_lock(&instanciasListMutex);
 	showInstancias(instancias);
 	pthread_mutex_unlock(&instanciasListMutex);
@@ -761,8 +800,8 @@ int handleInstancia(int instanciaSocket){
 			log_info(logger, "%s's thread is gonna handle %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
 			//TODO mariano ojo que la instancia esta caida pero esto que usa sendOperation esta pudiendo enviar...
-			//instanciaResponseStatus = instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
-			instanciaResponseStatus = instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
+			instanciaResponseStatus = instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
+			//instanciaResponseStatus = instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
 
 			//TODO mariano, similar al todo de arriba. cuando la instancia se cae, no se esta mostrando este log y no muestra seg fault ni nada
 			log_info(logger, "Instancia's response is gonna be processed");
@@ -821,6 +860,8 @@ void pthreadInitialize(int* clientSocket){
 		handleInstancia(*clientSocket);
 	}else if(id == ESIID){
 		handleEsi(*clientSocket);
+	}else if (id == PLANIFICADORID) {
+		handleStatusRequest(*clientSocket);
 	}else{
 		log_info(logger, "I received a strange");
 	}
@@ -849,6 +890,7 @@ int clientHandler(int clientSocket){
 
 int welcomePlanificador(int coordinadorSocket, int newPlanificadorSocket){
 	planificadorSocket = newPlanificadorSocket;
+
 	while(1){
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);
 		clientHandler(clientSocket);

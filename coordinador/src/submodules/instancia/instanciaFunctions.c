@@ -68,12 +68,18 @@ void recieveInstanciaNameDummy(char** arrivedInstanciaName){
 }
 
 char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
-	//TODO mariano revisar esto
 	char message = INSTANCIA_DO_OPERATION;
-	if(send(instancia->socket, &message, sizeof(char), 0) < 0){
-		return INSTANCIA_RESPONSE_FALLEN;
-	}
-	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
+
+	void* package = NULL;
+	int offset = 0;
+
+	int sizeOperationPackage = 0;
+	void* operationPackage = generateOperationPackage(operation, &sizeOperationPackage);
+
+	addToPackageGeneric(&package, &message, sizeof(message), &offset);
+	addToPackageGeneric(&package, operationPackage, sizeOperationPackage, &offset);
+
+	if(send_all(instancia->socket, package, offset) == CUSTOM_FAILURE){
 		return INSTANCIA_RESPONSE_FALLEN;
 	}
 	log_info(logger, "Operation sent to instancia");
@@ -144,7 +150,7 @@ void instanciaHasFallen(Instancia* fallenInstancia){
 
 char waitForInstanciaResponse(Instancia* chosenInstancia){
 	char response = 0;
-	int recvResult = recv(chosenInstancia->socket, &response, sizeof(char), 0);
+	int recvResult = recv_all(chosenInstancia->socket, &response, sizeof(char));
 	if (recvResult <= 0){
 		return INSTANCIA_RESPONSE_FALLEN;
 	}
