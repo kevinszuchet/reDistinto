@@ -46,6 +46,10 @@
 	t_list* finishedEsis;
 	Esi* runningEsi;
 
+	t_list* allSystemTakenKeys;
+	t_list* allSystemKeys;
+	t_list* allSystemEsis;
+
 	int listeningPort;
 	char* algorithm;
 	int alphaEstimation;
@@ -54,10 +58,22 @@
 	int portCoordinador;
 	char** blockedKeys;
 
-	t_list* instruccionsByConsoleList;
+	pthread_t threadConsole;
+	pthread_t threadConsoleInstructions;
 
-	sem_t finishedExecutingInstructionSem;
-	sem_t finishedExecutingConsoleInstructionSem;
+	pthread_mutex_t mutexReadyList;
+	pthread_mutex_t mutexEsiReady;
+
+	int sentenceCounter;
+
+	int actualID; // ID number for ESIs, when a new one is created, this number increases by 1
+
+	int coordinadorSocket;
+
+	char* keyRecieved;
+	OperationResponse* esiInformation;
+
+	bool finishedExecutingInstruccion;
 
 	void initializePlanificador();
 	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);

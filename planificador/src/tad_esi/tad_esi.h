@@ -13,6 +13,7 @@
 #include <commons/collections/list.h>
 #include<commons/string.h>
 #include <stdio.h>
+#include <string.h>
 
 typedef struct Esi{
 	int id;

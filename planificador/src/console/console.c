@@ -47,7 +47,7 @@ void openConsole() {
 			}
 		}
 
-		free(parameters);
+		//free(parameters);
 		free(line);
 	}
 }
@@ -126,12 +126,99 @@ void execute(char** parameters) {
 		break;
 
 		case DEADLOCK:
+			executeDeadlockAlgorithm();
 		break;
 
 		default:
 			printf("%s: command not found\n", command);
 		break;
 	}
+}
+
+void executeDeadlockAlgorithm(){
+	int esiCount = list_size(allSystemEsis);
+	int i, j;
+
+	int *asignationMatrix[esiCount];
+	for (i=0; i<esiCount; i++)
+		asignationMatrix[i] = (int *)malloc(esiCount * sizeof(int));
+
+
+
+	for (i = 0; i <  esiCount; i++)
+	  for (j = 0; j < esiCount; j++)
+		  asignationMatrix[i][j] = -1;
+
+
+	t_queue* blockedEsis;
+	int actualEsiID;
+	int takerEsiID;
+	for (int i = 0; i < list_size(allSystemKeys); i++) {
+		char* key = list_get(allSystemKeys, i);
+		blockedEsis = dictionary_get(blockedEsiDic, key);
+		for (int j = 0; j < queue_size(blockedEsis); j++) {
+			actualEsiID = *((int*) queue_pop(blockedEsis));
+			takerEsiID = getEsiTakerIDByKeyTaken(key);
+			log_info(logger, "ACTUAL ID = %d", actualEsiID);
+			log_info(logger, "TAKER ID = %d", takerEsiID);
+			if(takerEsiID ==-1){
+				log_info(logger, "Esi (%d) blocked at key (%s), but its not taken", actualEsiID, key);
+			}else{
+				log_info(logger, "Esi (%d) blocked at key (%s), taken by Esi (%d)", actualEsiID, key, takerEsiID);
+				log_info(logger, "Fila (%d)",getEsiIndexByID(actualEsiID));
+				log_info(logger, "Columna (%d)",getEsiIndexByID(takerEsiID));
+
+				asignationMatrix[getEsiIndexByID(actualEsiID)][getEsiIndexByID(takerEsiID)] = 1;
+			}
+
+
+			queue_push(blockedEsis, &actualEsiID);
+
+		}
+	}
+
+	printf("\n");
+		for (i = 0; i <  esiCount; i++)
+		{
+			 printf("\n");
+			  for (j = 0; j < esiCount; j++)
+				 printf("%d ", asignationMatrix[i][j]);
+		}
+	printf("\n");
+
+
+}
+int getEsiIndexByID(int id){
+	Esi* esi;
+	for(int i = 0;i<list_size(allSystemEsis);i++){
+		esi = list_get(allSystemEsis,i);
+		log_info(logger, "Esi (%d) is in position (%d)", esi->id, i);
+	}
+	int index = -1;
+	for(int i = 0;i<list_size(allSystemEsis);i++){
+		esi = list_get(allSystemEsis,i);
+		if(esi->id == id){
+			log_info(logger, "Esi (%d) position is (%d)", esi->id, i);
+			index = i;
+		}
+	}
+	return index;
+	/*exitPlanificador();
+	exit(-1);*/
+}
+int getEsiTakerIDByKeyTaken(char* key){
+	bool itemIsKey(void* item) {
+		return strcmp(key, (char*) item) == 0;
+	}
+	Esi* esi;
+
+	for(int i = 0;i<list_size(allSystemEsis);i++){
+		esi = list_get(allSystemEsis,i);
+		if(list_any_satisfy(esi->lockedKeys,&itemIsKey)){
+			return esi->id;
+		}
+	}
+	return -1;
 }
 
 int parameterQuantity(char** parameters) {
@@ -299,6 +386,7 @@ int parameterQuantityIsValid(int cantExtraParameters, int necessaryParameters) {
 
 // Destroy functions
 void destroyConsoleParam(void * param) {
-	if (param)
-		free(param);
+	//char** parameters = (char**) param;
+	//free(parameters);
+	//todo liberar los parametros que incresan por consola, rompe como estaba
 }

@@ -43,7 +43,7 @@ void removeLockedKey(char* key, Esi* esi) {
 		return string_equals_ignore_case((char*) takenKeys, key);
 	}
 
-	list_remove_and_destroy_by_condition(esi->lockedKeys, &keyCompare, destroyKey);
+	list_remove_by_condition(esi->lockedKeys, &keyCompare);
 }
 
 void printEsi(void* esiToPrint) {
@@ -75,14 +75,14 @@ void printEsiList(t_list* esiList) {
 	list_iterate(esiList, &printEsi);
 }
 
-// Destroy (free) functions
-void destroyKey(void * key) {
-	if (key)
-		free(key);
-}
+
 
 void destroyEsi(void * voidEsi) {
 	Esi * esi = voidEsi;
 	if (esi)
-		list_destroy_and_destroy_elements(esi->lockedKeys, destroyKey);
+		list_destroy(esi->lockedKeys);
+}
+
+void destroyKey(void* key){
+	free(key);
 }

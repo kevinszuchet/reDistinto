@@ -19,6 +19,7 @@ t_list* finishedEsis;
 Esi* runningEsi;
 
 t_list* allSystemTakenKeys;
+t_list* allSystemKeys;
 t_list* allSystemEsis;
 
 int listeningPort;
@@ -30,7 +31,6 @@ int portCoordinador;
 char** blockedKeys;
 
 pthread_t threadConsole;
-pthread_t threadExecution;
 pthread_t threadConsoleInstructions;
 
 pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
@@ -108,7 +108,7 @@ void freeTakenKeys(Esi* esi) {
 		freeKey(keyToFree, esi);
 	}
 
-	list_clean_and_destroy_elements(esi->lockedKeys, destroyKey);
+	list_clean(esi->lockedKeys);
 }
 
 void addToFinishedList(Esi* finishedEsi) {
@@ -257,8 +257,8 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 
 	list_destroy(filteredList);
 
-	for (int i = 0; i < list_size(allSystemTakenKeys); i++) {
-		char* key = list_get(allSystemTakenKeys, i);
+	for (int i = 0; i < list_size(allSystemKeys); i++) {
+		char* key = list_get(allSystemKeys, i);
 		blockedEsis = dictionary_get(blockedEsiDic, key);
 		for (int j = 0; j < queue_size(blockedEsis); j++) {
 			actualEsi = (int*) queue_pop(blockedEsis);
@@ -328,6 +328,8 @@ void addKeyToGeneralKeys(char* key) {
 
 	if (!list_any_satisfy(allSystemTakenKeys, &itemIsKey))
 		list_add(allSystemTakenKeys, key);
+	if (!list_any_satisfy(allSystemKeys, &itemIsKey))
+			list_add(allSystemKeys, key);
 }
 
 void blockEsi(char* lockedKey, int esiBlocked) {
@@ -394,7 +396,7 @@ void unlockEsi(char* key) {
 		return string_equals_ignore_case((char*) takenKey, key);
 	}
 
-	list_remove_and_destroy_by_condition(allSystemTakenKeys, &keyCompare, destroyKey);
+	list_remove_by_condition(allSystemTakenKeys, &keyCompare);
 	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic, key);
 	int* unlockedEsi;
 
@@ -627,6 +629,7 @@ void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation, int* 
 
 void initializePlanificador() {
 	allSystemTakenKeys = list_create();
+	allSystemKeys = list_create();
 	blockedEsiDic = dictionary_create();
 	addConfigurationLockedKeys(blockedKeys);
 
@@ -644,7 +647,7 @@ void exitPlanificador() {
 		if (elem)
 			free(elem);
 	}
-
+	 list_destroy_and_destroy_elements(allSystemKeys, destroyKey);
 	 list_destroy_and_destroy_elements(allSystemTakenKeys, destroyKey);
 	 dictionary_destroy_and_destroy_elements(blockedEsiDic, destroyEsiQueue);
 	 list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);

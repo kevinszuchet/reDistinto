@@ -30,6 +30,9 @@
 	void openConsole();
 	void executeConsoleInstruccions();
 	void execute(char ** parameters);
+	void executeDeadlockAlgorithm();
+	int getEsiIndexByID(int id);
+	int getEsiTakerIDByKeyTaken(char* key);
 
 	int parameterQuantity(char** parameters);
 	int validCommand(char** parameters);
