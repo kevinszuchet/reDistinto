@@ -123,19 +123,46 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 
 	while (1) {
 		log_info(logger, "Wait coordinador statement to execute");
-		if (recieveOperation(&operation, coordinadorSocket) == CUSTOM_FAILURE) {
-			log_error(logger, "recv failed on trying to recieve statement from coordinador");
+
+		char command;
+		if(recv_all(coordinadorSocket, &command, sizeof(command)) == CUSTOM_FAILURE){
+			log_error(logger, "Couldn't receive execution command from coordinador");
 			exit(-1);
 		}
 
-		response = interpretateStatement(operation);
+		switch(command){
+			case INSTANCIA_DO_OPERATION:
 
-		if (send(coordinadorSocket, &response, sizeof(response), 0) < 0) {
-			log_error(logger, "I cannot send my response to coordinador");
-			exit(-1);
+				if (recieveOperation(&operation, coordinadorSocket) == CUSTOM_FAILURE) {
+					log_error(logger, "recv failed on trying to recieve statement from coordinador");
+					exit(-1);
+				}
+
+				response = interpretateStatement(operation);
+
+				if (send(coordinadorSocket, &response, sizeof(response), 0) < 0) {
+					log_error(logger, "I cannot send my response to coordinador");
+					exit(-1);
+				}
+
+				log_info(logger, "The operation was successfully notified to coordinador");
+
+				break;
+
+			case INSTANCIA_DO_COMPACT:
+
+				log_info(logger, "Gonna do compact");
+
+				break;
+
+			case INSTANCIA_CHECK_KEY_STATUS:
+				break;
+
+			default:
+				log_error(logger, "Couldn't understand execution command from coordinador");
+				exit(-1);
+				break;
 		}
-
-		log_info(logger, "The operation was successfully notified to coordinador");
 	}
 }
 

@@ -60,7 +60,6 @@ int addSemaphoresToInstancia(Instancia* instancia){
 void instanciaIsBack(Instancia* instancia, int instanciaSocket){
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->socket = instanciaSocket;
-	addSemaphoresToInstancia(instancia);
 }
 
 void recieveInstanciaNameDummy(char** arrivedInstanciaName){
@@ -132,20 +131,11 @@ void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 	list_add(instancia->storedKeys, strdup(key));
 }
 
-void destroyInstanciaSemaphores(Instancia* instancia){
-	sem_destroy(instancia->executionSemaphore);
-	free(instancia->executionSemaphore);
-
-	sem_destroy(instancia->compactSemaphore);
-	free(instancia->compactSemaphore);
-}
-
 //TODO donde se use esta funcion, meter tambien mutex de la lista de instancias! (esta instancia es una de esa lista!)
 //ese caso podria darse cuando esten activos varios hilos de instancia (compactacion)
 void instanciaHasFallen(Instancia* fallenInstancia){
 	fallenInstancia->isFallen = INSTANCIA_FALLEN;
 	close(fallenInstancia->socket);
-	destroyInstanciaSemaphores(fallenInstancia);
 }
 
 char waitForInstanciaResponse(Instancia* chosenInstancia){
