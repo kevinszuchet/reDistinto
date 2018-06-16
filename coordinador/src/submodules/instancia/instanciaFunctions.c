@@ -40,12 +40,6 @@ Instancia* existsInstanciaWithName(char* arrivedInstanciaName){
 }
 
 int addSemaphoresToInstancia(Instancia* instancia){
-	sem_t* sem = malloc(sizeof(sem_t));
-	if(sem_init(sem, 0, 0) < 0){
-		return -1;
-	}
-
-	instancia->executionSemaphore = sem;
 
 	sem_t* compactSem = malloc(sizeof(sem_t));
 	if(sem_init(compactSem, 0, 0) < 0){
@@ -60,6 +54,7 @@ int addSemaphoresToInstancia(Instancia* instancia){
 void instanciaIsBack(Instancia* instancia, int instanciaSocket){
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->socket = instanciaSocket;
+	instancia->actualCommand = 0;
 }
 
 void recieveInstanciaNameDummy(char** arrivedInstanciaName){
@@ -79,10 +74,10 @@ char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* log
 	addToPackageGeneric(&package, operationPackage, sizeOperationPackage, &offset);
 
 	if(send_all(instancia->socket, package, offset) == CUSTOM_FAILURE){
-		return INSTANCIA_RESPONSE_FALLEN;
+		return CUSTOM_FAILURE;
 	}
 	log_info(logger, "Operation sent to instancia");
-	return waitForInstanciaResponse(instancia);
+	return CUSTOM_SUCCESS;
 }
 
 char instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger){
@@ -170,6 +165,7 @@ Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char las
 	instancia->storedKeys = list_create();
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->name = strdup(name);
+	instancia->actualCommand = 0;
 
 	if(addSemaphoresToInstancia(instancia) < 0){
 		return NULL;

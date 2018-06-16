@@ -21,8 +21,8 @@
 		t_list* storedKeys;
 		int isFallen;
 		char* name;
-		sem_t* executionSemaphore;
 		sem_t* compactSemaphore;
+		char actualCommand;
 	}Instancia;
 
 	int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger);

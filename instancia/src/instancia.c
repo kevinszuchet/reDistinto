@@ -140,7 +140,26 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 
 				response = interpretateStatement(operation);
 
-				if (send(coordinadorSocket, &response, sizeof(response), 0) < 0) {
+				if(response == INSTANCIA_COMPACT_REQUEST){
+					if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
+						log_error(logger, "I cannot send my response to coordinador");
+						exit(-1);
+					}
+
+					//TODO mandar a compactar. chequear que no se haga nada del compactar dos veces!!!
+					//con alvarez estamos suponiendo que no va a mandar dos need to compact seguidos, siempre como maixmo uno solo
+
+					response = interpretateStatement(operation);
+
+				}
+
+				char typeOfResponse = INSTANCIA_DID_OPERATION;
+				if(send_all(coordinadorSocket, &typeOfResponse, sizeof(char)) == CUSTOM_FAILURE){
+					log_error(logger, "I cannot send the type of response to coordinador");
+					exit(-1);
+				}
+
+				if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
 					log_error(logger, "I cannot send my response to coordinador");
 					exit(-1);
 				}
@@ -257,7 +276,7 @@ char set(char *key, char *value){
 	}
 
 	else if (valueStart == I_NEED_TO_COMPACT) {
-		return INSTANCIA_NEED_TO_COMPACT;
+		return INSTANCIA_COMPACT_REQUEST;
 	}
 
 	// If the key exists, the value is updated

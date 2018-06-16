@@ -32,8 +32,6 @@ pthread_mutex_t lastInstanciaChosenMutex = PTHREAD_MUTEX_INITIALIZER;
 EsiRequest* actualEsiRequest;
 sem_t* instanciaResponse;
 
-char instanciaCommand = 0;
-
 //TODO sacar, esta para probar
 int instanciaId = 0;
 
@@ -102,9 +100,15 @@ void getConfig(int* listeningPort, char** algorithm){
 }
 
 char keyStatus(Instancia* instancia, char* key){
+	instancia->actualCommand = INSTANCIA_CHECK_KEY_STATUS;
+
+	if(send_all(instancia->socket, &instancia->actualCommand, sizeof(char)) == CUSTOM_FAILURE){
+		log_error(logger, "Couldn't send command to instancia");
+		return INSTANCIA_RESPONSE_FALLEN;
+	}
+
 	if(sendString(key, instancia->socket) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't send key to instancia to check its value");
-		//marcar la instancia como caida
 		return INSTANCIA_RESPONSE_FALLEN;
 	}
 
@@ -324,17 +328,15 @@ void setDistributionAlgorithm(char* algorithm){
 Instancia* chooseInstancia(char* key){
 	Instancia* chosenInstancia = NULL;
 
-	//ojo si se quiere usar alguna funcion que use este semaforo en algun algoritmo de distribucion
-	pthread_mutex_lock(&instanciasListMutex);
 	if(list_size(instancias) != 0){
 		chosenInstancia = (*distributionAlgorithm)(key);
 	}
-	pthread_mutex_unlock(&instanciasListMutex);
 	return chosenInstancia;
 }
 
 Instancia* simulateChooseInstancia(char* key){
 	Instancia* chosenInstancia = NULL;
+	//TODO revisar si hace falta
 	pthread_mutex_lock(&instanciasListMutex);
 	if(list_size(instancias) != 0){
 		chosenInstancia = (*distributionAlgorithmSimulation)(key);
@@ -388,15 +390,22 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 	log_info(logger, "The next instancia is going to be used for %s", getOperationName(esiRequest->operation));
 	showInstancia(chosenInstancia);
 
-	instanciaCommand = INSTANCIA_DO_OPERATION;
+	chosenInstancia->actualCommand = INSTANCIA_DO_OPERATION;
 	actualEsiRequest = esiRequest;
-	sem_post(chosenInstancia->executionSemaphore);
-	log_info(logger, "Esi's thread advised instancia's thread, waiting to continue...");
+
+	if(instanciaDoOperation(chosenInstancia, esiRequest->operation, logger) == CUSTOM_FAILURE){
+		log_warning(logger, "Esi %d is aborted because instancia %s fell", esiRequest->id, chosenInstancia->name);
+		sendResponseToEsi(actualEsiRequest, ABORT);
+		return -1;
+	}
+
+	pthread_mutex_unlock(&instanciasListMutex);
+	log_info(logger, "Esi's thread sent the operation request to instancia");
+
 	sem_wait(instanciaResponse);
+	pthread_mutex_lock(&instanciasListMutex);
 	log_info(logger, "Esi's thread is gonna process instancia's thread response");
 
-	//TODO mariano fijate que al hacer este sleep, si matas (rapido) al esi, se hace el send igual
-	//sleep(10);
 	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN || instanciaResponseStatus == INSTANCIA_RESPONSE_FAILED){
 		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
 			log_warning(operationsLogger, "Esi %d cannot do %s over %s. Instancia %s fell. Inaccessible key", actualEsiRequest->id, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key, chosenInstancia->name);
@@ -412,16 +421,13 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 	return 0;
 }
 
-Instancia* lookOrRemoveKeyIfInFallenInstancia(EsiRequest* esiRequest){
-	pthread_mutex_lock(&instanciasListMutex);
+Instancia* lookForKeyAndAbortIfInFallenInstancia(EsiRequest* esiRequest){
 	Instancia* instanciaToBeUsed = lookForKey(esiRequest->operation->key);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		log_warning(operationsLogger, "Esi %d tries %s over key %s. Inaccessible key",
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
-		removeKeyFromFallenInstancia(esiRequest->operation->key, instanciaToBeUsed);
 		sendResponseToEsi(esiRequest, ABORT);
 	}
-	pthread_mutex_unlock(&instanciasListMutex);
 	return instanciaToBeUsed;
 }
 
@@ -433,7 +439,8 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 	int keyExists = 0;
 
 	log_info(logger, "Gonna look for instancia to set key %s:", esiRequest->operation->key);
-	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
+	pthread_mutex_lock(&instanciasListMutex);
+	Instancia* instanciaToBeUsed = lookForKeyAndAbortIfInFallenInstancia(esiRequest);
 	showInstancia(instanciaToBeUsed);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
@@ -468,7 +475,8 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}
 
-	Instancia* instanciaToBeUsed = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
+	pthread_mutex_lock(&instanciasListMutex);
+	Instancia* instanciaToBeUsed = lookForKeyAndAbortIfInFallenInstancia(esiRequest);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
 	}else{
@@ -492,8 +500,10 @@ int doGet(EsiRequest* esiRequest, char keyStatus){
 		return sendResponseToEsi(esiRequest, BLOCK);
 	}
 
+	pthread_mutex_lock(&instanciasListMutex);
 	//TODO testear cuando la instancia se caiga y el coordinador se entere por ella (y no porque un esi quiere acceder, sino se borra la clave!)
-	Instancia* instanciaWithKey = lookOrRemoveKeyIfInFallenInstancia(esiRequest);
+	Instancia* instanciaWithKey = lookForKeyAndAbortIfInFallenInstancia(esiRequest);
+
 	if(instanciaWithKey != NULL && instanciaWithKey->isFallen){
 		return -1;
 	}
@@ -633,6 +643,7 @@ int recieveStentenceToProcess(int esiSocket){
 			break;
 	}
 
+	pthread_mutex_unlock(&instanciasListMutex);
 	pthread_mutex_unlock(&esisMutex);
 
 	destroyOperation(esiRequest.operation);
@@ -722,7 +733,10 @@ Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket){
 }
 
 void sendCompactRequest(Instancia* instanciaToBeCompacted){
-	sem_post(instanciaToBeCompacted->executionSemaphore);
+	instanciaToBeCompacted->actualCommand = INSTANCIA_DO_COMPACT;
+	if(send_all(instanciaToBeCompacted->socket, &instanciaToBeCompacted->actualCommand, sizeof(char)) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't send compact order to instancia %s, so it fell", instanciaToBeCompacted->name);
+	}
 }
 
 t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactCausative){
@@ -730,14 +744,11 @@ t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactCausat
 		return instanciaIsAlive(instancia) && instancia != compactCausative;
 	}
 
-	instanciaCommand = INSTANCIA_DO_COMPACT;
-
 	pthread_mutex_lock(&instanciasListMutex);
 	t_list* aliveInstanciasButCausative  = list_filter(instancias, (void*) instanciaIsAliveAndNotCausative);
 	showInstancias(aliveInstanciasButCausative);
-	pthread_mutex_unlock(&instanciasListMutex);
-
 	list_iterate(aliveInstanciasButCausative , (void*) sendCompactRequest);
+	pthread_mutex_unlock(&instanciasListMutex);
 
 	return aliveInstanciasButCausative;
 }
@@ -764,7 +775,7 @@ char instanciaDoCompact(Instancia* instancia){
 	return waitForInstanciaResponse(instancia);
 }
 
-void handleInstanciaCompactStatus(Instancia* instancia, char compactStatus){
+/*void handleInstanciaCompactStatus(Instancia* instancia, char compactStatus){
 	if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
 		log_info(logger, "Instancia %s couldn't compact, it fell", instancia->name);
 		instanciaHasFallen(instancia);
@@ -773,14 +784,20 @@ void handleInstanciaCompactStatus(Instancia* instancia, char compactStatus){
 	}else{
 		log_info(logger, "Instancia %s couldn't compact", instancia->name);
 	}
-}
+}*/
 
 char instanciaDoCompactDummy(){
 	return INSTANCIA_RESPONSE_FALLEN;
 }
 
-int handleInstanciaCompact(Instancia* actualInstancia, int imTheCompactCausative, t_list* instanciasToBeCompactedButCausative){
-	log_info(logger, "Instancia %s is gonna compact", actualInstancia->name);
+int handleInstanciaCompact(Instancia* actualInstancia, t_list* instanciasToBeCompactedButCausative){
+
+	log_info(logger, "Instancia %s is waiting the others to compact", actualInstancia->name);
+	waitInstanciasToCompact(instanciasToBeCompactedButCausative);
+	log_info(logger, "All instancias came back from compact");
+
+
+	/*log_info(logger, "Instancia %s is gonna compact", actualInstancia->name);
 	char compactStatus;
 	compactStatus = instanciaDoCompact(actualInstancia);
 	//compactStatus = instanciaDoCompactDummy();
@@ -809,20 +826,32 @@ int handleInstanciaCompact(Instancia* actualInstancia, int imTheCompactCausative
 		}
 
 		sem_post(actualInstancia->executionSemaphore);
-	}
+	}*/
 
 	return 0;
 }
 
-int handleInstanciaOperation(Instancia* actualInstancia, int* imTheCompactCausative, t_list** instanciasToBeCompactedButCausative){
+int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBeCompactedButCausative){
 	log_info(logger, "%s's thread is gonna handle %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
+	/*
 	instanciaResponseStatus = instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
 	//instanciaResponseStatus = instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
+	 */
+
+	char status;
+
+	if(recv_all(actualInstancia->socket, &status, sizeof(status)) == CUSTOM_FAILURE){
+		log_error(logger, "Couldn't recieve instancia response");
+		instanciaHasFallen(actualInstancia);
+		return -1;
+	}
+
+	instanciaResponseStatus = status;
 
 	log_info(logger, "Instancia's response is gonna be processed");
 
-	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
+	if(status == INSTANCIA_RESPONSE_FALLEN){
 		log_error(logger, "Instancia %s couldn't do %s because it fell. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
 		pthread_mutex_lock(&instanciasListMutex);
 		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
@@ -833,19 +862,13 @@ int handleInstanciaOperation(Instancia* actualInstancia, int* imTheCompactCausat
 		sem_post(instanciaResponse);
 
 		return -1;
-	}else if(instanciaResponseStatus == INSTANCIA_RESPONSE_FAILED){
+	}else if(status == INSTANCIA_RESPONSE_FAILED){
 		log_error(logger, "Instancia %s couldn't do %s, so the key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
 		pthread_mutex_lock(&instanciasListMutex);
 		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 		showInstancia(actualInstancia);
 		pthread_mutex_unlock(&instanciasListMutex);
-	}else if(instanciaResponseStatus == INSTANCIA_NEED_TO_COMPACT){
-		log_info(logger, "Instancia %s needs to compact, so every active instancia will do the same", actualInstancia->name);
-		*imTheCompactCausative = 1;
-		*instanciasToBeCompactedButCausative = sendCompactRequestToEveryAliveInstaciaButActual(actualInstancia);
-		sendCompactRequest(actualInstancia);
-		return 0;
-	}else if(instanciaResponseStatus == INSTANCIA_RESPONSE_SUCCESS){
+	}else if(status == INSTANCIA_RESPONSE_SUCCESS){
 		log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 	}
 
@@ -853,8 +876,37 @@ int handleInstanciaOperation(Instancia* actualInstancia, int* imTheCompactCausat
 	return 0;
 }
 
+void instanciaExitGracefully(Instancia* instancia){
+	instanciaHasFallen(instancia);
+
+	switch(instancia->actualCommand){
+		case INSTANCIA_DO_OPERATION:
+			instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
+			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, instancia);
+			sem_post(instanciaResponse);
+			break;
+
+		case INSTANCIA_DO_COMPACT:
+
+			sem_post(instancia->compactSemaphore);
+
+			break;
+
+		case INSTANCIA_CHECK_KEY_STATUS:
+
+			//TODO revisar que hacer
+
+			break;
+
+		default:
+
+			break;
+	}
+
+	pthread_mutex_unlock(&instanciasListMutex);
+}
+
 int handleInstancia(int instanciaSocket){
-	int imTheCompactCausative = 0;
 	t_list* instanciasToBeCompactedButCausative = NULL;
 	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos cuando puede haber varios activos (compactacion)
 
@@ -870,45 +922,61 @@ int handleInstancia(int instanciaSocket){
 	showInstancias(instancias);
 	pthread_mutex_unlock(&instanciasListMutex);
 
-	while(1){
-		sem_wait(actualInstancia->executionSemaphore);
+	char instanciaCommandResponse;
 
-		if(send_all(actualInstancia->socket, instanciaCommand, sizeof(instanciaCommand)) == CUSTOM_FAILURE){
-			log_error(logger, "Couldn't send execution command to instancia %s", actualInstancia->name);
-			instanciaHasFallen(actualInstancia);
+	while(1){
+
+		if(recv_all(actualInstancia->socket, &instanciaCommandResponse, sizeof(instanciaResponse)) == CUSTOM_FAILURE){
+			log_error(logger, "Couldn't recieve instancia response");
+			pthread_mutex_lock(&instanciasListMutex);
+			instanciaExitGracefully(actualInstancia);
 			return -1;
 		}
 
-		switch(instanciaCommand){
+		pthread_mutex_lock(&instanciasListMutex);
 
-			case INSTANCIA_DO_OPERATION:
+		switch(instanciaCommandResponse){
 
-				if(handleInstanciaOperation(actualInstancia, &imTheCompactCausative, &instanciasToBeCompactedButCausative) < 0){
+			case INSTANCIA_DID_OPERATION:
+
+				if(handleInstanciaOperation(actualInstancia, &instanciasToBeCompactedButCausative) < 0){
+					instanciaExitGracefully(actualInstancia);
 					return -1;
 				}
 
 				break;
 
-			case INSTANCIA_DO_COMPACT:
+			case INSTANCIA_COMPACT_REQUEST:
 
-				if (handleInstanciaCompact(actualInstancia, imTheCompactCausative, instanciasToBeCompactedButCausative) < 0){
+				log_info(logger, "Instancia %s needs to compact, so every active instancia will do the same", actualInstancia->name);
+				instanciasToBeCompactedButCausative = sendCompactRequestToEveryAliveInstaciaButActual(actualInstancia);
+
+				if (handleInstanciaCompact(actualInstancia, instanciasToBeCompactedButCausative) < 0){
+					instanciaExitGracefully(actualInstancia);
 					return -1;
 				}
 
 				break;
 
-			case INSTANCIA_CHECK_KEY_STATUS:
+			case INSTANCIA_DID_COMPACT:
+
+
+				break;
+
+			case INSTANCIA_DID_CHECK_KEY_STATUS:
 
 				break;
 
 			default:
 
 				log_error(logger, "Se mando a hacer un comando invalido al hilo de instancia");
+				instanciaExitGracefully(actualInstancia);
 				return -1;
 
 				break;
-
 		}
+
+		pthread_mutex_unlock(&instanciasListMutex);
 	}
 
 	return 0;
@@ -926,6 +994,11 @@ int handleEsi(int esiSocket){
 	return 0;
 }
 
+int planificadorRequestHandler(int planificadorSocketCopy){
+	//recibir id esi, estado clave y comando status
+	recv_all();
+}
+
 void pthreadInitialize(int* clientSocket){
 	char id = recieveClientId(*clientSocket, COORDINADOR, logger);
 
@@ -933,8 +1006,6 @@ void pthreadInitialize(int* clientSocket){
 		handleInstancia(*clientSocket);
 	}else if(id == ESIID){
 		handleEsi(*clientSocket);
-	}else if (id == PLANIFICADORID) {
-		handleStatusRequest(*clientSocket);
 	}else{
 		log_info(logger, "I received a strange");
 	}
@@ -942,11 +1013,11 @@ void pthreadInitialize(int* clientSocket){
 	free(clientSocket);
 }
 
-int clientHandler(int clientSocket){
+int clientHandler(int clientSocket, int (*handleThreadProcedure)(int* socket)){
 	pthread_t clientThread;
 	int* clientSocketPointer = malloc(sizeof(int));
 	*clientSocketPointer = clientSocket;
-	if(pthread_create(&clientThread, NULL, (void*) &pthreadInitialize, clientSocketPointer) != 0){
+	if(pthread_create(&clientThread, NULL, handleThreadProcedure, clientSocketPointer) != 0){
 		log_error(logger, "Error creating thread");
 		free(clientSocketPointer);
 		return -1;
@@ -964,9 +1035,11 @@ int clientHandler(int clientSocket){
 int welcomePlanificador(int coordinadorSocket, int newPlanificadorSocket){
 	planificadorSocket = newPlanificadorSocket;
 
+	clientHandler(planificadorSocket, pthreadInitialize);
+
 	while(1){
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);
-		clientHandler(clientSocket);
+		clientHandler(clientSocket, pthreadInitialize);
 	}
 
 	return 0;
