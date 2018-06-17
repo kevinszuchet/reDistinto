@@ -75,14 +75,13 @@ void printEsiList(t_list* esiList) {
 	list_iterate(esiList, &printEsi);
 }
 
-
-
 void destroyEsi(void * voidEsi) {
 	Esi * esi = voidEsi;
-	if (esi)
+	if (esi != NULL)
 		list_destroy(esi->lockedKeys);
 }
 
 void destroyKey(void* key){
-	free(key);
+	if ((char *) key != NULL)
+		free(key);
 }

@@ -456,7 +456,7 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 		if (clientMessage == KEYSTATUSMESSAGE) {
 			log_info(logger, "I recieved a key status message");
 
-			if (recieveString(&keyRecieved,coordinadorSocket) == CUSTOM_FAILURE) {
+			if (recieveString(&keyRecieved, coordinadorSocket) == CUSTOM_FAILURE) {
 				log_error(logger, "Couldn't recieve key to check from coordinador, quitting...");
 				exitPlanificador();
 			} else {
@@ -644,11 +644,7 @@ void initializePlanificador() {
 void exitPlanificador() {
 
 	list_destroy_and_destroy_elements(allSystemKeys, destroyKey);
-	list_destroy_and_destroy_elements(allSystemTakenKeys, destroyKey);
-	dictionary_destroy_and_destroy_elements(blockedEsiDic, destroyEsiQueue);
 	list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
-	list_destroy_and_destroy_elements(readyEsis, destroyEsi);
-	list_destroy_and_destroy_elements(finishedEsis, destroyEsi);
 
 	log_destroy(logger);
 
