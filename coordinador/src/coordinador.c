@@ -35,8 +35,6 @@ sem_t* instanciaResponse;
 //TODO sacar, esta para probar
 int instanciaId = 0;
 
-int planificadorConsoleSocket;
-
 int main(void) {
 	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
@@ -198,23 +196,19 @@ void planificadorFell(){
 	exit(-1);
 }
 
-void handleStatusRequest(int planificadorConsoleSocketNew){
-	planificadorConsoleSocket = planificadorConsoleSocketNew;
+void handleStatusRequest(){
+	char* key;
 
-	while(1){
-		char* key;
-
-		if(recieveString(&key, *planificadorConsoleSocket) == CUSTOM_FAILURE){
-			log_error(logger, "Couldn't receive planificador key to respond status command");
-			planificadorFell();
-		}
-
-		pthread_mutex_lock(&esisMutex);
-
-		respondStatusToPlanificador(key);
-
-		pthread_mutex_unlock(&esisMutex);
+	if(recieveString(&key, planificadorSocket) == CUSTOM_FAILURE){
+		log_error(logger, "Couldn't receive planificador key to respond status command");
+		planificadorFell();
 	}
+
+	pthread_mutex_lock(&esisMutex);
+
+	respondStatusToPlanificador(key);
+
+	pthread_mutex_unlock(&esisMutex);
 }
 
 int positionInList(Instancia* instancia){
@@ -234,10 +228,7 @@ int positionInList(Instancia* instancia){
 }
 
 int instanciaIsAlive(Instancia* instancia){
-	if(instancia->isFallen){
-		return 0;
-	}
-	return 1;
+	return !instancia->isFallen;
 }
 
 int instanciaIsAliveAndNextToActual(Instancia* instancia){
@@ -349,7 +340,7 @@ int sendResponseToEsi(EsiRequest* esiRequest, char response){
 	//TODO aca tambien hay que reintentar hasta que se mande todo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
-	if(send(esiRequest->socket, &response, sizeof(response), 0) < 0){
+	if(send_all(esiRequest->socket, &response, sizeof(response)) == CUSTOM_FAILURE){
 		log_warning(operationsLogger, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id,
 				getOperationName(esiRequest->operation));
 		return -1;
@@ -385,7 +376,6 @@ int keyIsOwnedByActualEsi(char keyStatus, EsiRequest* esiRequest){
 	return 0;
 }
 
-//TODO cuidado en estos casos que el stringToLog no se limpia y es llamado mas de una vez
 int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenInstancia){
 	log_info(logger, "The next instancia is going to be used for %s", getOperationName(esiRequest->operation));
 	showInstancia(chosenInstancia);
@@ -393,18 +383,20 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 	chosenInstancia->actualCommand = INSTANCIA_DO_OPERATION;
 	actualEsiRequest = esiRequest;
 
+	log_info(logger, "Esi's thread is gonna send the operation request to instancia");
 	if(instanciaDoOperation(chosenInstancia, esiRequest->operation, logger) == CUSTOM_FAILURE){
 		log_warning(logger, "Esi %d is aborted because instancia %s fell", esiRequest->id, chosenInstancia->name);
 		sendResponseToEsi(actualEsiRequest, ABORT);
 		return -1;
 	}
 
-	pthread_mutex_unlock(&instanciasListMutex);
-	log_info(logger, "Esi's thread sent the operation request to instancia");
+	log_info(logger, "Operation sent to instancia");
 
+	pthread_mutex_unlock(&instanciasListMutex);
 	sem_wait(instanciaResponse);
 	pthread_mutex_lock(&instanciasListMutex);
-	log_info(logger, "Esi's thread is gonna process instancia's thread response");
+
+	log_info(logger, "Esi's thread is gonna process instancia's response");
 
 	if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN || instanciaResponseStatus == INSTANCIA_RESPONSE_FAILED){
 		if(instanciaResponseStatus == INSTANCIA_RESPONSE_FALLEN){
@@ -421,12 +413,13 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 	return 0;
 }
 
-Instancia* lookForKeyAndAbortIfInFallenInstancia(EsiRequest* esiRequest){
+Instancia* lookForKeyAndRemoveIfInFallenInstancia(EsiRequest* esiRequest){
 	Instancia* instanciaToBeUsed = lookForKey(esiRequest->operation->key);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		log_warning(operationsLogger, "Esi %d tries %s over key %s. Inaccessible key",
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		sendResponseToEsi(esiRequest, ABORT);
+		removeKeyFromFallenInstancia(esiRequest->operation->key, instanciaToBeUsed);
 	}
 	return instanciaToBeUsed;
 }
@@ -440,7 +433,7 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 
 	log_info(logger, "Gonna look for instancia to set key %s:", esiRequest->operation->key);
 	pthread_mutex_lock(&instanciasListMutex);
-	Instancia* instanciaToBeUsed = lookForKeyAndAbortIfInFallenInstancia(esiRequest);
+	Instancia* instanciaToBeUsed = lookForKeyAndRemoveIfInFallenInstancia(esiRequest);
 	showInstancia(instanciaToBeUsed);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
@@ -476,7 +469,7 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 	}
 
 	pthread_mutex_lock(&instanciasListMutex);
-	Instancia* instanciaToBeUsed = lookForKeyAndAbortIfInFallenInstancia(esiRequest);
+	Instancia* instanciaToBeUsed = lookForKeyAndRemoveIfInFallenInstancia(esiRequest);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
 	}else{
@@ -502,7 +495,7 @@ int doGet(EsiRequest* esiRequest, char keyStatus){
 
 	pthread_mutex_lock(&instanciasListMutex);
 	//TODO testear cuando la instancia se caiga y el coordinador se entere por ella (y no porque un esi quiere acceder, sino se borra la clave!)
-	Instancia* instanciaWithKey = lookForKeyAndAbortIfInFallenInstancia(esiRequest);
+	Instancia* instanciaWithKey = lookForKeyAndRemoveIfInFallenInstancia(esiRequest);
 
 	if(instanciaWithKey != NULL && instanciaWithKey->isFallen){
 		return -1;
@@ -510,16 +503,11 @@ int doGet(EsiRequest* esiRequest, char keyStatus){
 
 	if(keyStatus == LOCKED){
 		log_info(operationsLogger, "Esi %d does GET over key %s, which he already had", esiRequest->id, esiRequest->operation->key);
-		if(sendResponseToEsi(esiRequest, SUCCESS) < 0){
-			return -1;
-		}
-	}else{
-		log_info(operationsLogger, "Esi %d does GET over key %s", esiRequest->id, esiRequest->operation->key);
-		if(sendResponseToEsi(esiRequest, LOCK) < 0){
-			return -1;
-		}
+		return sendResponseToEsi(esiRequest, SUCCESS);
 	}
-	return 0;
+
+	log_info(operationsLogger, "Esi %d does GET over key %s", esiRequest->id, esiRequest->operation->key);
+	return sendResponseToEsi(esiRequest, LOCK);
 }
 
 char checkKeyStatusFromPlanificador(int esiId, char* key){
@@ -613,7 +601,7 @@ int recieveStentenceToProcess(int esiSocket){
 	log_info(logger, "Status from key %s, from esi %d, is %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	if(strcmp(getKeyStatusName(keyStatus), "UNKNOWN KEY STATUS") == 0){
-		log_error(logger, "Couldn't receive esi key status from planificador");
+		log_error(logger, "Couldn't receive esi key status from planificador, aborting esi %d...",  esiRequest.id);
 		destroyOperation(esiRequest.operation);
 		sendResponseToEsi(&esiRequest, ABORT);
 		pthread_mutex_unlock(&esisMutex);
@@ -744,11 +732,9 @@ t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactCausat
 		return instanciaIsAlive(instancia) && instancia != compactCausative;
 	}
 
-	pthread_mutex_lock(&instanciasListMutex);
 	t_list* aliveInstanciasButCausative  = list_filter(instancias, (void*) instanciaIsAliveAndNotCausative);
 	showInstancias(aliveInstanciasButCausative);
 	list_iterate(aliveInstanciasButCausative , (void*) sendCompactRequest);
-	pthread_mutex_unlock(&instanciasListMutex);
 
 	return aliveInstanciasButCausative;
 }
@@ -764,7 +750,7 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 	list_destroy(instanciasThatNeededToCompact);
 }
 
-char instanciaDoCompact(Instancia* instancia){
+/*char instanciaDoCompact(Instancia* instancia){
 	char instanciaDoCompactCode = INSTANCIA_DO_COMPACT;
 	log_info(logger, "About to send instancia compact order to %s", instancia->name);
 	if(send_all(instancia->socket, &instanciaDoCompactCode, sizeof(char)) == CUSTOM_FAILURE){
@@ -773,7 +759,7 @@ char instanciaDoCompact(Instancia* instancia){
 	}
 	log_info(logger, "Compact order sent to instancia %s", instancia->name);
 	return waitForInstanciaResponse(instancia);
-}
+}*/
 
 /*void handleInstanciaCompactStatus(Instancia* instancia, char compactStatus){
 	if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
@@ -834,16 +820,9 @@ int handleInstanciaCompact(Instancia* actualInstancia, t_list* instanciasToBeCom
 int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBeCompactedButCausative){
 	log_info(logger, "%s's thread is gonna handle %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 
-	/*
-	instanciaResponseStatus = instanciaDoOperation(actualInstancia, actualEsiRequest->operation, logger);
-	//instanciaResponseStatus = instanciaDoOperationDummy(actualInstancia, actualEsiRequest->operation, logger);
-	 */
-
 	char status;
-
 	if(recv_all(actualInstancia->socket, &status, sizeof(status)) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't recieve instancia response");
-		instanciaHasFallen(actualInstancia);
 		return -1;
 	}
 
@@ -853,21 +832,12 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 
 	if(status == INSTANCIA_RESPONSE_FALLEN){
 		log_error(logger, "Instancia %s couldn't do %s because it fell. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
-		pthread_mutex_lock(&instanciasListMutex);
 		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
-		instanciaHasFallen(actualInstancia);
-		showInstancia(actualInstancia);
-		pthread_mutex_unlock(&instanciasListMutex);
-
-		sem_post(instanciaResponse);
-
 		return -1;
 	}else if(status == INSTANCIA_RESPONSE_FAILED){
 		log_error(logger, "Instancia %s couldn't do %s, so the key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
-		pthread_mutex_lock(&instanciasListMutex);
 		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 		showInstancia(actualInstancia);
-		pthread_mutex_unlock(&instanciasListMutex);
 	}else if(status == INSTANCIA_RESPONSE_SUCCESS){
 		log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 	}
@@ -882,7 +852,6 @@ void instanciaExitGracefully(Instancia* instancia){
 	switch(instancia->actualCommand){
 		case INSTANCIA_DO_OPERATION:
 			instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
-			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, instancia);
 			sem_post(instanciaResponse);
 			break;
 
@@ -902,6 +871,8 @@ void instanciaExitGracefully(Instancia* instancia){
 
 			break;
 	}
+
+	showInstancias(instancias);
 
 	pthread_mutex_unlock(&instanciasListMutex);
 }
@@ -926,7 +897,7 @@ int handleInstancia(int instanciaSocket){
 
 	while(1){
 
-		if(recv_all(actualInstancia->socket, &instanciaCommandResponse, sizeof(instanciaResponse)) == CUSTOM_FAILURE){
+		if(recv_all(actualInstancia->socket, &instanciaCommandResponse, sizeof(instanciaCommandResponse)) == CUSTOM_FAILURE){
 			log_error(logger, "Couldn't recieve instancia response");
 			pthread_mutex_lock(&instanciasListMutex);
 			instanciaExitGracefully(actualInstancia);
@@ -960,6 +931,7 @@ int handleInstancia(int instanciaSocket){
 
 			case INSTANCIA_DID_COMPACT:
 
+				//TODO agregar aca, y abajo, el exitGracefully
 
 				break;
 
@@ -994,12 +966,37 @@ int handleEsi(int esiSocket){
 	return 0;
 }
 
-int planificadorRequestHandler(int planificadorSocketCopy){
-	//recibir id esi, estado clave y comando status
-	recv_all();
+void planificadorRequestHandler(int* planificadorSocketCopy){
+	//TODO recibir id esi, estado clave y comando status
+	/*char planificadorMessage;
+	while(1){
+		//TODO descomentar, hasta que se adapten los mensajes necesarios en el planificador
+
+		if(recv_all(planificadorSocket, &planificadorMessage, sizeof(planificadorMessage)) == CUSTOM_FAILURE){
+			log_error(logger, "Couldn't recieve type of request from planificador");
+			planificadorFell();
+			break;
+		}
+
+		switch(planificadorMessage){
+			case PLANIFICADOR_STATUS_REQUEST:
+
+				handleStatusRequest();
+
+				break;
+
+			default:
+
+				log_error(logger, "Couldn't understand planificador message");
+				//TODO que deberia pasar aca?
+
+				break;
+		}
+	}*/
+
 }
 
-void pthreadInitialize(int* clientSocket){
+void raiseThreadDependingOnId(int* clientSocket){
 	char id = recieveClientId(*clientSocket, COORDINADOR, logger);
 
 	if (id == INSTANCIAID){
@@ -1013,11 +1010,11 @@ void pthreadInitialize(int* clientSocket){
 	free(clientSocket);
 }
 
-int clientHandler(int clientSocket, int (*handleThreadProcedure)(int* socket)){
+int clientHandler(int clientSocket, void (*handleThreadProcedure)(int* socket)){
 	pthread_t clientThread;
 	int* clientSocketPointer = malloc(sizeof(int));
 	*clientSocketPointer = clientSocket;
-	if(pthread_create(&clientThread, NULL, handleThreadProcedure, clientSocketPointer) != 0){
+	if(pthread_create(&clientThread, NULL, (void*) handleThreadProcedure, clientSocketPointer) != 0){
 		log_error(logger, "Error creating thread");
 		free(clientSocketPointer);
 		return -1;
@@ -1035,11 +1032,11 @@ int clientHandler(int clientSocket, int (*handleThreadProcedure)(int* socket)){
 int welcomePlanificador(int coordinadorSocket, int newPlanificadorSocket){
 	planificadorSocket = newPlanificadorSocket;
 
-	clientHandler(planificadorSocket, pthreadInitialize);
+	clientHandler(planificadorSocket, planificadorRequestHandler);
 
 	while(1){
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);
-		clientHandler(clientSocket, pthreadInitialize);
+		clientHandler(clientSocket, raiseThreadDependingOnId);
 	}
 
 	return 0;

@@ -51,6 +51,13 @@
 #define INSTANCIA_DO_OPERATION 'n'
 #define INSTANCIA_CHECK_KEY_STATUS 'm'
 
+#define INSTANCIA_DID_OPERATION 'A'
+#define INSTANCIA_COMPACT_REQUEST 'B'
+#define INSTANCIA_DID_COMPACT 'C'
+#define INSTANCIA_DID_CHECK_KEY_STATUS 'D'
+
+#define PLANIFICADOR_STATUS_REQUEST 'E'
+
 char* getCoordinadorResponseName(char coordinadorResponse);
 char* getEsiInformationResponseName(char esiInformation);
 
