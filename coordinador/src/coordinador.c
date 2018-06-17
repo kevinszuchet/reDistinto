@@ -536,7 +536,7 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
 	if(recvResult <= 0){
-		//TODO una funcion exitGracefully para liberar todo
+		//TODO una funcion exitGracefully para liberar los recursos
 		planificadorFell();
 
 	}
@@ -777,42 +777,9 @@ char instanciaDoCompactDummy(){
 }
 
 int handleInstanciaCompact(Instancia* actualInstancia, t_list* instanciasToBeCompactedButCausative){
-
 	log_info(logger, "Instancia %s is waiting the others to compact", actualInstancia->name);
 	waitInstanciasToCompact(instanciasToBeCompactedButCausative);
-	log_info(logger, "All instancias came back from compact");
-
-
-	/*log_info(logger, "Instancia %s is gonna compact", actualInstancia->name);
-	char compactStatus;
-	compactStatus = instanciaDoCompact(actualInstancia);
-	//compactStatus = instanciaDoCompactDummy();
-	handleInstanciaCompactStatus(actualInstancia, compactStatus);
-
-	if(!imTheCompactCausative){
-		sem_post(actualInstancia->compactSemaphore);
-		if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
-			return -1;
-		}
-	}else{
-		log_info(logger, "Instancia %s is waiting the others to compact", actualInstancia->name);
-		waitInstanciasToCompact(instanciasToBeCompactedButCausative);
-		log_info(logger, "All instancias came back from compact");
-
-		instanciaCommand = INSTANCIA_DO_OPERATION;
-		imTheCompactCausative = 0;
-
-		if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
-			pthread_mutex_lock(&instanciasListMutex);
-			removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
-			pthread_mutex_unlock(&instanciasListMutex);
-			instanciaResponseStatus = compactStatus;
-			sem_post(instanciaResponse);
-			return -1;
-		}
-
-		sem_post(actualInstancia->executionSemaphore);
-	}*/
+	log_info(logger, "All instancias came back from compact, now waiting for the causative one...");
 
 	return 0;
 }
@@ -869,6 +836,8 @@ void instanciaExitGracefully(Instancia* instancia){
 
 		default:
 
+			//TODO revisar este caso que se usa por ejemplo cuando llegaron y todavia no estan haciendo nada
+
 			break;
 	}
 
@@ -879,7 +848,6 @@ void instanciaExitGracefully(Instancia* instancia){
 
 int handleInstancia(int instanciaSocket){
 	t_list* instanciasToBeCompactedButCausative = NULL;
-	//TODO hay que meter un semaforo para evitar conflictos de los diferentes hilos cuando puede haber varios activos (compactacion)
 
 	Instancia* actualInstancia;
 	//actualInstancia = initialiceArrivedInstancia(instanciaSocket);
@@ -919,13 +887,10 @@ int handleInstancia(int instanciaSocket){
 
 			case INSTANCIA_COMPACT_REQUEST:
 
-				log_info(logger, "Instancia %s needs to compact, so every active instancia will do the same", actualInstancia->name);
+				log_info(logger, "Instancia %s needs to compact, so every other active instancia will do the same", actualInstancia->name);
 				instanciasToBeCompactedButCausative = sendCompactRequestToEveryAliveInstaciaButActual(actualInstancia);
 
-				if (handleInstanciaCompact(actualInstancia, instanciasToBeCompactedButCausative) < 0){
-					instanciaExitGracefully(actualInstancia);
-					return -1;
-				}
+				handleInstanciaCompact(actualInstancia, instanciasToBeCompactedButCausative);
 
 				break;
 

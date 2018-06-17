@@ -213,7 +213,12 @@ void showInstancia(Instancia* instancia){
 
 void showInstancias(t_list* instanciasList){
 	printf("----- INSTANCIAS -----\n");
-	list_iterate(instanciasList, (void*) &showInstancia);
+	if(list_size(instanciasList) != 0){
+		list_iterate(instanciasList, (void*) &showInstancia);
+	}
+	else{
+		printf("Actual instancias list is empty\n");
+	}
 }
 /*
  * TEST FUNCTIONS
