@@ -28,15 +28,26 @@
 	#define INVALID_COMMAND 9
 
 	void openConsole();
-	void execute(char **);
-	int getCommandNumber(char* );
-	int validCommand(char** );
-	int parameterQuantity(char**);
-	int parameterQuantityIsValid(int, int);
-	int validateBloquear(char* key,int id);
+	void executeConsoleInstruccions();
+	void execute(char ** parameters);
+	void executeDeadlockAlgorithm();
+	int getEsiIndexByID(int id);
+	int getEsiTakerIDByKeyTaken(char* key);
+
+	int parameterQuantity(char** parameters);
+	int validCommand(char** parameters);
+	int validKey(char* key);
 	int validateDesbloquear(char* key);
+	int validateBloquear(char* key, int id);
 	int keyExists(char* key);
+	int parameterQuantityIsValid(int cantExtraParameters, int necessaryParameters);
+
 	int isReady(int idEsi);
 	int isRunning(int idEsi);
 
+	int getCommandNumber(char* command);
+
+	// Destroy functions
+	void destroyConsoleParam(void * param);
+	void destroyConsole();
 #endif /* CONSOLA_H_ */

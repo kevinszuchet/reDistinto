@@ -7,20 +7,19 @@
 
 #include "tad_esi.h"
 
-void addWaitingTime(void* esi){
-
-	((Esi*)esi)->waitingTime++;
+void addWaitingTime(void* esi) {
+	((Esi* )esi)->waitingTime++;
 }
 
-void addWaitingTimeToAll(t_list* esis){
-	list_iterate(esis,&addWaitingTime);
+void addWaitingTimeToAll(t_list* esis) {
+	list_iterate(esis, &addWaitingTime);
 }
 
-void reduceWaitingTime(Esi** esi){
+void reduceWaitingTime(Esi** esi) {
 	(*esi)->waitingTime--;
 }
 
-Esi *createEsi(int id,double initialEstimation,int socketConection){
+Esi *createEsi(int id, double initialEstimation, int socketConection) {
 	Esi* newEsi = malloc(sizeof(Esi));
 	newEsi->id = id;
 	newEsi->lastBurst = 0;
@@ -31,51 +30,58 @@ Esi *createEsi(int id,double initialEstimation,int socketConection){
 	return newEsi;
 }
 
-int id(Esi* esi){
+int id(Esi* esi) {
 	return esi->id;
 }
 
-
-void addLockedKeyToEsi(char** key, Esi** esi){
-	list_add((*esi)->lockedKeys,(void*)*key);
-}
-void removeLockedKey(char* key, Esi* esi){
-	bool keyCompare(void* takenKeys){
-		if(string_equals_ignore_case((char*)takenKeys,key)){
-			return true;
-		}
-		return false;
-	}
-	void destroyer(void* element){
-		free(element);
-	}
-	list_remove_by_condition(esi->lockedKeys,&keyCompare);
+void addLockedKeyToEsi(char** key, Esi** esi) {
+	list_add((*esi)->lockedKeys, (void*) *key);
 }
 
-void printEsi(void* esiToPrint){
+void removeLockedKey(char* key, Esi* esi) {
+	bool keyCompare(void* takenKeys) {
+		return string_equals_ignore_case((char*) takenKeys, key);
+	}
+
+	list_remove_by_condition(esi->lockedKeys, &keyCompare);
+}
+
+void printEsi(void* esiToPrint) {
 	Esi* esi = (Esi*) esiToPrint;
 	printf("=============\n");
-	printf("ID = (%d)\n",esi->id);
-	printf("Socket = (%d)\n",esi->socketConection);
-	printf("Last burst = (%f)\n",esi->lastBurst);
-	printf("Last estimation = (%f)\n",esi->lastEstimation);
-	printf("Waiting time = (%d)\n",esi->waitingTime);
+	printf("ID = (%d)\n", esi->id);
+	printf("Socket = (%d)\n", esi->socketConection);
+	printf("Last burst = (%f)\n", esi->lastBurst);
+	printf("Last estimation = (%f)\n", esi->lastEstimation);
+	printf("Waiting time = (%d)\n", esi->waitingTime);
 	printf("Locked keys =\n");
-	if(list_is_empty(esi->lockedKeys)){
+
+	if (list_is_empty(esi->lockedKeys)) {
 		printf("There are no locked keys \n");
-	}else{
-		for(int i = 0;i<list_size(esi->lockedKeys);i++){
-			printf("%s\n",(char*)list_get(esi->lockedKeys,i));
+	} else {
+		for (int i = 0; i < list_size(esi->lockedKeys); i++) {
+			printf("%s\n", (char*) list_get(esi->lockedKeys, i));
 		}
 	}
 
 	printf("=============\n");
 }
 
-void updateLastBurst(int burst,Esi** esi){
+void updateLastBurst(int burst, Esi** esi) {
 	(*esi)->lastBurst = burst;
 }
 
-void printEsiList(t_list* esiList){
-	list_iterate(esiList,&printEsi);
+void printEsiList(t_list* esiList) {
+	list_iterate(esiList, &printEsi);
+}
+
+void destroyEsi(void * voidEsi) {
+	Esi * esi = voidEsi;
+	if (esi != NULL)
+		list_destroy(esi->lockedKeys);
+}
+
+void destroyKey(void* key){
+	if ((char *) key != NULL)
+		free(key);
 }

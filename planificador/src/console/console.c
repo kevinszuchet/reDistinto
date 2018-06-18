@@ -8,103 +8,119 @@
 #include "console.h"
 
 t_log* logger;
+t_list* instruccionsByConsoleList;
 
 void openConsole() {
-	char* line;
-	char** parameters;
+	char* line, ** parameters;
 	printf("Listado de comandos\n1.Pausar\n2.Continuar\n3.Bloquear <clave> <id>\n4.Desbloquear <clave>\n5.Listar <recurso>\n6.Kill <ID>\n7.Status <clave>\n8.Deadlock\n");
+	instruccionsByConsoleList = list_create();
 
 	while(1) {
 		line = readline("> ");
 		string_to_lower(line);
-		parameters = string_split(line," ");
+		parameters = string_split(line, " ");
 
-		//Borrar estos printf cuando todo funcione
-		printf("Parameter quantity = %d\n", parameterQuantity(parameters));
-		for(int i = 0;i < parameterQuantity(parameters); i++) {
-			printf("Parametro %d = %s\n", i+1, parameters[i]);
-		}
-
-		/*if(line) {
+		/*if (line) {
 			add_history(line);
 		}*/
 
-		/*if(!strncmp(line, "exit", 4)) {
+		if (!strncmp(line, "exit", 4)) {
 			free(line);
+			exitPlanificador();
 			break;
-		}*/
+		}
 
-
-		list_add(instruccionsByConsoleList,parameters);
-		log_info(logger,"Command added to instruccionsByConsole list");
-
-
-
+		if (validCommand(parameters)) {
+			log_info(logger, "Instruccion added to pending instruccion List");
+			list_add(instruccionsByConsoleList, parameters);
+		} else {
+			int i = 0;
+			while(parameters[i]) {
+				 free(parameters[i]);
+				i++;
+			}
+			free(parameters);
+		}
 
 		free(line);
+	}
+}
+
+void executeConsoleInstruccions() {
+	void validateAndexecuteComand(void* parameters) {
+		if (validCommand((char**) parameters)) {
+			execute((char**) parameters);
+		}
+	}
+
+	if (list_size(instruccionsByConsoleList) > 0) {
+		log_info(logger, "Hay (%d) instrucciones de consola para ejecutar", list_size(instruccionsByConsoleList));
+		list_iterate(instruccionsByConsoleList, &validateAndexecuteComand);
+
+		//list_clean_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
+		list_clean(instruccionsByConsoleList);
 	}
 }
 
 void execute(char** parameters) {
 	char* command = parameters[0];
 	int commandNumber = getCommandNumber(command);
-	// Borrar cuando todo funcione
-	log_info(logger,"Execute command : %s\n", command);
+
 	char* key = malloc(40);
 	int esiID;
 	int* esiIDpointer;
 	t_queue* blockedEsis;
 
-
 	switch(commandNumber) {
 		case PAUSAR:
 			pauseState = PAUSE;
-			log_info(logger,"Execution paused by console");
-			//sem_wait(&pauseStateSemaphore);
-
+			log_info(logger, "Execution paused by console");
 		break;
+
 		case CONTINUAR:
 			pauseState = CONTINUE;
-			log_info(logger,"Execution continued by console");
-			//sem_post(&pauseStateSemaphore);
-
+			log_info(logger, "Execution continued by console");
 		break;
+
 		case BLOQUEAR:
 		    key = parameters[1];
 		    esiID = atoi(parameters[2]);
-		    if(!isLockedKey(key))
-		    	lockKey(key,CONSOLE_BLOCKED);
+		    if (!isLockedKey(key))
+		    	lockKey(key, CONSOLE_BLOCKED);
 			blockEsi(key,esiID);
 
-			log_info(logger,"ESI (%d) was blocked in (%s) key:\n", esiID,key);
+			log_info(logger, "ESI (%d) was blocked in (%s) key:\n", esiID, key);
 		break;
+
 		case DESBLOQUEAR:
 			 key = parameters[1];
 			unlockEsi(key);
 		break;
+
 		case LISTAR:
 			 key = parameters[1];
-			 blockedEsis = (t_queue*)dictionary_get(blockedEsiDic,key);
+			 blockedEsis = (t_queue*) dictionary_get(blockedEsiDic, key);
 
-			 if(queue_is_empty(blockedEsis))
-				 printf("There are no blocked esis in key (%s)\n",key);
-			 for(int i=0;i<queue_size(blockedEsis);i++){
+			 if (queue_is_empty(blockedEsis))
+				 printf("There are no blocked esis in key (%s)\n", key);
+
+			 for (int i = 0; i < queue_size(blockedEsis); i++) {
 				 printf("ID BEFORE POP = %d\n", *((int*) queue_peek(blockedEsis)));
-				 esiIDpointer =(int*) queue_pop(blockedEsis);
-				 printf("ID BEFORE PRINT = %d\n",*esiIDpointer);
+				 esiIDpointer = (int*) queue_pop(blockedEsis);
+				 printf("ID BEFORE PRINT = %d\n", *esiIDpointer);
 				 printEsi(getEsiById(*esiIDpointer));
-				 queue_push(blockedEsis,esiIDpointer);
+				 queue_push(blockedEsis, esiIDpointer);
 			 }
-
 		break;
+
 		case KILL:
-
 		break;
+
 		case STATUS:
-
 		break;
-		case DEADLOCK:
 
+		case DEADLOCK:
+			executeDeadlockAlgorithm();
 		break;
 
 		default:
@@ -113,145 +129,239 @@ void execute(char** parameters) {
 	}
 }
 
-int parameterQuantity(char** parameters){
-	int i=0;
-	while(parameters[i]){
-		i++;
+void executeDeadlockAlgorithm(){
+	int esiCount = list_size(allSystemEsis);
+	int i, j;
+
+	int *asignationMatrix[esiCount];
+	for (i=0; i<esiCount; i++)
+		asignationMatrix[i] = (int *)malloc(esiCount * sizeof(int));
+
+
+
+	for (i = 0; i <  esiCount; i++)
+	  for (j = 0; j < esiCount; j++)
+		  asignationMatrix[i][j] = -1;
+
+
+	t_queue* blockedEsis;
+	int actualEsiID;
+	int takerEsiID;
+	for (int i = 0; i < list_size(allSystemKeys); i++) {
+		char* key = list_get(allSystemKeys, i);
+		blockedEsis = dictionary_get(blockedEsiDic, key);
+		for (int j = 0; j < queue_size(blockedEsis); j++) {
+			actualEsiID = *((int*) queue_pop(blockedEsis));
+			takerEsiID = getEsiTakerIDByKeyTaken(key);
+			log_info(logger, "ACTUAL ID = %d", actualEsiID);
+			log_info(logger, "TAKER ID = %d", takerEsiID);
+			if(takerEsiID ==-1){
+				log_info(logger, "Esi (%d) blocked at key (%s), but its not taken", actualEsiID, key);
+			}else{
+				log_info(logger, "Esi (%d) blocked at key (%s), taken by Esi (%d)", actualEsiID, key, takerEsiID);
+				log_info(logger, "Fila (%d)",getEsiIndexByID(actualEsiID));
+				log_info(logger, "Columna (%d)",getEsiIndexByID(takerEsiID));
+
+				asignationMatrix[getEsiIndexByID(actualEsiID)][getEsiIndexByID(takerEsiID)] = 1;
+			}
+
+
+			queue_push(blockedEsis, &actualEsiID);
+
+		}
 	}
-	return i;
+
+	printf("\n");
+		for (i = 0; i <  esiCount; i++)
+		{
+			 printf("\n");
+			  for (j = 0; j < esiCount; j++)
+				 printf("%d ", asignationMatrix[i][j]);
+		}
+	printf("\n");
+
+
+}
+int getEsiIndexByID(int id){
+	Esi* esi;
+	for(int i = 0;i<list_size(allSystemEsis);i++){
+		esi = list_get(allSystemEsis,i);
+		log_info(logger, "Esi (%d) is in position (%d)", esi->id, i);
+	}
+	int index = -1;
+	for(int i = 0;i<list_size(allSystemEsis);i++){
+		esi = list_get(allSystemEsis,i);
+		if(esi->id == id){
+			log_info(logger, "Esi (%d) position is (%d)", esi->id, i);
+			index = i;
+		}
+	}
+	return index;
+	/*exitPlanificador();
+	exit(-1);*/
+}
+int getEsiTakerIDByKeyTaken(char* key){
+	bool itemIsKey(void* item) {
+		return strcmp(key, (char*) item) == 0;
+	}
+	Esi* esi;
+
+	for(int i = 0;i<list_size(allSystemEsis);i++){
+		esi = list_get(allSystemEsis,i);
+		if(list_any_satisfy(esi->lockedKeys,&itemIsKey)){
+			return esi->id;
+		}
+	}
+	return -1;
+}
+
+int parameterQuantity(char** parameters) {
+	int size = 0;
+	for (; parameters[size] != NULL; size++);
+	return size;
 }
 
 int validCommand(char** parameters) {
-	if(parameterQuantity(parameters)==0){
+	if (parameterQuantity(parameters) == 0) {
 		printf("No command was written\n");
 		return 0;
 	}
-	char* command = parameters[0];
-	int commandNumber = getCommandNumber(command);
-	int cantExtraParameters = parameterQuantity(parameters) - 1;
 
-	char* key = malloc(40);
+	char* command = parameters[0];
+	int commandNumber = getCommandNumber(command), cantExtraParameters = parameterQuantity(parameters) - 1;
+
+	char* key;
 	int id;
+
 	switch(commandNumber) {
 		case PAUSAR:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
-		case CONTINUAR:
-			free(key);
-			return parameterQuantityIsValid(cantExtraParameters, 0);
-		break;
-		case BLOQUEAR:
-			if(parameterQuantityIsValid(cantExtraParameters, 2)){
-				strcpy(key,parameters[1]);
-				id = atoi(parameters[2]); //Falta validar que sea un numero
-				if(validateBloquear(key,id)){
-					free(key);
-					return 1;
-				}
-			}
-			free(key);
-			printf("Invalid command\n");
-			return 0;
-		break;
-		case DESBLOQUEAR:
-			if(parameterQuantityIsValid(cantExtraParameters, 1)){
-				strcpy(key,parameters[1]);
-				if(validateDesbloquear(key)){
-					free(key);
-					return 1;
-				}
-			}
-			printf("Invalid command\n");
-			return 0;
-			free(key);
 
+		case CONTINUAR:
+			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
-		case LISTAR:
-			free(key);
-			if(parameterQuantityIsValid(cantExtraParameters, 1)&&keyExists(parameters[1])){
-				return 1;
+
+		case BLOQUEAR:
+			if (parameterQuantityIsValid(cantExtraParameters, 2)) {
+				if (validKey(parameters[1])) {
+					key = malloc(40);
+					strcpy(key, parameters[1]);
+					id = atoi(parameters[2]); // TODO Falta validar que sea un numero
+					if (validateBloquear(key, id)) {
+						free(key);
+						return 1;
+					}
+				}
 			}
 			printf("Invalid command\n");
 			return 0;
 		break;
+
+		case DESBLOQUEAR:
+			if (parameterQuantityIsValid(cantExtraParameters, 1)) {
+				if (validKey(parameters[1])) {
+					key = malloc(40);
+					strcpy(key, parameters[1]);
+					if (validateDesbloquear(key)) {
+						free(key);
+						return 1;
+					}
+				}
+			}
+			printf("Invalid command\n");
+			return 0;
+		break;
+
+		case LISTAR:
+			if (parameterQuantityIsValid(cantExtraParameters, 1)) {
+				if (validKey(parameters[1])) {
+					key = malloc(40);
+					strcpy(key, parameters[1]);
+					if (keyExists(key)) {
+						free(key);
+						return 1;
+					}
+				}
+			}
+			printf("Invalid command\n");
+			return 0;
+		break;
+
 		case KILL:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
+
 		case STATUS:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 1);
 		break;
+
 		case DEADLOCK:
-			free(key);
 			return parameterQuantityIsValid(cantExtraParameters, 0);
 		break;
 
 		default:
 			printf("%s: command not found\n", command);
-			free(key);
 			return 0;
 		break;
 	}
 }
-int validateDesbloquear(char* key){
-	if(keyExists(key))
-		return 1;
-	return 0;
-}
 
-int validateBloquear(char* key,int id){
-	if(keyExists(key)&&(isReady(id)||isRunning(id))){
-		return 1;
-	}
-	return 0;
-}
-
-int keyExists(char* key){
-	if(dictionary_has_key(blockedEsiDic,key)){
-		return 1;
-
-	}
-	return 0;
-
-}
-int isReady(int idEsi){
-	if(list_is_empty(readyEsis)){
+int validKey(char* key) {
+	if (strlen(key) > 40) {
+		printf("Invalid key lenght\n");
 		return 0;
 	}
-	for(int i = 0;i<list_size(readyEsis);i++){
-		if(((Esi*)list_get(readyEsis,i))->id==idEsi){;
+	return 1;
+}
+
+int validateDesbloquear(char* key) {
+	return (keyExists(key) ? 1 : 0);
+}
+
+int validateBloquear(char* key,int id) {
+	return (isReady(id) || isRunning(id) ? 1 : 0);
+}
+
+int keyExists(char* key) {
+	return (dictionary_has_key(blockedEsiDic, key) ? 1 : 0);
+}
+
+int isReady(int idEsi) {
+	if (list_is_empty(readyEsis)) {
+		return 0;
+	}
+
+	for (int i = 0; i < list_size(readyEsis); i++) {
+		if (((Esi*) list_get(readyEsis, i))->id == idEsi) {
 			return 1;
 		}
 	}
 	return 0;
 }
-int isRunning(int idEsi){
-	if(runningEsi!=NULL && runningEsi->id==idEsi){
-		return 1;
-	}
-	return 0;
+
+int isRunning(int idEsi) {
+	return (runningEsi != NULL && runningEsi->id == idEsi ? 1 : 0);
 }
 
 int getCommandNumber(char* command) {
-	if(!strcmp(command, "pausar")) {
+	if (!strcmp(command, "pausar")) {
 		return PAUSAR;
-	} else if(!strcmp(command, "continuar")) {
+	} else if (!strcmp(command, "continuar")) {
 		return CONTINUAR;
-	} else if(!strcmp(command, "bloquear")) {
+	} else if (!strcmp(command, "bloquear")) {
 		return BLOQUEAR;
-	} else if(!strcmp(command, "desbloquear")) {
+	} else if (!strcmp(command, "desbloquear")) {
 		return DESBLOQUEAR;
-	} else if(!strcmp(command, "listar")) {
+	} else if (!strcmp(command, "listar")) {
 		return LISTAR;
-	} else if(!strcmp(command, "kill")) {
+	} else if (!strcmp(command, "kill")) {
 		return KILL;
-	} else if(!strcmp(command, "status")) {
+	} else if (!strcmp(command, "status")) {
 		return STATUS;
-	} else if(!strcmp(command, "deadlock")) {
+	} else if (!strcmp(command, "deadlock")) {
 		return DEADLOCK;
-	} else if(atoi(command) >= 1 && atoi(command) <= 8) {
+	} else if (atoi(command) >= 1 && atoi(command) <= 8) {
 		return atoi(command);
 	} else {
 		return INVALID_COMMAND;
@@ -264,4 +374,16 @@ int parameterQuantityIsValid(int cantExtraParameters, int necessaryParameters) {
 		return 0;
 	}
 	return 1;
+}
+
+// Destroy functions
+void destroyConsoleParam(void * param) {
+	// char** parameters = (char**) param;
+	// free(parameters);
+	// TODO liberar los parametros que incresan por consola, rompe como estaba
+}
+
+void destroyConsole() {
+	list_destroy_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
+	// REVIEW porque rompe aca? log_destroy(logger);
 }
