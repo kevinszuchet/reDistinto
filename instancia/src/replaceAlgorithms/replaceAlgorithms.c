@@ -37,9 +37,10 @@ void deleteAccodringToAlgorithm() {
 		}
 	}
 
-	toBeDeletedElement = atomicEntriesList->head->data;
-
-	deleteKey(toBeDeletedElement);
+	if (atomicEntriesList->head != NULL) {
+		toBeDeletedElement = atomicEntriesList->head->data;
+		deleteKey(toBeDeletedElement);
+	}
 
 	// REVIEW hace falta destruir todos sus elementos o esto destruiria los elementos de la lista original?
 	list_destroy(atomicEntriesList);
