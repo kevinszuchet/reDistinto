@@ -148,3 +148,64 @@ int recieveOperation(Operation** operationRef, int recvSocket) {
 		recieveStringBySize(&operation->key, sizeKey, recvSocket) &&
 		((sizeValue != 0) ? recieveStringBySize(&operation->value, sizeValue, recvSocket) : 1);
 }
+
+int sendStingList(t_list* strings, int sendSocket) {
+	int offset = 0;
+	void* package = NULL;
+
+	int addToPackage(void* value, int size) {
+		return addToPackageGeneric(&package, value, size, offset);
+	}
+
+	void addStringToPackage(char* string) {
+		int sizeString = strlen(string) + 1;
+		addToPackage(&sizeString, sizeof(sizeString));
+		addToPackage(string, sizeString);
+	}
+
+	int listSize = list_size(strings);
+
+	addToPackage(listSize, sizeof(listSize));
+
+	list_iterate(strings, addStringToPackage);
+
+	int result = send_all(sendSocket, package, offset);
+
+	free(package);
+	return result;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

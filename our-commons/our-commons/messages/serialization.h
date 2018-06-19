@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <commons/log.h>
+#include <commons/collections/list.h>
 
 void initSerializationLogger(t_log* _logger);
 int send_all(int socket, void* package, int length);
