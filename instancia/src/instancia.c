@@ -470,3 +470,34 @@ char dump() {
 	log_info(logger, "Dump was successfully done");
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
+
+char * getValueForCoordinador(char * key, char * value) {
+
+	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
+
+		log_info(logger, "The key: %s exists, so we are about to get its associated value.", key);
+		entryTableInfo * entryInfo;
+		int valueStart, valueSize;
+
+		t_link_element * findedElement = list_find_with_param(entryTable, key, hasKey);
+
+		entryInfo = findedElement->data;
+		valueStart = entryInfo->valueStart;
+		valueSize = entryInfo->valueSize;
+		value = malloc((valueSize * sizeof(char)) + 1);
+		getValue(value, valueStart * entrySize, valueSize);
+
+		return value;
+	}
+
+	return INSTANCIA_RESPONSE_FAILED;
+}
+
+
+char getKeyByFile(char * key) {
+
+	//char * value = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, scriptFd, 0);
+
+	return INSTANCIA_RESPONSE_SUCCESS;
+}
+

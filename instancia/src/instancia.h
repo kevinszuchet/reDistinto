@@ -58,8 +58,12 @@
 
 	char dump();
 	char store(char *key);
+	char * getValueForCoordinador(char * key, char * value);
+	char getKeyByFile(char * key);
 
 	int wholeUpperDivision(int x, int y);
+
+
 
 	// global vars
 
