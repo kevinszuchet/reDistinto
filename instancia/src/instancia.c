@@ -212,7 +212,7 @@ char set(char *key, char *value){
 	log_info(logger, "Size of value: %d", valueSize);
 
 	// Asks if the size of the value can be stored
-	if (valueSize > (entriesAmount * entrySize)) {
+	if (valueSize > (entriesAmount * entrySize) || valueSize == 0) {
 		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
 		return INSTANCIA_RESPONSE_FAILED;
 	}
