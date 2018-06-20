@@ -334,42 +334,50 @@ void storageSet(int initialEntry,  char * value) {
 char compact() {
 
 	int totalSettedEntries = getTotalSettedEntries();
-	int totalUsedMemory = totalSettedEntries * entrySize;
-	char * auxStorage = malloc(totalSettedEntries);
-	int auxIndex = 0;
 
-	int valueSize, valueStart, j;
+	if (totalSettedEntries > 0) {
 
-	// Iterate all elements of the dictionary
-	t_link_element * element = entryTable->head;
+		int totalUsedMemory = totalSettedEntries * entrySize;
+			char * auxStorage = malloc(totalSettedEntries);
+			int auxIndex = 0;
 
-	while (element != NULL) {
+			int valueSize, valueStart, j;
 
-		 j = 0;
+			// Iterate all elements of the dictionary
+			t_link_element * element = entryTable->head;
 
-		 valueSize = getValueSize(element->data);
-		 valueStart = getValueStart(element->data) * entrySize;
-		 char * value = malloc((valueSize * sizeof(char)) + 1);
-		 getValue(value, valueStart, valueSize);
+			while (element != NULL) {
 
-		 // Update ValueStart on dictionary(key) element
-		 setValueStart(element->data, auxIndex);
+				 j = 0;
 
-		 for (; auxIndex < totalUsedMemory; auxIndex++) {
-			 auxStorage[auxIndex] = value[j];
-			 j++;
-		 }
+				 valueSize = getValueSize(element->data);
+				 valueStart = getValueStart(element->data) * entrySize;
+				 char * value = malloc((valueSize * sizeof(char)) + 1);
+				 getValue(value, valueStart, valueSize);
 
-		 // Get the next able position to store values
-		 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
-		 free(value);
+				 // Update ValueStart on dictionary(key) element
+				 setValueStart(element->data, auxIndex);
+
+				 for (; auxIndex < totalUsedMemory; auxIndex++) {
+					 auxStorage[auxIndex] = value[j];
+					 j++;
+				 }
+
+				 // Get the next able position to store values
+				 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
+				 free(value);
+			}
+
+			strcpy(storage, auxStorage);
+			emptyBiMap(entriesAmount);
+			biMapUpdate(0, totalSettedEntries, IS_SET);
+
+			free(auxStorage);
+
+
+
 	}
 
-	strcpy(storage, auxStorage);
-	emptyBiMap(entriesAmount);
-	biMapUpdate(0, totalSettedEntries, IS_SET);
-
-	free(auxStorage);
 	log_info(logger, "Compactation was successfully done");
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
