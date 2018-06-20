@@ -29,6 +29,10 @@
 	#include "ourList/ourList.h"
 	#include <sys/stat.h>
 	#include <sys/types.h>
+	#include <sys/mman.h>
+	#include <sys/stat.h>
+	#include <fcntl.h>
+	#include <unistd.h>
 
 	#define  CFG_FILE "../instancia.cfg"
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);

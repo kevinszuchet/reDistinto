@@ -426,6 +426,8 @@ char storeKeyAndValue(entryTableInfo * selectedEntryByKey) {
 
 	} else {
 		log_error(logger, "Couldn't open the file: %s", strerror(errno));
+
+		free(filePath);
 		return INSTANCIA_RESPONSE_FAILED;
 	}
 
@@ -471,7 +473,8 @@ char dump() {
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-char * getValueForCoordinador(char * key, char * value) {
+//TODO Esta mal esta función, estoy esperando el refactor del coordinador para hacerla bien
+/*char * getValueForCoordinador(char * key, char * value) {
 
 	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
 
@@ -491,13 +494,44 @@ char * getValueForCoordinador(char * key, char * value) {
 	}
 
 	return INSTANCIA_RESPONSE_FAILED;
-}
+}*/
 
 
 char getKeyByFile(char * key) {
 
-	//char * value = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, scriptFd, 0);
+	char *filePath = malloc(strlen(path) + strlen(key) + 1);
 
-	return INSTANCIA_RESPONSE_SUCCESS;
+	sprintf(filePath, "%s%s", path, key);
+	filePath[strlen(path) + strlen(key)] = '\0';
+	log_info(logger, "file path to get the value from: %s", filePath);
+
+	int fd = open(filePath, O_RDONLY, S_IRUSR | S_IWUSR);
+	struct stat sb;
+	free(filePath);
+
+	if(fstat(fd, &sb) == -1) {
+
+		log_error(logger, "Couldn't open the file that contains the key to set");
+
+		return INSTANCIA_RESPONSE_FAILED;
+	}
+
+	log_info(logger, "The file was opened successfully");
+	char * value = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+	log_info(logger, "the value taken from the file asociated to key %s, is: %s",key, value);
+
+	char response = set(key, value);
+
+	munmap(value, sb.st_size);
+	close(fd);
+
+	if (response == INSTANCIA_RESPONSE_SUCCESS) {
+		log_info(logger, "The key: %s was successfully set again", key);
+	}
+	else {
+		log_error(logger, "There was an error trying to set again the key %s", key);
+	}
+	return response;
 }
 
