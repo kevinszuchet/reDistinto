@@ -253,6 +253,8 @@ void removeFromReady(Esi* esi){
 }
 
 void sendEsiIdToCoordinador(int id){
+	char op = PLANIFICADOR_ESI_ID_RESPONSE;
+	send_all(coordinadorSocket, &op, sizeof(op));
 	if (sendInt(id, coordinadorSocket) == CUSTOM_FAILURE){
 	   log_error(logger, "Coultn't send message to Coordinador about ESI id");
 	   exitPlanificador();
@@ -509,6 +511,8 @@ void sendKeyStatusToCoordinador(char* key){
 			keyStatus = LOCKED;
 		}
 	}
+	char op = PLANIFICADOR_KEY_STATUS_RESPONSE;
+	send_all(coordinadorSocket, &op, sizeof(op));
 	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	}else{

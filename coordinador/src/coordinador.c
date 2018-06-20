@@ -947,7 +947,9 @@ void planificadorHandler(){
 		case PLANIFICADOR_STATUS_REQUEST:
 			handleStatusRequest();
 			break;
-
+		default:
+			log_error(logger, "Invalid planificador message");
+			break;
 		}
 
 	}
