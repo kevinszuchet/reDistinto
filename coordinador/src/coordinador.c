@@ -31,6 +31,10 @@ pthread_mutex_t instanciasListMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lastInstanciaChosenMutex = PTHREAD_MUTEX_INITIALIZER;
 EsiRequest* actualEsiRequest;
 sem_t* instanciaResponse;
+char keyStatusFromPlanificador;
+sem_t keyStatusFromPlanificadorSemaphore;
+int esiIdFromPlanificador;
+sem_t esiIdFromPlanificadorSemaphore;
 
 //TODO sacar, esta para probar
 int instanciaId = 0;
@@ -48,6 +52,9 @@ int main(void) {
 	setDistributionAlgorithm(algorithm);
 
 	instancias = list_create();
+
+	sem_init(&keyStatusFromPlanificadorSemaphore, 0, 0);
+	sem_init(&esiIdFromPlanificadorSemaphore, 0, 0);
 
 	instanciaResponse = malloc(sizeof(sem_t));
 	if(sem_init(instanciaResponse, 0, 0) < 0){
@@ -352,13 +359,8 @@ int sendResponseToEsi(EsiRequest* esiRequest, char response){
 }
 
 int getActualEsiID(){
-	int esiId = 0;
-	int recvResult = recieveInt(&esiId, planificadorSocket);
-	if(recvResult <= 0){
-		planificadorFell();
-	}
-
-	return esiId;
+	sem_wait(&esiIdFromPlanificadorSemaphore);
+	return esiIdFromPlanificador;
 }
 
 int getActualEsiIDDummy(){
@@ -511,7 +513,6 @@ int doGet(EsiRequest* esiRequest, char keyStatus){
 }
 
 char checkKeyStatusFromPlanificador(int esiId, char* key){
-	char response = 0;
 
 	log_info(logger, "Gonna recieve %s's status from planificador", key);
 
@@ -532,15 +533,8 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	free(package);
 
-	log_info(logger, "Sent key to planificador to check its status");
-
-	int recvResult = recv(planificadorSocket, &response, sizeof(char), 0);
-	if(recvResult <= 0){
-		//TODO una funcion exitGracefully para liberar los recursos
-		planificadorFell();
-
-	}
-	return response;
+	sem_wait(&keyStatusFromPlanificadorSemaphore);
+	return keyStatusFromPlanificador;
 }
 
 char checkKeyStatusFromPlanificadorDummy(){
@@ -931,7 +925,32 @@ int handleEsi(int esiSocket){
 	return 0;
 }
 
-void planificadorRequestHandler(int* planificadorSocketCopy){
+void planificadorHandler(){
+	while(1) {
+		char planificadorMessage;
+		if( recv_all(planificadorSocket, &planificadorMessage, sizeof(planificadorMessage)) == CUSTOM_FAILURE) {
+			planificadorFell();
+		}
+		switch (planificadorMessage) {
+		case PLANIFICADOR_KEY_STATUS_RESPONSE:
+			if(recv_all(planificadorSocket, &keyStatusFromPlanificador, sizeof(char)) == CUSTOM_FAILURE){
+				planificadorFell();
+			}
+			sem_post(&keyStatusFromPlanificadorSemaphore);
+			break;
+		case PLANIFICADOR_ESI_ID_RESPONSE:
+			if(recieveInt(&esiIdFromPlanificador, planificadorSocket) <= 0){
+				planificadorFell();
+			}
+			sem_post(&esiIdFromPlanificadorSemaphore);
+			break;
+		case PLANIFICADOR_STATUS_REQUEST:
+			handleStatusRequest();
+			break;
+
+		}
+
+	}
 	//TODO recibir id esi, estado clave y comando status
 	/*char planificadorMessage;
 	while(1){
@@ -954,7 +973,7 @@ void planificadorRequestHandler(int* planificadorSocketCopy){
 
 				log_error(logger, "Couldn't understand planificador message");
 				//TODO que deberia pasar aca?
-
+re
 				break;
 		}
 	}*/
@@ -997,7 +1016,7 @@ int clientHandler(int clientSocket, void (*handleThreadProcedure)(int* socket)){
 int welcomePlanificador(int coordinadorSocket, int newPlanificadorSocket){
 	planificadorSocket = newPlanificadorSocket;
 
-	clientHandler(planificadorSocket, planificadorRequestHandler);
+	clientHandler(planificadorSocket, planificadorHandler);
 
 	while(1){
 		int clientSocket = acceptUnknownClient(coordinadorSocket, COORDINADOR, logger);

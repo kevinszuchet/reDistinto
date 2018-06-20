@@ -57,6 +57,8 @@
 #define INSTANCIA_DID_CHECK_KEY_STATUS 'D'
 
 #define PLANIFICADOR_STATUS_REQUEST 'E'
+#define PLANIFICADOR_KEY_STATUS_RESPONSE 'D'
+#define PLANIFICADOR_ESI_ID_RESPONSE 'F'
 
 char* getCoordinadorResponseName(char coordinadorResponse);
 char* getEsiInformationResponseName(char esiInformation);
