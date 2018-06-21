@@ -86,6 +86,7 @@ int main(int argc, char* argv[]) {
 	free(ipPlanificador);
 	
 	log_info(logger, "That's all folks!");
+	log_destroy(logger);
 
 	return 0;
 }
@@ -215,6 +216,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 		log_error(logger, "ESI cannot send the operation response to planificador", line);
 		exit(-1);
 	}
+
 	log_info(logger, "I could send the response to planificador");
 	free(package);
 
