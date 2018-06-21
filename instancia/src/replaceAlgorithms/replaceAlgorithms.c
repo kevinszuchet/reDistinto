@@ -61,23 +61,24 @@ void deleteKey(entryTableInfo * toBeDeletedEntryInfo) {
 void updateUsage(char * key) {
 
 	t_link_element *element = entryTable->head;
-
-	while (element != NULL) {
+	int found = 0;
+	while (element != NULL && found == 0) {
 
 		if (strcmp(getKey(element->data), key) == 0) {
 
-			setUsageToZero(element->data);
-			log_info(replaceAlgorithmsLogger, "");
-		}
-		else {
+			log_info(replaceAlgorithmsLogger, "The usage from key: %s is: %d", getKey(element->data), getKeyUsage(element->data));
 			increaseKeyUsage(element->data);
+			log_info(replaceAlgorithmsLogger, "The usage from key: %s has been updated. Usage: %d", getKey(element->data), getKeyUsage(element->data));
+
+			found = 1;
 		}
+
 		element = element->next;
 	}
 }
 
 bool leastRecentlyUsedComparator(void * currentData, void * selectedData) {
-	return getKeyUsage((entryTableInfo *) currentData) > getKeyUsage((entryTableInfo *) selectedData);
+	return getKeyUsage((entryTableInfo *) currentData) < getKeyUsage((entryTableInfo *) selectedData);
 }
 
 bool biggestSpaceUsedComparator(void * currentData, void * selectedData) {

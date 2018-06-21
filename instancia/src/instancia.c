@@ -265,6 +265,7 @@ char set(char *key, char *value){
 	biMapUpdate(valueStart, entriesForValue, IS_SET);
 
 	log_info(logger, "Set operation for key: %s and value: %s, was successfully done", key, value);
+	updateAccodringToAlgorithm(key);
 
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
@@ -440,6 +441,7 @@ char storeKeyAndValue(entryTableInfo * selectedEntryByKey) {
 	}
 
 	log_info(logger, "The key: %s, was successfully stored", getKey(selectedEntryByKey));
+
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
@@ -454,6 +456,8 @@ char store(char *key) {
 	}
 
 	entryTableInfo * selectedEntryByKey = selectedElemByKey->data;
+
+	updateAccodringToAlgorithm(key);
 
 	return storeKeyAndValue(selectedEntryByKey);
 }
