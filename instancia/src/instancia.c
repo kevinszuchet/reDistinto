@@ -152,6 +152,8 @@ char interpretateStatement(Operation * operation) {
 			break;
 	}
 
+	destroyOperation(operation);
+
 	return INSTANCIA_RESPONSE_FAILED;
 }
 
@@ -179,6 +181,8 @@ int finish() {
 	free(storage);
 	free(biMap);
 	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
+	log_destroy(replaceAlgorithmsLogger);
+	log_destroy(logger);
 
 	return 0;
 }
