@@ -76,15 +76,15 @@ int main(int argc, char* argv[]) {
 	}
 
 	sendMyIdToServer(coordinadorSocket, ESIID, ESI, logger);
-
-	/*
-	 * ESI wait to planificador, who will order to execute
-	 * */
-	waitPlanificadorOrders(planificadorSocket, script, coordinadorSocket);
 	
 	free(ipCoordinador);
 	free(ipPlanificador);
 	
+	/*
+	 * ESI wait to planificador, who will order to execute
+	 * */
+	waitPlanificadorOrders(planificadorSocket, script, coordinadorSocket);
+
 	log_info(logger, "That's all folks!");
 	log_destroy(logger);
 
@@ -240,6 +240,10 @@ void interpretateOperation(Operation * operation, char * line) {
 			break;
 
 		case SET:
+			if (empty_string(parsedLine.argumentos.SET.valor) == 1) {
+				log_error(logger, "ESI cannot parse a SET without value");
+				exit(-1);
+			}
 			initializeOperation(operation, OURSET, parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
 			break;
 

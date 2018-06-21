@@ -42,5 +42,4 @@
 	int empty_string(char * str) {
 		return (str != NULL && strcmp(str, "") != 0 ? 0 : 1);
 	}
-
 #endif /* SRC_ESI_H_ */
