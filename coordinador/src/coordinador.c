@@ -794,6 +794,13 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 	}
 }*/
 
+
+void actualizarSpaceUsed(Instancia* instancia) {
+	int spaceUsed;
+	recieveInt(&spaceUsed, instancia->socket);
+	instancia->spaceUsed = spaceUsed;
+}
+
 char instanciaDoCompactDummy(){
 	return INSTANCIA_RESPONSE_FALLEN;
 }
@@ -829,6 +836,9 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 		showInstancia(actualInstancia);
 	}else if(status == INSTANCIA_RESPONSE_SUCCESS){
 		log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
+		if(actualEsiRequest->operation->operationCode == OURSET) {
+			actualizarSpaceUsed(actualInstancia);
+		}
 	}
 
 	sem_post(instanciaResponse);

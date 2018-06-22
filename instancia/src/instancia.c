@@ -153,6 +153,15 @@ void handleOperationRequest(int coordinadorSocket){
 		exit(-1);
 	}
 
+	if (operation->operationCode == OURSET) {
+		//TODO calcular spaceUsed
+		int spaceUsed = 10;//valueHardcodeado
+		if (sendInt(&spaceUsed, coordinadorSocket) == CUSTOM_FAILURE) {
+			log_error(logger, "I cannot send my spaceUsed to coordinador");
+			exit(-1);
+		}
+	}
+
 	log_info(logger, "The operation was successfully notified to coordinador");
 }
 
