@@ -7,6 +7,10 @@
 
 #include "instanciaFunctions.h"
 
+int instanciaIsAlive(Instancia* instancia){
+	return !instancia->isFallen;
+}
+
 int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger){
 	if(recieveString(arrivedInstanciaName, instanciaSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't recieve instancia's name");

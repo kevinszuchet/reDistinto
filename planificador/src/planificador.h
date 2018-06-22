@@ -60,6 +60,8 @@
 	t_list* instruccionsByConsoleList;
 	sem_t pauseStateSemaphore;
 
+	int coordinadorSocket;
+
 	//DUMMIE FUNCTIONS
 	void sendKeyStatusToCoordinadorDummie(char status);
 	void sendMessageExecuteToEsiDummie(Esi* nextEsi);

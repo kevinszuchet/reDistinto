@@ -19,8 +19,8 @@ t_log* operationsLogger;
 
 int planificadorSocket;
 void setDistributionAlgorithm(char* algorithm);
-Instancia* (*distributionAlgorithm)(char* key);
-Instancia* (*distributionAlgorithmSimulation)(char* key);
+Instancia* (*distributionAlgorithm)(t_list* aliveInstancias, char* key);
+Instancia* (*distributionAlgorithmSimulation)(t_list* aliveInstancias, char* key);
 int cantEntry;
 int entrySize;
 int delay;
@@ -104,97 +104,150 @@ void getConfig(int* listeningPort, char** algorithm){
 	config_destroy(config);
 }
 
-char keyStatus(Instancia* instancia, char* key){
+Instancia* chooseInstancia(char* key){
+	Instancia* chosenInstancia = NULL;
+
+	if(list_size(instancias) != 0){
+		t_list* aliveInstancias = list_filter(instancias, (void*) instanciaIsAlive);
+		chosenInstancia = (*distributionAlgorithm)(aliveInstancias, key);
+		list_destroy(aliveInstancias);
+	}
+	return chosenInstancia;
+}
+
+Instancia* simulateChooseInstancia(char* key){
+	Instancia* chosenInstancia = NULL;
+	//TODO revisar si hace falta
+	pthread_mutex_lock(&instanciasListMutex);
+	if(list_size(instancias) != 0){
+		t_list* aliveInstancias = list_filter(instancias, (void*) instanciaIsAlive);
+		chosenInstancia = (*distributionAlgorithmSimulation)(aliveInstancias, key);
+		list_destroy(aliveInstancias);
+	}
+	pthread_mutex_unlock(&instanciasListMutex);
+	return chosenInstancia;
+}
+
+//TODO pasar el recieve al hilo de instancia
+char* valueFromKeyDirect(Instancia* instancia, char* key, char* instanciaState){
 	instancia->actualCommand = INSTANCIA_CHECK_KEY_STATUS;
 
 	if(send_all(instancia->socket, &instancia->actualCommand, sizeof(char)) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't send command to instancia");
-		return INSTANCIA_RESPONSE_FALLEN;
+		log_warning(logger, "Couldn't send command to instancia");
+		*instanciaState = INSTANCIA_RESPONSE_FALLEN;
+		return NULL;
 	}
 
 	if(sendString(key, instancia->socket) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't send key to instancia to check its value");
-		return INSTANCIA_RESPONSE_FALLEN;
-	}
-
-	char keyStatus;
-	if(recv_all(instancia->socket, &keyStatus, sizeof(char)) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't receive key status from instancia");
-		return INSTANCIA_RESPONSE_FALLEN;
-	}
-
-	return keyStatus;
-}
-
-char* valueFromKey(Instancia* instancia){
-	char* value;
-	if(recieveString(&value, instancia->socket) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't receive value to respond status command");
+		log_warning(logger, "Couldn't send key to instancia to check its value");
+		*instanciaState = INSTANCIA_RESPONSE_FALLEN;
 		return NULL;
 	}
+
+	char* value;
+	if(recieveString(&value, instancia->socket) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't receive value to respond status command");
+		*instanciaState = INSTANCIA_RESPONSE_FALLEN;
+		return NULL;
+	}
+
+	*instanciaState = INSTANCIA_RESPONSE_SUCCESS;
 
 	return value;
 }
 
-//TODO pasar todos los send/recv al hilo instancia
+//TODO mariano que pasa si se quiere enviar algo null?
+//TODO mariano pasar al addToPackageGeneric
+int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* value, char instanciaOrigin){
+	//si la clave esta en instancia caida, no se simula y se devuelve NOT_SIMULATED_INSTANCIA
+	char typeOfMessage = CORDINADORCONSOLERESPONSEMESSAGE;
+
+	log_info(logger, "About to send type of message to planificador");
+	if(send_all(planificadorSocket, &typeOfMessage, sizeof(typeOfMessage)) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't send type of message to planificador to respond status command");
+		planificadorFell();
+	}
+
+	//esta habiendo un seg fault aca y supongo que es porque el valor es null. que se hace?
+	if(send_all(planificadorSocket, &instanciaOrigin, sizeof(instanciaOrigin)) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't send instancia origin to planificador to respond status command");
+		planificadorFell();
+	}
+
+	if(instanciaOrigin == STATUS_NO_INSTANCIAS_AVAILABLE){
+		return -1;
+	}
+
+	if(sendString(instanciaThatSatisfiesStatus, planificadorSocket) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't send instancia's name to planificador to respond status command");
+		planificadorFell();
+	}
+
+	if(sendString(value, planificadorSocket) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't send value to planificador to respond status command");
+		planificadorFell();
+	}
+
+	return 0;
+}
+
+void handleInstanciaSimulationForStatus(char* key) {
+	Instancia* instanciaThatWouldHaveKey = simulateChooseInstancia(key);
+	if (instanciaThatWouldHaveKey) {
+		log_info(logger, "Instancia %s is the response to status by simulation", instanciaThatWouldHaveKey->name);
+		sendPairKeyValueToPlanificador(instanciaThatWouldHaveKey->name, NULL, STATUS_SIMULATED_INSTANCIA);
+	} else {
+		log_info(logger, "There are no instancias available to respond status");
+		sendPairKeyValueToPlanificador(NULL, NULL, STATUS_NO_INSTANCIAS_AVAILABLE);
+	}
+}
+
+//TODO + importante. fijarse si hay problemas con accesos simultaneos a campos distintos de un mismo struct
+
+//TODO revisar casos en los que se hace exit. Se deberian liberar los recursos?
 int respondStatusToPlanificador(char* key){
-	char instanciaKeyStatusResponse;
 	pthread_mutex_lock(&instanciasListMutex);
 	Instancia* instanciaThatMightHaveValue = lookForKey(key);
 	pthread_mutex_unlock(&instanciasListMutex);
 
-	/*if(instanciaThatMightHaveValue){
+	char* instanciaThatSatisfiesStatus = NULL;
+	char* valueThatSatisfiesStatus = NULL;
+
+	//TODO el planificador va a tener que validar que si el valor devuelto es null, no hay valor
+
+	if(instanciaThatMightHaveValue){
+		instanciaThatSatisfiesStatus = instanciaThatMightHaveValue->name;
 
 		if(instanciaThatMightHaveValue->isFallen){
-			//se cayo la instancia. mandar nombre
-			//STATUS_RESPONSE_KEY_IN_INSTANCIA_FALLEN
-			STATUS_RESPONSE_INSTANCIA_HAS_KEY
-			//mando nombre instancia
-			//mando valor nulo
-			addToPackageGeneric();
+			log_info(logger, "Instancia %s is the response to status. It's fallen", instanciaThatSatisfiesStatus);
+			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA);
+			free(valueThatSatisfiesStatus);
 			return -1;
 		}
 
-		char instanciaKeyStatusResponse = keyStatus(instanciaThatMightHaveValue, key);
-		if(instanciaKeyStatusResponse == INSTANCIA_RESPONSE_HAS_KEY){
-			char* value = valueFromKey(instanciaThatMightHaveValue);
+		char instanciaStatus;
+		valueThatSatisfiesStatus = valueFromKeyDirect(instanciaThatMightHaveValue, key, &instanciaStatus);
 
-			if(!value){
-				//se cayo la instancia. mandar nombre
-			}
+		if(instanciaStatus == INSTANCIA_RESPONSE_FALLEN){
+			log_info(logger, "Instancia %s is the response to status. It felt in the middle of the status request", instanciaThatSatisfiesStatus);
+			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA);
+			free(valueThatSatisfiesStatus);
+			return -1;
+		}
 
-			if(sendString(instanciaThatMightHaveValue->name, *planificadorConsoleSocket) == CUSTOM_FAILURE){
-				log_error(logger, "Couldn't send instancia's name to planificador to respond status command");
-				planificadorFell();
-			}
-
-			if(sendString(value, *planificadorConsoleSocket) == CUSTOM_FAILURE){
-				log_error(logger, "Couldn't send value to planificador to respond status command");
-				planificadorFell();
-			}
-
-		}else if(instanciaKeyStatusResponse == INSTANCIA_RESPONSE_HAS_NO_KEY){
-			//en este caso, no tiene valor
-			if(sendString(instanciaThatMightHaveValue->name, *planificadorConsoleSocket) == CUSTOM_FAILURE){
-				log_error(logger, "Couldn't send instancia's name to planificador to respond status command");
-				planificadorFell();
-			}
-
-		}else if(instanciaKeyStatusResponse == INSTANCIA_RESPONSE_FALLEN){
-			//caso en que no tiene valor
-			//se cayo la instancia
+		if(valueThatSatisfiesStatus){
+			log_info(logger, "Instancia %s is the response to status. The value from %s is %s", instanciaThatSatisfiesStatus, key, valueThatSatisfiesStatus);
+			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA);
+		}else{
+			log_info(logger, "Instancia %s was going to be the response to status, but it doesen't have the key anymore", instanciaThatSatisfiesStatus);
+			handleInstanciaSimulationForStatus(key);
 		}
 	}
 	else{
-		//en este caso, tampoco tiene valor
-		Instancia* instanciaThatWouldHaveKey = simulateChooseInstancia(key);
-		if(sendString(instanciaThatWouldHaveKey->name, *planificadorConsoleSocket) == CUSTOM_FAILURE){
-			log_error(logger, "Couldn't send instancia's name to planificador to respond status command");
-			planificadorFell();
-		}
-	}*/
+		handleInstanciaSimulationForStatus(key);
+	}
 
-	//TODO no olvidar liberar el valor una vez que se haya enviado al planificador
+	free(valueThatSatisfiesStatus);
 	return 0;
 }
 
@@ -206,10 +259,14 @@ void planificadorFell(){
 void handleStatusRequest(){
 	char* key;
 
+	log_info(logger, "Gonna handle status...");
+
 	if(recieveString(&key, planificadorSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't receive planificador key to respond status command");
 		planificadorFell();
 	}
+
+	log_info(logger, "... from key %s", key);
 
 	pthread_mutex_lock(&esisMutex);
 
@@ -234,14 +291,7 @@ int positionInList(Instancia* instancia){
 	return instanciasCounter;
 }
 
-int instanciaIsAlive(Instancia* instancia){
-	return !instancia->isFallen;
-}
-
-int instanciaIsAliveAndNextToActual(Instancia* instancia){
-	if(instanciaIsAlive(instancia) == 0){
-		return 0;
-	}
+int instanciaIsNextToActual(Instancia* instancia){
 
 	if(positionInList(lastInstanciaChosen) == 0 && firstAlreadyPass == 0){
 		firstAlreadyPass = 1;
@@ -251,15 +301,15 @@ int instanciaIsAliveAndNextToActual(Instancia* instancia){
 	return positionInList(instancia) >= positionInList(lastInstanciaChosen) + 1;
 }
 
-Instancia* getNextInstancia(){
-	Instancia* instancia = list_find(instancias, (void*) &instanciaIsAliveAndNextToActual);
+Instancia* getNextInstancia(t_list* aliveInstancias){
+	Instancia* instancia = list_find(aliveInstancias, (void*) &instanciaIsNextToActual);
 	if(!instancia && firstAlreadyPass){
 
 		Instancia* auxLastInstanciaChosen = lastInstanciaChosen;
 		lastInstanciaChosen = list_get(instancias, 0);
 		firstAlreadyPass = 0;
 
-		instancia = list_find(instancias, (void*) &instanciaIsAliveAndNextToActual);
+		instancia = list_find(aliveInstancias, (void*) &instanciaIsNextToActual);
 
 		if(!instancia){
 			lastInstanciaChosen = auxLastInstanciaChosen;
@@ -268,9 +318,9 @@ Instancia* getNextInstancia(){
 	return instancia;
 }
 
-Instancia* equitativeLoad(char* key){
+Instancia* equitativeLoad(t_list* aliveInstancias, char* key){
 	pthread_mutex_lock(&lastInstanciaChosenMutex);
-	Instancia* chosenInstancia = getNextInstancia();
+	Instancia* chosenInstancia = getNextInstancia(aliveInstancias);
 	if(chosenInstancia){
 		lastInstanciaChosen = chosenInstancia;
 	}
@@ -279,33 +329,33 @@ Instancia* equitativeLoad(char* key){
 }
 
 //TODO testear (y que no afecte al posta)
-Instancia* equitativeLoadSimulation(char* key){
+Instancia* equitativeLoadSimulation(t_list* aliveInstancias, char* key){
 	pthread_mutex_lock(&lastInstanciaChosenMutex);
 	Instancia* auxLastInstanciaChosen2 = lastInstanciaChosen;
 	int firstAlreadyPassAux = firstAlreadyPass;
-	Instancia* instancia = getNextInstancia();
+	Instancia* instancia = getNextInstancia(aliveInstancias);
 	lastInstanciaChosen = auxLastInstanciaChosen2;
 	pthread_mutex_unlock(&lastInstanciaChosenMutex);
 	firstAlreadyPass = firstAlreadyPassAux;
 	return instancia;
 }
 
-Instancia* leastSpaceUsed(char* key){
+Instancia* leastSpaceUsed(t_list* aliveInstancias, char* key){
 	//TODO
 	return NULL;
 }
 
-Instancia* keyExplicit(char* key){
+Instancia* keyExplicit(t_list* aliveInstancias, char* key){
 	//TODO
 	return NULL;
 }
 
-Instancia* leastSpaceUsedSimulation(char* key){
+Instancia* leastSpaceUsedSimulation(t_list* aliveInstancias, char* key){
 	//TODO
 	return NULL;
 }
 
-Instancia* keyExplicitSimulation(char* key){
+Instancia* keyExplicitSimulation(t_list* aliveInstancias, char* key){
 	//TODO
 	return NULL;
 }
@@ -321,26 +371,6 @@ void setDistributionAlgorithm(char* algorithm){
 		distributionAlgorithm = &keyExplicit;
 		distributionAlgorithmSimulation = &keyExplicitSimulation;
 	}
-}
-
-Instancia* chooseInstancia(char* key){
-	Instancia* chosenInstancia = NULL;
-
-	if(list_size(instancias) != 0){
-		chosenInstancia = (*distributionAlgorithm)(key);
-	}
-	return chosenInstancia;
-}
-
-Instancia* simulateChooseInstancia(char* key){
-	Instancia* chosenInstancia = NULL;
-	//TODO revisar si hace falta
-	pthread_mutex_lock(&instanciasListMutex);
-	if(list_size(instancias) != 0){
-		chosenInstancia = (*distributionAlgorithmSimulation)(key);
-	}
-	pthread_mutex_unlock(&instanciasListMutex);
-	return chosenInstancia;
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, char response){
@@ -434,7 +464,6 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 	int keyExists = 0;
 
 	log_info(logger, "Gonna look for instancia to set key %s:", esiRequest->operation->key);
-	pthread_mutex_lock(&instanciasListMutex);
 	Instancia* instanciaToBeUsed = lookForKeyAndRemoveIfInFallenInstancia(esiRequest);
 	showInstancia(instanciaToBeUsed);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
@@ -470,7 +499,6 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}
 
-	pthread_mutex_lock(&instanciasListMutex);
 	Instancia* instanciaToBeUsed = lookForKeyAndRemoveIfInFallenInstancia(esiRequest);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
@@ -495,7 +523,6 @@ int doGet(EsiRequest* esiRequest, char keyStatus){
 		return sendResponseToEsi(esiRequest, BLOCK);
 	}
 
-	pthread_mutex_lock(&instanciasListMutex);
 	//TODO testear cuando la instancia se caiga y el coordinador se entere por ella (y no porque un esi quiere acceder, sino se borra la clave!)
 	Instancia* instanciaWithKey = lookForKeyAndRemoveIfInFallenInstancia(esiRequest);
 
@@ -517,13 +544,13 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 	log_info(logger, "Gonna recieve %s's status from planificador", key);
 
 	//TODO probar esto
-	char message = KEYSTATUSMESSAGE;
+	char typeOfMessage = KEYSTATUSMESSAGE;
 
 	void* package = NULL;
 	int offset = 0;
 	int sizeString = strlen(key)+1;
 
-	addToPackageGeneric(&package, &message, sizeof(char), &offset);
+	addToPackageGeneric(&package, &typeOfMessage, sizeof(char), &offset);
 	addToPackageGeneric(&package, &sizeString, sizeof(sizeString), &offset);	
 	addToPackageGeneric(&package, key, sizeString, &offset);
 
@@ -602,6 +629,7 @@ int recieveStentenceToProcess(int esiSocket){
 		return -1;
 	}
 
+	pthread_mutex_lock(&instanciasListMutex);
 	switch (esiRequest.operation->operationCode){
 		case OURGET:
 			if (doGet(&esiRequest, keyStatus) < 0){
@@ -925,10 +953,10 @@ int handleEsi(int esiSocket){
 	return 0;
 }
 
-void planificadorHandler(){
+void planificadorHandler(int* allocatedClientSocket){
 	while(1) {
 		char planificadorMessage;
-		if( recv_all(planificadorSocket, &planificadorMessage, sizeof(planificadorMessage)) == CUSTOM_FAILURE) {
+		if(recv_all(planificadorSocket, &planificadorMessage, sizeof(planificadorMessage)) == CUSTOM_FAILURE) {
 			planificadorFell();
 		}
 		switch (planificadorMessage) {
@@ -953,6 +981,9 @@ void planificadorHandler(){
 		}
 
 	}
+
+	free(allocatedClientSocket);
+
 	//TODO recibir id esi, estado clave y comando status
 	/*char planificadorMessage;
 	while(1){

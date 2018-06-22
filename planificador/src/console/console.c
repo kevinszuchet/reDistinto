@@ -55,6 +55,8 @@ void execute(char** parameters) {
 	int* esiIDpointer;
 	t_queue* blockedEsis;
 
+	char requestToCoordinador;
+
 
 	switch(commandNumber) {
 		case PAUSAR:
@@ -101,6 +103,19 @@ void execute(char** parameters) {
 
 		break;
 		case STATUS:
+			requestToCoordinador = PLANIFICADOR_STATUS_REQUEST;
+
+			//TODO nico chequear
+			if (send_all(coordinadorSocket, &requestToCoordinador, sizeof(requestToCoordinador)) == CUSTOM_FAILURE) {
+				log_error(logger, "I cannot send the request from status coordinador");
+				exitPlanificador();
+			}
+
+			key = parameters[1];
+			if (sendString(key, coordinadorSocket) == CUSTOM_FAILURE) {
+				log_error(logger, "I cannot send the key to resolve status to coordinador");
+				exitPlanificador();
+			}
 
 		break;
 		case DEADLOCK:

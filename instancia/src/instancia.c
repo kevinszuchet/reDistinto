@@ -180,6 +180,10 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 				break;
 
 			case INSTANCIA_CHECK_KEY_STATUS:
+
+				//TODO kiwo. aca se recibe un string que es el valor de la clave, y vos tenes que devolver su valor.
+				//devolves NULL si no tenes la clave
+
 				break;
 
 			default:

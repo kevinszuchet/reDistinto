@@ -36,6 +36,7 @@
 	void getConfig(int* listeningPort, char** algorithm);
 
 	int welcomePlanificador(int coordinadorSocket, int planificadorSocket);
+	void planificadorFell();
 
 	t_list* instancias;
 	char instanciaResponseStatus;

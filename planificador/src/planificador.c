@@ -49,8 +49,6 @@ int sentenceCounter = 0;
 
 int actualID = 1; //ID number for ESIs, when a new one is created, this number increases by 1
 
-int coordinadorSocket;
-
 char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 Esi* nextEsi;
@@ -723,6 +721,8 @@ int clientHandler(char clientMessage, int clientSocket){
 		sem_post(&esiInformationRecievedSemaphore);
 	}else if(clientMessage == CORDINADORCONSOLERESPONSEMESSAGE){
 		log_info(logger,"I recieved a coordinador console response message");
+
+		//TODO handlear la respuesta. en el codigo del coordinador se detalla
 
 	}else{
 		log_info(logger, "I received a strange in socket %d", clientSocket);
