@@ -143,14 +143,12 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 			case RUN:
 				log_info(logger, "recv an order from planificador");
 				tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
-				break;
+				break;			
 
-			// TODO contemplar kill y que hacer en los demas casos (ni kill ni  run)
-
-			/*case KILL:
-				log_info(logger, "Planificador kill me");
+			case KILL:
+				log_info(logger, "Planificador kill me by console");
 				exit(-1);
-				break;*/
+				break;
 
 			/*default:
 				//TODO que hacer cuando se recibe distinto a RUN?
