@@ -21,16 +21,18 @@
 		t_list* storedKeys;
 		int isFallen;
 		char* name;
-		sem_t* semaphore;
+		sem_t* compactSemaphore;
+		char actualCommand;
 	}Instancia;
 
+	int instanciaIsAlive(Instancia* instancia);
 	int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger);
 	int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize, t_log* logger);
 	void recieveInstanciaNameDummy(char** arrivedInstanciaName);
 	Instancia* existsInstanciaWithName(char* arrivedInstanciaName);
 	void instanciaIsBack(Instancia* instancia, int instanciaSocket);
-	void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger);
-	void instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger);
+	char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger);
+	char instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger);
 	Instancia* lookForKey(char* key);
 	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
 	void addKeyToInstanciaStruct(Instancia* instancia, char* key);

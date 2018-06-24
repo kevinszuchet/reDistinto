@@ -117,25 +117,89 @@ void initialize(int entraces, int entryStorage){
 	log_info(logger, "Instancia was intialized correctly");
 }
 
-void waitForCoordinadorStatements(int coordinadorSocket) {
+void handleOperationRequest(int coordinadorSocket){
 	Operation * operation = NULL;
 	char response;
 
-	while (1) {
-		log_info(logger, "Wait coordinador statement to execute");
-		if (recieveOperation(&operation, coordinadorSocket) == CUSTOM_FAILURE) {
-			log_error(logger, "recv failed on trying to recieve statement from coordinador");
-			exit(-1);
-		}
+	log_info(logger, "Gonna recieve operation from coordinador");
 
-		response = interpretateStatement(operation);
+	if (recieveOperation(&operation, coordinadorSocket) == CUSTOM_FAILURE) {
+		log_error(logger, "recv failed on trying to recieve statement from coordinador");
+		exit(-1);
+	}
 
-		if (send(coordinadorSocket, &response, sizeof(response), 0) < 0) {
+	response = interpretateStatement(operation);
+
+	if(response == INSTANCIA_COMPACT_REQUEST){
+		if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
 			log_error(logger, "I cannot send my response to coordinador");
 			exit(-1);
 		}
 
-		log_info(logger, "The operation was successfully notified to coordinador");
+		//TODO mandar a compactar. chequear que no se haga nada del compactar dos veces!!!
+		//con alvarez estamos suponiendo que no va a mandar dos need to compact seguidos, siempre como maixmo uno solo
+
+		response = interpretateStatement(operation);
+	}
+
+	char typeOfResponse = INSTANCIA_DID_OPERATION;
+	if(send_all(coordinadorSocket, &typeOfResponse, sizeof(char)) == CUSTOM_FAILURE){
+		log_error(logger, "I cannot send the type of response to coordinador");
+		exit(-1);
+	}
+
+	if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
+		log_error(logger, "I cannot send my response to coordinador");
+		exit(-1);
+	}
+
+	if (operation->operationCode == OURSET) {
+		//TODO calcular spaceUsed
+		int spaceUsed = 10;//valueHardcodeado
+		if (sendInt(spaceUsed, coordinadorSocket) == CUSTOM_FAILURE) {
+			log_error(logger, "I cannot send my spaceUsed to coordinador");
+			exit(-1);
+		}
+	}
+
+	log_info(logger, "The operation was successfully notified to coordinador");
+}
+
+void waitForCoordinadorStatements(int coordinadorSocket) {
+	while (1) {
+		log_info(logger, "Wait coordinador statement to execute");
+
+		char command;
+		if(recv_all(coordinadorSocket, &command, sizeof(command)) == CUSTOM_FAILURE){
+			log_error(logger, "Couldn't receive execution command from coordinador");
+			exit(-1);
+		}
+
+		switch(command){
+			case INSTANCIA_DO_OPERATION:
+
+				handleOperationRequest(coordinadorSocket);
+
+				break;
+
+			case INSTANCIA_DO_COMPACT:
+
+				log_info(logger, "Gonna do compact");
+
+				break;
+
+			case INSTANCIA_CHECK_KEY_STATUS:
+
+				//TODO kiwo. aca se recibe un string que es el valor de la clave, y vos tenes que devolver su valor.
+				//devolves NULL si no tenes la clave
+
+				break;
+
+			default:
+				log_error(logger, "Couldn't understand execution command from coordinador");
+				exit(-1);
+				break;
+		}
 	}
 }
 
@@ -234,7 +298,7 @@ char set(char *key, char *value){
 	}
 
 	else if (valueStart == I_NEED_TO_COMPACT) {
-		return INSTANCIA_NEED_TO_COMPACT;
+		return INSTANCIA_COMPACT_REQUEST;
 	}
 
 	// If the key exists, the value is updated
