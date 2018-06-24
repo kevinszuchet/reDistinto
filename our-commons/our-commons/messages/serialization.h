@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <commons/log.h>
+#include <commons/collections/list.h>
 
 void initSerializationLogger(t_log* _logger);
 int send_all(int socket, void* package, int length);
@@ -27,6 +28,7 @@ int recieveInt(int* value, int recvSocket);
 int sendString(char* value, int sendSocket);
 int recieveString(char** string, int recvSocket);
 
+void* generateOperationPackage(Operation* operation, int* offset);
 int sendOperation(Operation* operation, int sendSocket);
 int recieveOperation(Operation** operation, int recvSocket);
 

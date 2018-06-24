@@ -110,7 +110,6 @@ void getConfig(char** ipCoordinador, char** ipPlanificador, int* portCoordinador
  * */
 
 void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinadorSocket) {
-
 	char * line = NULL;
 	char ** scriptsSplitted = string_split(script, "\n");
 	size_t len = numberOfElementsOnArray(scriptsSplitted);
@@ -131,6 +130,13 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 			log_error(logger, "recv failed on trying to connect with planificador %s", strerror(errno));
 			exit(-1);
 		}
+		/*
+		int i = 0;
+		while (scriptsSplitted[i] != NULL) {
+			log_info(logger, "%s", scriptsSplitted[i]);
+			i++;
+		}
+		*/
 		log_info(logger, "I recieve the order from planificador and I will try to execute");
 
 		switch (response) {
@@ -154,7 +160,8 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		log_info(logger, "esiPC: %d", esiPC);
 
 		if (line) {
-			free(line);
+			//free(line);
+			munmap(line, strlen(line)+1);
 		}
 	}
 

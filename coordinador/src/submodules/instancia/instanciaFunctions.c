@@ -7,6 +7,10 @@
 
 #include "instanciaFunctions.h"
 
+int instanciaIsAlive(Instancia* instancia){
+	return !instancia->isFallen;
+}
+
 int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger){
 	if(recieveString(arrivedInstanciaName, instanciaSocket) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't recieve instancia's name");
@@ -39,43 +43,37 @@ Instancia* existsInstanciaWithName(char* arrivedInstanciaName){
 	return list_find(instancias, (void*) instanciaHasName);
 }
 
-int addSemaphoreToInstancia(Instancia* instancia){
-	sem_t* sem = malloc(sizeof(sem_t));
-	if(sem_init(sem, 0, 0) < 0){
-		return -1;
-	}
-
-	instancia->semaphore = sem;
-
-	return 0;
-}
-
 void instanciaIsBack(Instancia* instancia, int instanciaSocket){
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->socket = instanciaSocket;
-	addSemaphoreToInstancia(instancia);
+	instancia->actualCommand = 0;
 }
 
 void recieveInstanciaNameDummy(char** arrivedInstanciaName){
 	*arrivedInstanciaName = "instanciaDePrueba";
 }
 
-void instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
-	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
-		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
-	}else{
-		log_info(logger, "Operation sent to instancia");
-		instanciaResponseStatus = waitForInstanciaResponse(instancia);
-	}
+char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger){
+	char message = INSTANCIA_DO_OPERATION;
+
+	void* package = NULL;
+	int offset = 0;
+
+	int sizeOperationPackage = 0;
+	void* operationPackage = generateOperationPackage(operation, &sizeOperationPackage);
+
+	addToPackageGeneric(&package, &message, sizeof(message), &offset);
+	addToPackageGeneric(&package, operationPackage, sizeOperationPackage, &offset);
+
+	return send_all(instancia->socket, package, offset);
 }
 
-void instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger){
-	if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
-		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
-	}else{
-		log_info(logger, "Operation sent to instancia");
-		instanciaResponseStatus = waitForInstanciaResponseDummy(instancia);
-	}
+char instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger){
+	/*if(sendOperation(operation, instancia->socket) == CUSTOM_FAILURE){
+		return INSTANCIA_RESPONSE_FALLEN;
+	}*/
+	log_info(logger, "Operation sent to instancia");
+	return waitForInstanciaResponseDummy(instancia);
 }
 
 int isLookedKeyGeneric(char* actualKey, char* key){
@@ -116,22 +114,16 @@ void addKeyToInstanciaStruct(Instancia* instancia, char* key){
 	list_add(instancia->storedKeys, strdup(key));
 }
 
-void destroyInstanciaSemaphore(Instancia* instancia){
-	sem_destroy(instancia->semaphore);
-	free(instancia->semaphore);
-}
-
 //TODO donde se use esta funcion, meter tambien mutex de la lista de instancias! (esta instancia es una de esa lista!)
 //ese caso podria darse cuando esten activos varios hilos de instancia (compactacion)
 void instanciaHasFallen(Instancia* fallenInstancia){
 	fallenInstancia->isFallen = INSTANCIA_FALLEN;
 	close(fallenInstancia->socket);
-	destroyInstanciaSemaphore(fallenInstancia);
 }
 
 char waitForInstanciaResponse(Instancia* chosenInstancia){
 	char response = 0;
-	int recvResult = recv(chosenInstancia->socket, &response, sizeof(char), 0);
+	int recvResult = recv_all(chosenInstancia->socket, &response, sizeof(char));
 	if (recvResult <= 0){
 		return INSTANCIA_RESPONSE_FALLEN;
 	}
@@ -139,7 +131,7 @@ char waitForInstanciaResponse(Instancia* chosenInstancia){
 }
 
 char waitForInstanciaResponseDummy(){
-	return INSTANCIA_RESPONSE_SUCCESS;
+	return INSTANCIA_NEED_TO_COMPACT;
 }
 
 Instancia* createNewInstancia(int instanciaSocket, char* name){
@@ -152,6 +144,18 @@ Instancia* createNewInstancia(int instanciaSocket, char* name){
 	return newInstancia;
 }
 
+int addSemaphoreToInstancia(Instancia* instancia){
+
+	sem_t* compactSem = malloc(sizeof(sem_t));
+	if(sem_init(compactSem, 0, 0) < 0){
+		return -1;
+	}
+
+	instancia->compactSemaphore = compactSem;
+
+	return 0;
+}
+
 Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char lastLetter, char* name){
 	Instancia* instancia = malloc(sizeof(Instancia));
 	instancia->socket = socket;
@@ -161,6 +165,7 @@ Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char las
 	instancia->storedKeys = list_create();
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->name = strdup(name);
+	instancia->actualCommand = 0;
 
 	if(addSemaphoreToInstancia(instancia) < 0){
 		return NULL;
@@ -210,11 +215,14 @@ void showInstancia(Instancia* instancia){
 	}
 }
 
-void showInstancias(){
+void showInstancias(t_list* instanciasList){
 	printf("----- INSTANCIAS -----\n");
-	//pthread_mutex_lock(&instanciasListMutex);
-	list_iterate(instancias, (void*) &showInstancia);
-	//pthread_mutex_unlock(&instanciasListMutex);
+	if(list_size(instanciasList) != 0){
+		list_iterate(instanciasList, (void*) &showInstancia);
+	}
+	else{
+		printf("Actual instancias list is empty\n");
+	}
 }
 /*
  * TEST FUNCTIONS

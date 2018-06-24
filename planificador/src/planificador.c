@@ -40,8 +40,6 @@ int sentenceCounter = 0;
 
 int actualID = 1; // ID number for ESIs, when a new one is created, this number increases by 1
 
-int coordinadorSocket;
-
 char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 
@@ -134,8 +132,10 @@ void removeFromReady(Esi* esi) {
 	pthread_mutex_unlock(&mutexReadyList);
 }
 
-void sendEsiIdToCoordinador(int id) {
-	if (sendInt(id, coordinadorSocket) == CUSTOM_FAILURE) {
+void sendEsiIdToCoordinador(int id){
+	char op = PLANIFICADOR_ESI_ID_RESPONSE;
+	send_all(coordinadorSocket, &op, sizeof(op));
+	if (sendInt(id, coordinadorSocket) == CUSTOM_FAILURE){
 	   log_error(logger, "Coultn't send message to Coordinador about ESI id");
 	   exitPlanificador();
 	} else {
@@ -302,8 +302,9 @@ void sendKeyStatusToCoordinador(char* key) {
 		}
 		list_destroy(filteredList);
 	}
-
-	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0) {
+	char op = PLANIFICADOR_KEY_STATUS_RESPONSE;
+	send_all(coordinadorSocket, &op, sizeof(op));
+	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0){
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	} else {
 		log_info(logger, "Send key status (%s) to coordinador", getKeyStatusName(keyStatus));
