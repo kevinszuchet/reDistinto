@@ -186,6 +186,15 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 
 				log_info(logger, "Gonna do compact");
 
+				//TODO kiwo aca tambien hay que mandar a compactar (lo que esta sobre compactar en handleOperationRequest es para
+				//la instancia que mando a compactar)
+
+				char response = INSTANCIA_DID_COMPACT;
+				if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
+					log_error(logger, "I cannot tell coordinador that my compactation finished");
+					exit(-1);
+				}
+
 				break;
 
 			case INSTANCIA_CHECK_KEY_STATUS:

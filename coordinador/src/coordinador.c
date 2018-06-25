@@ -767,8 +767,15 @@ void waitInstanciaToCompact(Instancia* instancia){
 }
 
 void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
+
+	pthread_mutex_unlock(&instanciasListMutex);
+
 	list_iterate(instanciasThatNeededToCompact, (void*) waitInstanciaToCompact);
 
+	pthread_mutex_lock(&instanciasListMutex);
+
+	//TODO como abajo no se usa mas (al menos por ahora), ni hace falta volver a tomarlo...
+	//salvo porque abajo de todo hay un unlock
 	list_destroy(instanciasThatNeededToCompact);
 }
 
@@ -846,6 +853,7 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 }
 
 void instanciaExitGracefully(Instancia* instancia){
+
 	instanciaHasFallen(instancia);
 
 	switch(instancia->actualCommand){
@@ -882,8 +890,8 @@ int handleInstancia(int instanciaSocket){
 	t_list* instanciasToBeCompactedButCausative = NULL;
 
 	Instancia* actualInstancia;
-	//actualInstancia = initialiceArrivedInstancia(instanciaSocket);
-	actualInstancia = initialiceArrivedInstanciaDummy(instanciaSocket);
+	actualInstancia = initialiceArrivedInstancia(instanciaSocket);
+	//actualInstancia = initialiceArrivedInstanciaDummy(instanciaSocket);
 
 	if(!actualInstancia){
 		return -1;
@@ -898,7 +906,7 @@ int handleInstancia(int instanciaSocket){
 	while(1){
 
 		if(recv_all(actualInstancia->socket, &instanciaCommandResponse, sizeof(instanciaCommandResponse)) == CUSTOM_FAILURE){
-			log_error(logger, "Couldn't recieve instancia response");
+			log_error(logger, "Couldn't recieve instancia's message");
 			pthread_mutex_lock(&instanciasListMutex);
 			instanciaExitGracefully(actualInstancia);
 			return -1;
@@ -929,6 +937,10 @@ int handleInstancia(int instanciaSocket){
 			case INSTANCIA_DID_COMPACT:
 
 				//TODO agregar aca, y abajo, el exitGracefully
+				//TODO ver si la instancia puede fallar en el compact. en ese caso habria que cambiar la manera de manejar la respuesta
+				//de la instancia que mando a compactar (porque por como esta ahora no se puede)
+
+				sem_post(actualInstancia->compactSemaphore);
 
 				break;
 
@@ -938,7 +950,8 @@ int handleInstancia(int instanciaSocket){
 
 			default:
 
-				log_error(logger, "Se mando a hacer un comando invalido al hilo de instancia");
+				//TODO habria que matar a la instancia? porque su hilo muere pero el proceso instancia va a seguir vivo...
+				log_error(logger, "Instancia sent an invalid command. Killing his thread");
 				instanciaExitGracefully(actualInstancia);
 				return -1;
 
@@ -969,58 +982,30 @@ void planificadorHandler(int* allocatedClientSocket){
 		if(recv_all(planificadorSocket, &planificadorMessage, sizeof(planificadorMessage)) == CUSTOM_FAILURE) {
 			planificadorFell();
 		}
-		switch (planificadorMessage) {
-		case PLANIFICADOR_KEY_STATUS_RESPONSE:
-			if(recv_all(planificadorSocket, &keyStatusFromPlanificador, sizeof(char)) == CUSTOM_FAILURE){
-				planificadorFell();
-			}
-			sem_post(&keyStatusFromPlanificadorSemaphore);
-			break;
-		case PLANIFICADOR_ESI_ID_RESPONSE:
-			if(recieveInt(&esiIdFromPlanificador, planificadorSocket) <= 0){
-				planificadorFell();
-			}
-			sem_post(&esiIdFromPlanificadorSemaphore);
-			break;
-		case PLANIFICADOR_STATUS_REQUEST:
-			handleStatusRequest();
-			break;
-		default:
-			log_error(logger, "Invalid planificador message");
-			break;
-		}
 
+		switch (planificadorMessage) {
+			case PLANIFICADOR_KEY_STATUS_RESPONSE:
+				if(recv_all(planificadorSocket, &keyStatusFromPlanificador, sizeof(char)) == CUSTOM_FAILURE){
+					planificadorFell();
+				}
+				sem_post(&keyStatusFromPlanificadorSemaphore);
+				break;
+			case PLANIFICADOR_ESI_ID_RESPONSE:
+				if(recieveInt(&esiIdFromPlanificador, planificadorSocket) <= 0){
+					planificadorFell();
+				}
+				sem_post(&esiIdFromPlanificadorSemaphore);
+				break;
+			case PLANIFICADOR_STATUS_REQUEST:
+				handleStatusRequest();
+				break;
+			default:
+				log_error(logger, "Invalid planificador message");
+				break;
+		}
 	}
 
 	free(allocatedClientSocket);
-
-	//TODO recibir id esi, estado clave y comando status
-	/*char planificadorMessage;
-	while(1){
-		//TODO descomentar, hasta que se adapten los mensajes necesarios en el planificador
-
-		if(recv_all(planificadorSocket, &planificadorMessage, sizeof(planificadorMessage)) == CUSTOM_FAILURE){
-			log_error(logger, "Couldn't recieve type of request from planificador");
-			planificadorFell();
-			break;
-		}
-
-		switch(planificadorMessage){
-			case PLANIFICADOR_STATUS_REQUEST:
-
-				handleStatusRequest();
-
-				break;
-
-			default:
-
-				log_error(logger, "Couldn't understand planificador message");
-				//TODO que deberia pasar aca?
-re
-				break;
-		}
-	}*/
-
 }
 
 void raiseThreadDependingOnId(int* clientSocket){
