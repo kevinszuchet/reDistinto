@@ -17,6 +17,7 @@
 #define OURSET '4'
 #define OURGET '5'
 #define RUN 6
+#define KILL 10
 #define COMPACT '7'
 #define OURSTORE '8'
 #define LOCK '9'
