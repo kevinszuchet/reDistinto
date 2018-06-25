@@ -7,6 +7,19 @@
 
 #include "instanciaFunctions.h"
 
+void keyDestroyer(char* keyToBeDestroyed){
+	free(keyToBeDestroyed);
+}
+
+void instanciaDestroyer(Instancia* instancia){
+	free(&(instancia->socket));
+	list_destroy_and_destroy_elements(instancia->storedKeys, (void*) keyDestroyer);
+	free(instancia->name);
+	sem_destroy(instancia->compactSemaphore);
+	free(instancia->compactSemaphore);
+	free(instancia);
+}
+
 int instanciaIsAlive(Instancia* instancia){
 	return !instancia->isFallen;
 }
@@ -96,10 +109,6 @@ Instancia* lookForKey(char* key){
 	}
 
 	return list_find(instancias, (void*) isKeyInInstancia);
-}
-
-void keyDestroyer(char* keyToBeDestroyed){
-	free(keyToBeDestroyed);
 }
 
 void removeKeyFromFallenInstancia(char* key, Instancia* instancia){

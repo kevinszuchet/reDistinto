@@ -18,9 +18,10 @@ t_log* logger;
 t_log* operationsLogger;
 
 int planificadorSocket;
-void setDistributionAlgorithm(char* algorithm);
+void setDistributionAlgorithm();
 Instancia* (*distributionAlgorithm)(t_list* aliveInstancias, char* key);
 Instancia* (*distributionAlgorithmSimulation)(t_list* aliveInstancias, char* key);
+char* algorithm;
 int cantEntry;
 int entrySize;
 int delay;
@@ -45,11 +46,10 @@ int main(void) {
 	operationsLogger = log_create("../logOperaciones.log", "tpSO", true, LOG_LEVEL_INFO);
 
 	int listeningPort;
-	char* algorithm;
-	getConfig(&listeningPort, &algorithm);
-	showConfig(listeningPort, algorithm);
+	getConfig(&listeningPort);
+	showConfig(listeningPort);
 
-	setDistributionAlgorithm(algorithm);
+	setDistributionAlgorithm();
 
 	instancias = list_create();
 
@@ -59,7 +59,8 @@ int main(void) {
 	instanciaResponse = malloc(sizeof(sem_t));
 	if(sem_init(instanciaResponse, 0, 0) < 0){
 		log_error(logger, "Couldn't create instanciaResponse semaphore");
-		//TODO tambien revisar si esta bien este exit
+		//TODO tambien revisar si esta bien este exit y el freeres
+		freeResources();
 		exit(-1);
 	}
 
@@ -69,18 +70,12 @@ int main(void) {
 		log_error(logger, "Couldn't handshake with planificador, quitting...");
 	}
 
-	free(algorithm);
-
-	sem_destroy(instanciaResponse);
-	free(instanciaResponse);
-	pthread_mutex_destroy(&esisMutex);
-	pthread_mutex_destroy(&instanciasListMutex);
-	pthread_mutex_destroy(&lastInstanciaChosenMutex);
+	freeResources();
 
 	return 0;
 }
 
-void showConfig(int listeningPort, char* algorithm){
+void showConfig(int listeningPort){
 	printf("Puerto = %d\n", listeningPort);
 	printf("Algoritmo = %s\n", algorithm);
 	printf("Cant entry = %d\n", cantEntry);
@@ -88,12 +83,12 @@ void showConfig(int listeningPort, char* algorithm){
 	printf("delay= %d\n", delay);
 }
 
-void getConfig(int* listeningPort, char** algorithm){
+void getConfig(int* listeningPort){
 	t_config* config;
 	config = config_create(CFG_FILE);
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
-	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
-	if(strcmp(*algorithm, "EL") != 0 && strcmp(*algorithm, "LSU") != 0 && strcmp(*algorithm, "KE") != 0){
+	algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
+	if(strcmp(algorithm, "EL") != 0 && strcmp(algorithm, "LSU") != 0 && strcmp(algorithm, "KE") != 0){
 		log_error(operationsLogger, "Aborting: cannot recognize distribution algorithm");
 		exit(-1);
 	}
@@ -251,9 +246,22 @@ int respondStatusToPlanificador(char* key){
 	return 0;
 }
 
+void freeResources(){
+	//TODO que pasa con los semaforos que estan tomados?
+	list_destroy_and_destroy_elements(instancias, (void*) instanciaDestroyer);
+
+	free(algorithm);
+
+	sem_destroy(instanciaResponse);
+	free(instanciaResponse);
+	pthread_mutex_destroy(&esisMutex);
+	pthread_mutex_destroy(&instanciasListMutex);
+	pthread_mutex_destroy(&lastInstanciaChosenMutex);
+}
+
 void planificadorFell(){
 	log_error(logger, "Planificador disconnected from coordinador, quitting...");
-	exit(-1);
+	freeResources();
 }
 
 void handleStatusRequest(){
@@ -360,7 +368,7 @@ Instancia* keyExplicitSimulation(t_list* aliveInstancias, char* key){
 	return NULL;
 }
 
-void setDistributionAlgorithm(char* algorithm){
+void setDistributionAlgorithm(){
 	if(strcmp(algorithm, "EL") == 0){
 		distributionAlgorithm = &equitativeLoad;
 		distributionAlgorithmSimulation = &equitativeLoadSimulation;
