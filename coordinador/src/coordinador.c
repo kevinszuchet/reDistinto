@@ -36,6 +36,9 @@ char keyStatusFromPlanificador;
 sem_t keyStatusFromPlanificadorSemaphore;
 int esiIdFromPlanificador;
 sem_t esiIdFromPlanificadorSemaphore;
+char* valueFromKey;
+char instanciaStatusFromValueRequest;
+sem_t valueFromKeyInstanciaSemaphore;
 
 //TODO sacar, esta para probar
 int instanciaId = 0;
@@ -68,6 +71,8 @@ int main(void) {
 
 	if(welcomePlanificadorResponse < 0){
 		log_error(logger, "Couldn't handshake with planificador, quitting...");
+		freeResources();
+		exit(-1);
 	}
 
 	freeResources();
@@ -90,6 +95,7 @@ void getConfig(int* listeningPort){
 	algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	if(strcmp(algorithm, "EL") != 0 && strcmp(algorithm, "LSU") != 0 && strcmp(algorithm, "KE") != 0){
 		log_error(operationsLogger, "Aborting: cannot recognize distribution algorithm");
+		freeResources();
 		exit(-1);
 	}
 	cantEntry = config_get_int_value(config, "CANT_ENTRY");
@@ -123,32 +129,24 @@ Instancia* simulateChooseInstancia(char* key){
 	return chosenInstancia;
 }
 
-//TODO pasar el recieve al hilo de instancia
-char* valueFromKeyDirect(Instancia* instancia, char* key, char* instanciaState){
+char* valueFromKeyDirect(Instancia* instancia, char* key){
 	instancia->actualCommand = INSTANCIA_CHECK_KEY_STATUS;
 
 	if(send_all(instancia->socket, &instancia->actualCommand, sizeof(char)) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send command to instancia");
-		*instanciaState = INSTANCIA_RESPONSE_FALLEN;
+		instanciaStatusFromValueRequest = INSTANCIA_RESPONSE_FALLEN;
 		return NULL;
 	}
 
 	if(sendString(key, instancia->socket) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send key to instancia to check its value");
-		*instanciaState = INSTANCIA_RESPONSE_FALLEN;
+		instanciaStatusFromValueRequest = INSTANCIA_RESPONSE_FALLEN;
 		return NULL;
 	}
 
-	char* value;
-	if(recieveString(&value, instancia->socket) == CUSTOM_FAILURE){
-		log_warning(logger, "Couldn't receive value to respond status command");
-		*instanciaState = INSTANCIA_RESPONSE_FALLEN;
-		return NULL;
-	}
+	sem_wait(&valueFromKeyInstanciaSemaphore);
 
-	*instanciaState = INSTANCIA_RESPONSE_SUCCESS;
-
-	return value;
+	return valueFromKey;
 }
 
 //TODO mariano que pasa si se quiere enviar algo null?
@@ -220,10 +218,9 @@ int respondStatusToPlanificador(char* key){
 			return -1;
 		}
 
-		char instanciaStatus;
-		valueThatSatisfiesStatus = valueFromKeyDirect(instanciaThatMightHaveValue, key, &instanciaStatus);
+		valueThatSatisfiesStatus = valueFromKeyDirect(instanciaThatMightHaveValue, key);
 
-		if(instanciaStatus == INSTANCIA_RESPONSE_FALLEN){
+		if(instanciaStatusFromValueRequest == INSTANCIA_RESPONSE_FALLEN){
 			log_info(logger, "Instancia %s is the response to status. It felt in the middle of the status request", instanciaThatSatisfiesStatus);
 			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA);
 			free(valueThatSatisfiesStatus);
@@ -336,7 +333,6 @@ Instancia* equitativeLoad(t_list* aliveInstancias, char* key){
 	return chosenInstancia;
 }
 
-//TODO testear (y que no afecte al posta)
 Instancia* equitativeLoadSimulation(t_list* aliveInstancias, char* key){
 	pthread_mutex_lock(&lastInstanciaChosenMutex);
 	Instancia* auxLastInstanciaChosen2 = lastInstanciaChosen;
@@ -382,7 +378,7 @@ void setDistributionAlgorithm(){
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, char response){
-	//TODO aca tambien hay que reintentar hasta que se mande todo?
+	//TODO aca tambien hay que reintentar hasta que se mande tooodo?
 	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
 	if(send_all(esiRequest->socket, &response, sizeof(response)) == CUSTOM_FAILURE){
@@ -691,11 +687,10 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 		arrivedInstancia = createNewInstancia(instanciaSocket, arrivedInstanciaName);
 
 		if(!arrivedInstancia){
-			log_error(logger, "Couldn't initialize instancia's semaphore");
+			log_error(logger, "Couldn't initialize instancia's semaphore, killing the created thread...");
+			pthread_mutex_unlock(&instanciasListMutex);
 			free(arrivedInstanciaName);
-			//TODO que deberia pasar aca? mientras dejo este exit. tener cuidado con los semaforos que el de abajo no se libera si se cambia exit por return
-			exit(-1);
-			//si se decide que hay que matar al hilo, devolver NULL!!!
+			return NULL;
 		}
 
 		if(list_size(instancias) == 1){
@@ -787,29 +782,6 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 	list_destroy(instanciasThatNeededToCompact);
 }
 
-/*char instanciaDoCompact(Instancia* instancia){
-	char instanciaDoCompactCode = INSTANCIA_DO_COMPACT;
-	log_info(logger, "About to send instancia compact order to %s", instancia->name);
-	if(send_all(instancia->socket, &instanciaDoCompactCode, sizeof(char)) == CUSTOM_FAILURE){
-		log_warning(logger, "Couldn't send compact order to instancia %s, so it fell", instancia->name);
-		return INSTANCIA_RESPONSE_FALLEN;
-	}
-	log_info(logger, "Compact order sent to instancia %s", instancia->name);
-	return waitForInstanciaResponse(instancia);
-}*/
-
-/*void handleInstanciaCompactStatus(Instancia* instancia, char compactStatus){
-	if(compactStatus == INSTANCIA_RESPONSE_FALLEN){
-		log_info(logger, "Instancia %s couldn't compact, it fell", instancia->name);
-		instanciaHasFallen(instancia);
-	}else if(compactStatus == INSTANCIA_COMPACT_SUCCESS){
-		log_info(logger, "Instancia %s could compact", instancia->name);
-	}else{
-		log_info(logger, "Instancia %s couldn't compact", instancia->name);
-	}
-}*/
-
-
 void actualizarSpaceUsed(Instancia* instancia) {
 	int spaceUsed;
 	recieveInt(&spaceUsed, instancia->socket);
@@ -878,7 +850,9 @@ void instanciaExitGracefully(Instancia* instancia){
 
 		case INSTANCIA_CHECK_KEY_STATUS:
 
-			//TODO revisar que hacer
+			instanciaStatusFromValueRequest = INSTANCIA_RESPONSE_FALLEN;
+			valueFromKey = NULL;
+			sem_post(&valueFromKeyInstanciaSemaphore);
 
 			break;
 
@@ -944,7 +918,6 @@ int handleInstancia(int instanciaSocket){
 
 			case INSTANCIA_DID_COMPACT:
 
-				//TODO agregar aca, y abajo, el exitGracefully
 				//TODO ver si la instancia puede fallar en el compact. en ese caso habria que cambiar la manera de manejar la respuesta
 				//de la instancia que mando a compactar (porque por como esta ahora no se puede)
 
@@ -953,6 +926,15 @@ int handleInstancia(int instanciaSocket){
 				break;
 
 			case INSTANCIA_DID_CHECK_KEY_STATUS:
+
+				if(recieveString(&valueFromKey, actualInstancia->socket) == CUSTOM_FAILURE){
+					log_warning(logger, "Couldn't receive value from key to respond status command");
+					instanciaExitGracefully(actualInstancia);
+					return -1;
+				}
+
+				instanciaStatusFromValueRequest = INSTANCIA_RESPONSE_SUCCESS;
+				sem_post(&valueFromKeyInstanciaSemaphore);
 
 				break;
 
