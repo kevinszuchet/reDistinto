@@ -209,6 +209,9 @@ void handleOperationRequest(int coordinadorSocket){
 
 void waitForCoordinadorStatements(int coordinadorSocket) {
 	while (1) {
+		log_info(logger, "Wait dump, if it is executing I can recieve statements");
+		pthread_mutex_lock(&dumpMutex);
+
 		log_info(logger, "Wait coordinador statement to execute");
 
 		char command;
@@ -251,6 +254,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 				exit(-1);
 				break;
 		}
+		pthread_mutex_unlock(&dumpMutex);
 	}
 }
 
@@ -458,44 +462,41 @@ char compact() {
 	if (totalSettedEntries > 0) {
 
 		int totalUsedMemory = totalSettedEntries * entrySize;
-			char * auxStorage = malloc(totalSettedEntries);
-			int auxIndex = 0;
+		char * auxStorage = malloc(totalSettedEntries);
+		int auxIndex = 0;
 
-			int valueSize, valueStart, j;
+		int valueSize, valueStart, j;
 
-			// Iterate all elements of the dictionary
-			t_link_element * element = entryTable->head;
+		// Iterate all elements of the dictionary
+		t_link_element * element = entryTable->head;
 
-			while (element != NULL) {
+		while (element != NULL) {
 
-				 j = 0;
+			 j = 0;
 
-				 valueSize = getValueSize(element->data);
-				 valueStart = getValueStart(element->data) * entrySize;
-				 char * value = malloc((valueSize * sizeof(char)) + 1);
-				 getValue(value, valueStart, valueSize);
+			 valueSize = getValueSize(element->data);
+			 valueStart = getValueStart(element->data) * entrySize;
+			 char * value = malloc((valueSize * sizeof(char)) + 1);
+			 getValue(value, valueStart, valueSize);
 
-				 // Update ValueStart on dictionary(key) element
-				 setValueStart(element->data, auxIndex);
+			 // Update ValueStart on dictionary(key) element
+			 setValueStart(element->data, auxIndex);
 
-				 for (; auxIndex < totalUsedMemory; auxIndex++) {
-					 auxStorage[auxIndex] = value[j];
-					 j++;
-				 }
+			 for (; auxIndex < totalUsedMemory; auxIndex++) {
+				 auxStorage[auxIndex] = value[j];
+				 j++;
+			 }
 
-				 // Get the next able position to store values
-				 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
-				 free(value);
-			}
+			 // Get the next able position to store values
+			 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
+			 free(value);
+		}
 
-			strcpy(storage, auxStorage);
-			emptyBiMap(entriesAmount);
-			biMapUpdate(0, totalSettedEntries, IS_SET);
+		strcpy(storage, auxStorage);
+		emptyBiMap(entriesAmount);
+		biMapUpdate(0, totalSettedEntries, IS_SET);
 
-			free(auxStorage);
-
-
-
+		free(auxStorage);
 	}
 
 	log_info(logger, "Compactation was successfully done");
