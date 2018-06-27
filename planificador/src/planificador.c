@@ -53,9 +53,12 @@ int main(void) {
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
 	if (welcomeCoordinadorResult < 0) {
 		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
+		//TODO keko si no se puede conectar al coordinador, tira seg fault porque ese exit esta intentando vaciar listas de las que no se
+		//hizo el create
 		exitPlanificador();
 	}
 
+	//TODO keko ojo que esto tiene un exit adentro, lo que estan liberando abajo no se va a hacer
 	exitPlanificador();
 
 	free(algorithm);

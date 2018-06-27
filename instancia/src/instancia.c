@@ -87,15 +87,47 @@ void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 	log_info(logger, "I send my name to coordinador");
 }
 
+char* recieveKeyFromCoordinador(int coordinadorSocket){
+	char* key;
+	if(recieveString(&key, coordinadorSocket) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't receive key from coordinador");
+		exit(-1);
+	}
+	return key;
+}
+
+void recieveKeysFromCoordinador(int coordinadorSocket){
+	int keysAmount;
+	if(recieveInt(&keysAmount, coordinadorSocket) == CUSTOM_FAILURE){
+		log_error(logger, "Cannot recieve number of keys from coordinador");
+		exit(-1);
+	}
+
+	if(keysAmount == 0){
+		log_info(logger, "There are no keys to raise");
+		return;
+	}
+
+	for(int i = 0 ; i < keysAmount ; i++){
+		//TODO kiwo fijate si hay que liberar esta clave
+		//y fijarse de levantar de archivos solamente las que recibas, y tal vez deberias borrar los archivos de las que no (pensar si sirve,
+		//tal vez el hecho de no borrarlos nos sirve para chequear algo)
+		char* recievedKey = recieveKeyFromCoordinador(coordinadorSocket);
+		log_info(logger, "I recieved key %s", recievedKey);
+	}
+}
+
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
 	InstanciaConfiguration instanciaConfiguration;
 
 	log_info(logger, "I am waiting for the last details (sent by coordinador)");
 
 	if (recv_all(coordinadorSocket, &instanciaConfiguration, sizeof(InstanciaConfiguration)) == CUSTOM_FAILURE) {
-		log_error(logger, "recv failed on trying to connect with coordinador %s", strerror(errno));
+		log_error(logger, "Cannot recieve configuration from coordinador");
 		exit(-1);
 	}
+
+	recieveKeysFromCoordinador(coordinadorSocket);
 
 	log_info(logger, "I recieve the coordinador configuration, so I can work");
 

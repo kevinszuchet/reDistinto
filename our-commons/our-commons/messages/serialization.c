@@ -154,7 +154,7 @@ int sendStingList(t_list* strings, int sendSocket) {
 	void* package = NULL;
 
 	int addToPackage(void* value, int size) {
-		return addToPackageGeneric(&package, value, size, offset);
+		return addToPackageGeneric(&package, value, size, &offset);
 	}
 
 	void addStringToPackage(char* string) {
@@ -165,47 +165,12 @@ int sendStingList(t_list* strings, int sendSocket) {
 
 	int listSize = list_size(strings);
 
-	addToPackage(listSize, sizeof(listSize));
+	addToPackage(&listSize, sizeof(listSize));
 
-	list_iterate(strings, addStringToPackage);
+	list_iterate(strings, (void*) addStringToPackage);
 
 	int result = send_all(sendSocket, package, offset);
 
 	free(package);
 	return result;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -31,5 +31,6 @@ int recieveString(char** string, int recvSocket);
 void* generateOperationPackage(Operation* operation, int* offset);
 int sendOperation(Operation* operation, int sendSocket);
 int recieveOperation(Operation** operation, int recvSocket);
+int sendStingList(t_list* strings, int sendSocket);
 
 #endif /* SERIALIZATION_H_ */

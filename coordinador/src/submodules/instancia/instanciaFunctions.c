@@ -12,7 +12,6 @@ void keyDestroyer(char* keyToBeDestroyed){
 }
 
 void instanciaDestroyer(Instancia* instancia){
-	free(&(instancia->socket));
 	list_destroy_and_destroy_elements(instancia->storedKeys, (void*) keyDestroyer);
 	free(instancia->name);
 	sem_destroy(instancia->compactSemaphore);
@@ -78,7 +77,11 @@ char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* log
 	addToPackageGeneric(&package, &message, sizeof(message), &offset);
 	addToPackageGeneric(&package, operationPackage, sizeOperationPackage, &offset);
 
-	return send_all(instancia->socket, package, offset);
+	int sendResult = send_all(instancia->socket, package, offset);
+	free(package);
+	//TODO mariano no basta con liberar el package? sin este free me estaba tirando leaks
+	free(operationPackage);
+	return sendResult;
 }
 
 char instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger){

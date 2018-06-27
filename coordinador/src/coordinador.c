@@ -245,20 +245,27 @@ int respondStatusToPlanificador(char* key){
 
 void freeResources(){
 	//TODO que pasa con los semaforos que estan tomados?
+	//de la documentacion: Destroying a semaphore that other processes or threads are currently
+    //blocked on (in sem_wait(3)) produces undefined behavior.
 	list_destroy_and_destroy_elements(instancias, (void*) instanciaDestroyer);
 
 	free(algorithm);
 
 	sem_destroy(instanciaResponse);
 	free(instanciaResponse);
+
 	pthread_mutex_destroy(&esisMutex);
 	pthread_mutex_destroy(&instanciasListMutex);
 	pthread_mutex_destroy(&lastInstanciaChosenMutex);
+
+	log_destroy(logger);
+	log_destroy(operationsLogger);
 }
 
 void planificadorFell(){
 	log_error(logger, "Planificador disconnected from coordinador, quitting...");
 	freeResources();
+	exit(-1);
 }
 
 void handleStatusRequest(){
@@ -586,7 +593,7 @@ int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
 	//TODO reveer este log, no creo que sea correcto ponerlo aca
-	log_info(logger, "Waiting for esis to arrive");
+	log_info(logger, "Waiting for esi's instruction");
 
 	EsiRequest esiRequest;
 	esiRequest.socket = esiSocket;
@@ -665,6 +672,37 @@ int recieveStentenceToProcess(int esiSocket){
 	return operationResult;
 }
 
+int sendKeysToInstancia(Instancia* arrivedInstancia){
+
+	/*int deliverStatus = 0;
+
+	void sendKeyToInstancia(char* key){
+		//TODO alguna forma mejor de cortar el list_iterate?
+		if(deliverStatus < 0){ return; }
+
+		if(sendStingList(arrivedInstancia->storedKeys, arrivedInstancia->socket) == CUSTOM_FAILURE){
+			log_error(logger, "Couldn't send key list to instancia, killing his thread");
+			deliverStatus = -1;
+		}
+	}
+
+	log_info(logger, "About to send keys to instancia");
+	list_iterate(arrivedInstancia->storedKeys, (void*) sendKeyToInstancia);
+
+	if(deliverStatus == 0){
+		log_info(logger, "Keys sent to instancia");
+	}*/
+
+	log_info(logger, "About to send keys to instancia");
+	if(sendStingList(arrivedInstancia->storedKeys, arrivedInstancia->socket) == CUSTOM_FAILURE){
+		log_error(logger, "Couldn't send key list to instancia, killing his thread");
+		return -1;
+	}
+	log_info(logger, "Keys sent to instancia");
+
+	return 0;
+}
+
 Instancia* initialiceArrivedInstancia(int instanciaSocket){
 	char* arrivedInstanciaName = NULL;
 	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket, logger) < 0){
@@ -687,6 +725,7 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 		arrivedInstancia = createNewInstancia(instanciaSocket, arrivedInstanciaName);
 
 		if(!arrivedInstancia){
+			//TODO aca tambien, el proceso instancia va a seguir vivo (habria que mandarle un mensaje para que muera)
 			log_error(logger, "Couldn't initialize instancia's semaphore, killing the created thread...");
 			pthread_mutex_unlock(&instanciasListMutex);
 			free(arrivedInstanciaName);
@@ -700,6 +739,12 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 		}
 
 		log_info(logger, "Instancia %s is new", arrivedInstanciaName);
+	}
+
+	if(sendKeysToInstancia(arrivedInstancia) < 0){
+		free(arrivedInstanciaName);
+		pthread_mutex_unlock(&instanciasListMutex);
+		return NULL;
 	}
 
 	free(arrivedInstanciaName);
@@ -777,8 +822,6 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 
 	pthread_mutex_lock(&instanciasListMutex);
 
-	//TODO como abajo no se usa mas (al menos por ahora), ni hace falta volver a tomarlo...
-	//salvo porque abajo de todo hay un unlock
 	list_destroy(instanciasThatNeededToCompact);
 }
 
@@ -918,9 +961,6 @@ int handleInstancia(int instanciaSocket){
 
 			case INSTANCIA_DID_COMPACT:
 
-				//TODO ver si la instancia puede fallar en el compact. en ese caso habria que cambiar la manera de manejar la respuesta
-				//de la instancia que mando a compactar (porque por como esta ahora no se puede)
-
 				sem_post(actualInstancia->compactSemaphore);
 
 				break;
@@ -967,6 +1007,7 @@ int handleEsi(int esiSocket){
 }
 
 void planificadorHandler(int* allocatedClientSocket){
+	free(allocatedClientSocket);
 	while(1) {
 		char planificadorMessage;
 		if(recv_all(planificadorSocket, &planificadorMessage, sizeof(planificadorMessage)) == CUSTOM_FAILURE) {
@@ -994,22 +1035,23 @@ void planificadorHandler(int* allocatedClientSocket){
 				break;
 		}
 	}
-
-	free(allocatedClientSocket);
 }
 
 void raiseThreadDependingOnId(int* clientSocket){
-	char id = recieveClientId(*clientSocket, COORDINADOR, logger);
+
+	int clientSocketCopy = *clientSocket;
+
+	free(clientSocket);
+
+	char id = recieveClientId(clientSocketCopy, COORDINADOR, logger);
 
 	if (id == INSTANCIAID){
-		handleInstancia(*clientSocket);
+		handleInstancia(clientSocketCopy);
 	}else if(id == ESIID){
-		handleEsi(*clientSocket);
+		handleEsi(clientSocketCopy);
 	}else{
 		log_info(logger, "I received a strange");
 	}
-
-	free(clientSocket);
 }
 
 int clientHandler(int clientSocket, void (*handleThreadProcedure)(int* socket)){
@@ -1023,6 +1065,7 @@ int clientHandler(int clientSocket, void (*handleThreadProcedure)(int* socket)){
 	}
 
 	if(pthread_detach(clientThread) != 0){
+		//TODO habria que matar al hilo que se acaba de crear
 		log_error(logger,"Couldn't detach thread");
 		free(clientSocketPointer);
 		return -1;
