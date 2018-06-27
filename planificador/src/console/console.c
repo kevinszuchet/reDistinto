@@ -8,7 +8,7 @@
 #include "console.h"
 
 t_log* logger;
-t_list* instruccionsByConsoleList;
+t_list* instruccionsByConsoleList = NULL;
 
 void openConsole() {
 	char* line, ** parameters;
@@ -396,6 +396,7 @@ void destroyConsoleParam(void * param) {
 }
 
 void destroyConsole() {
-	list_destroy_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
+	if (instruccionsByConsoleList)
+		list_destroy_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
 	// REVIEW porque rompe aca? log_destroy(logger);
 }

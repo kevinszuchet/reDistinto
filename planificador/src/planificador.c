@@ -14,13 +14,13 @@ fd_set master;
 int pauseState = CONTINUE; // 1 is running, 0 is paussed
 
 t_dictionary* blockedEsiDic;
-t_list* readyEsis;
-t_list* finishedEsis;
+t_list* readyEsis = NULL;
+t_list* finishedEsis = NULL;
 Esi* runningEsi;
 
-t_list* allSystemTakenKeys;
-t_list* allSystemKeys;
-t_list* allSystemEsis;
+t_list* allSystemTakenKeys = NULL;
+t_list* allSystemKeys = NULL;
+t_list* allSystemEsis = NULL;
 
 int listeningPort;
 char* algorithm;
@@ -53,13 +53,8 @@ int main(void) {
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
 	if (welcomeCoordinadorResult < 0) {
 		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
-		//TODO keko si no se puede conectar al coordinador, tira seg fault porque ese exit esta intentando vaciar listas de las que no se
-		//hizo el create
 		exitPlanificador();
 	}
-
-	//TODO keko ojo que esto tiene un exit adentro, lo que estan liberando abajo no se va a hacer
-	exitPlanificador();
 
 	free(algorithm);
 	free(ipCoordinador);
@@ -69,6 +64,8 @@ int main(void) {
 		free(blockedKeys[i]);
 
 	free(blockedKeys);
+
+	exitPlanificador();
 
 	return 0;
 }
@@ -647,8 +644,11 @@ void initializePlanificador() {
 
 void exitPlanificador() {
 
-	list_destroy_and_destroy_elements(allSystemKeys, destroyKey);
-	list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
+	if (allSystemKeys)
+		list_destroy_and_destroy_elements(allSystemKeys, destroyKey);
+
+	if (allSystemEsis)
+		list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
 
 	log_destroy(logger);
 

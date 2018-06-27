@@ -130,13 +130,6 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 			log_error(logger, "recv failed on trying to connect with planificador %s", strerror(errno));
 			exit(-1);
 		}
-		/*
-		int i = 0;
-		while (scriptsSplitted[i] != NULL) {
-			log_info(logger, "%s", scriptsSplitted[i]);
-			i++;
-		}
-		*/
 		log_info(logger, "I recieve the order from planificador and I will try to execute");
 
 		switch (response) {
@@ -149,16 +142,11 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 				log_info(logger, "Planificador kill me by console");
 				exit(-1);
 				break;
-
-			/*default:
-				//TODO que hacer cuando se recibe distinto a RUN?
-				break;*/
 		}
 
 		log_info(logger, "esiPC: %d", esiPC);
 
 		if (line) {
-			//free(line);
 			munmap(line, strlen(line)+1);
 		}
 	}
@@ -166,8 +154,6 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 	if (scriptsSplitted) {
 		free(scriptsSplitted);
 	}
-
-	// REVIEW hace falta hacer free de lo splitteado?
 }
 
 void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, int * esiPC, size_t len) {
