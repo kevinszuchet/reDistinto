@@ -138,7 +138,7 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 				tryToExecute(planificadorSocket, line, coordinadorSocket, &esiPC, len);
 				break;			
 
-			case KILL:
+			case KILLESI:
 				log_info(logger, "Planificador kill me by console");
 				exit(-1);
 				break;

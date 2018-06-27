@@ -116,7 +116,9 @@ void execute(char** parameters) {
 		break;
 
 		case KILL:
+			// TODO nico, falta enviar el KILL al esi
 		break;
+
 		case STATUS:
 			requestToCoordinador = PLANIFICADOR_STATUS_REQUEST;
 
@@ -131,6 +133,8 @@ void execute(char** parameters) {
 				log_error(logger, "I cannot send the key to resolve status to coordinador");
 				exitPlanificador();
 			}
+		break;
+
 		case DEADLOCK:
 			executeDeadlockAlgorithm();
 		break;
