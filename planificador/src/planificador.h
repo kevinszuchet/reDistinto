@@ -39,9 +39,9 @@
 	#define INBLOCKEDDIC 'e'
 	#define NOWHERE 'f'
 
-	int pauseState;
+	t_log * logger;
 
-	t_log* logger;
+	int pauseState;
 
 	t_dictionary* blockedEsiDic;
 	t_list* readyEsis;

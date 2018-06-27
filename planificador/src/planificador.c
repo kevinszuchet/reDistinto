@@ -11,7 +11,7 @@ fd_set master;
 
 int pauseState = CONTINUE; // 1 is running, 0 is paussed
 
-t_dictionary* blockedEsiDic;
+t_dictionary* blockedEsiDic = NULL;
 t_list* readyEsis = NULL;
 t_list* finishedEsis = NULL;
 Esi* runningEsi;
@@ -647,6 +647,18 @@ void exitPlanificador() {
 
 	if (allSystemEsis)
 		list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
+
+	if (readyEsis)
+		list_destroy(readyEsis);
+
+	if (finishedEsis)
+		list_destroy(finishedEsis);
+
+	if (allSystemTakenKeys)
+		list_destroy(allSystemTakenKeys);
+
+	if (blockedEsiDic)
+		dictionary_destroy(blockedEsiDic);
 
 	destroyConsole();
 
