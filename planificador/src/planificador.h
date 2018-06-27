@@ -41,6 +41,8 @@
 
 	int pauseState;
 
+	t_log* logger;
+
 	t_dictionary* blockedEsiDic;
 	t_list* readyEsis;
 	t_list* finishedEsis;

@@ -7,8 +7,6 @@
 
 #include "planificador.h"
 
-t_log* logger;
-
 fd_set master;
 
 int pauseState = CONTINUE; // 1 is running, 0 is paussed
@@ -650,19 +648,12 @@ void exitPlanificador() {
 	if (allSystemEsis)
 		list_destroy_and_destroy_elements(allSystemEsis, destroyEsi);
 
-	log_destroy(logger);
-
 	destroyConsole();
 
 	pthread_cancel(threadConsole);
 	pthread_cancel(threadConsoleInstructions);
 
-	/* TODO destuir listas y sus elementos
-		 * sem_destroy(&executionSemaphore);
-		 * sem_destroy(&keyRecievedFromCoordinadorSemaphore);
-		 * sem_destroy(&esiInformationRecievedSemaphore);
-		 * sem_destroy(&readyEsisSemaphore);
-		 * sem_destroy(&consoleInstructionSemaphore); */
+	log_destroy(logger);
 
 	exit(-1);
 }
