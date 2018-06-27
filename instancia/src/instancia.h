@@ -15,6 +15,8 @@
 
 	#define MAX_KEY_SIZE 40
 
+	#define CFG_FILE "../instancia.cfg"
+
 	#include <our-commons/sockets/client.h>
 	#include <our-commons/modules/names.h>
 	#include <commons/string.h>
@@ -33,8 +35,22 @@
 	#include <sys/stat.h>
 	#include <fcntl.h>
 	#include <unistd.h>
+	#include <pthread.h>
 
-	#define  CFG_FILE "../instancia.cfg"
+	// Global vars
+	int entriesAmount;
+	int entrySize;
+	t_list * entryTable; // Takes record of the key + how many entraces the value occupies
+
+	char * storage;
+	int * biMap;
+	char * algorithm;
+	char* path;
+	int dumpDelay;
+
+	t_log * logger;
+	t_log * replaceAlgorithmsLogger;
+
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
 
 	// Functions
@@ -60,24 +76,12 @@
 	void getValue(char * value, int valueStart, int valueSize);
 	int getValueStartEntry(char * key);
 
+	void handleDump();
 	char dump();
 	char store(char *key);
 	char * getValueForCoordinador(char * key, char * value);
 	char getKeyByFile(char * key);
 
 	int wholeUpperDivision(int x, int y);
-
-
-
-	// global vars
-
-	int entriesAmount;
-	int entrySize;
-	t_list * entryTable; // Takes record of the key + how many entraces the value occupies
-	// REVIEW Esto donde se usa? t_dictionary * keyUsage; // Takes record of how many operation ago was used each key
-	char * storage;
-	int * biMap;
-	t_log * replaceAlgorithmsLogger;
-	char * algorithm;
 
 #endif /* SRC_INSTANCIA_H_ */

@@ -7,8 +7,7 @@
 
 #include "instancia.h"
 
-t_log * logger;
-char* path;
+pthread_mutex_t dumpMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(void) {
 
@@ -19,16 +18,15 @@ int main(void) {
 	char* ipCoordinador;
 	int portCoordinador;
 	char * name;
-	int dump;
 
-	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dump);
+	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dumpDelay);
 
 	printf("IP coord = %s\n", ipCoordinador);
 	printf("Puerto = %d\n", portCoordinador);
 	printf("Algoritmo = %s\n", algorithm);
 	printf("Path = %s\n", path);
 	printf("Name= %s\n", name);
-	printf("Dump= %d\n", dump);
+	printf("Dump= %d\n", dumpDelay);
 	log_info(logger, "trying to connect to coordinador...");
 
 	/*
@@ -53,6 +51,19 @@ int main(void) {
 
 	sendMyNameToCoordinador(name, coordinadorSocket);
 	receiveCoordinadorConfiguration(coordinadorSocket);
+
+	pthread_t dumpThread;
+	if (pthread_create(&dumpThread, NULL, (void*) handleDump, NULL) != 0) {
+		log_error(logger, "Error creating dump thread");
+		return -1;
+	}
+
+	if (pthread_detach(dumpThread) != 0) {
+		//TODO habria que matar al hilo que se acaba de crear -> pthread_cancel?
+		log_error(logger,"Couldn't detach dump thread");
+		return -1;
+	}
+
 	waitForCoordinadorStatements(coordinadorSocket);
 
 	free(ipCoordinador);
@@ -64,7 +75,7 @@ int main(void) {
 	return 0;
 }
 
-void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dump) {
+void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dumpDelay) {
 
 	t_config* config;
 	config = config_create(CFG_FILE);
@@ -73,12 +84,11 @@ void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, cha
 	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	*path = strdup(config_get_string_value(config, "PATH"));
 	*name = strdup(config_get_string_value(config, "NAME"));
-	*dump = config_get_int_value(config, "DUMP");
+	*dumpDelay = config_get_int_value(config, "DUMP");
 	config_destroy(config);
 }
 
 // Functions
-
 void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 	if (sendString(name, coordinadorSocket) == CUSTOM_FAILURE) {
 		log_error(logger, "I cannot send my name to coordinador");
@@ -569,6 +579,16 @@ char store(char *key) {
 	updateAccodringToAlgorithm(key);
 
 	return storeKeyAndValue(selectedEntryByKey);
+}
+
+void handleDump() {
+	while(1) {
+		sleep(dumpDelay);
+		pthread_mutex_lock(&dumpMutex);
+		printf("Hago el dump despues de haber esperado el delay: %d\n", dumpDelay);
+		// REVIEW descomentar esto despues de probarlo que funcione bien -> dump();
+		pthread_mutex_unlock(&dumpMutex);
+	}
 }
 
 char dump() {
