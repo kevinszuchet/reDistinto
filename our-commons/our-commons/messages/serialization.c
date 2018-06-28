@@ -83,7 +83,7 @@ int sendString(char* value, int sendSocket) {
 	int sizeValue = strlen(value) + 1;
 
 	addToPackage(&sizeValue, sizeof(sizeValue));
-	addToPackage(value, sizeValue);
+	if (sizeValue != 0) addToPackage(value, sizeValue);
 
 	int result = send_all(sendSocket, package, offset);
 
@@ -98,10 +98,11 @@ int recieveStringBySize(char** stringRef, int sizeString, int recvSocket) {
 }
 
 int recieveString(char** stringRef, int recvSocket) {
+	*stringRef = NULL;
 	int sizeString;
 	return
 		recieveInt(&sizeString, recvSocket) &&
-		recieveStringBySize(stringRef, sizeString, recvSocket);
+		((sizeString != 0) ? recieveStringBySize(stringRef, sizeString, recvSocket): 1);
 }
 
 void* generateOperationPackage(Operation* operation, int* offset) {
