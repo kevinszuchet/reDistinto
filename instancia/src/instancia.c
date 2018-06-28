@@ -120,10 +120,18 @@ void recieveKeysFromCoordinador(int coordinadorSocket){
 
 	for(int i = 0 ; i < keysAmount ; i++){
 		//TODO kiwo fijate si hay que liberar esta clave
-		//y fijarse de levantar de archivos solamente las que recibas, y tal vez deberias borrar los archivos de las que no (pensar si sirve,
-		//tal vez el hecho de no borrarlos nos sirve para chequear algo)
+
 		char* recievedKey = recieveKeyFromCoordinador(coordinadorSocket);
 		log_info(logger, "I recieved key %s", recievedKey);
+
+		char response = getKeyByFile(recievedKey);
+
+		if(response == INSTANCIA_RESPONSE_SUCCESS){
+			log_info(logger, "The key %s was successfully brought back", recievedKey);
+		}
+		else{
+			log_error(logger, "The key %s was couldn't been brought back", recievedKey);
+		}
 	}
 }
 
@@ -145,8 +153,6 @@ void receiveCoordinadorConfiguration(int coordinadorSocket) {
 }
 
 void initialize(int entraces, int entryStorage){
-
-	// REVIEW Que casos de error puede haber?? Pensarlo.
 
 	entriesAmount = entraces;
 	entrySize = entryStorage;
@@ -181,6 +187,8 @@ void handleOperationRequest(int coordinadorSocket){
 		//TODO mandar a compactar. chequear que no se haga nada del compactar dos veces!!!
 		//con alvarez estamos suponiendo que no va a mandar dos need to compact seguidos, siempre como maixmo uno solo
 
+		//compact(); Lo dejo comentado por que no esta testeado todavia
+
 		response = interpretateStatement(operation);
 	}
 
@@ -197,7 +205,7 @@ void handleOperationRequest(int coordinadorSocket){
 
 	if (operation->operationCode == OURSET) {
 		//TODO calcular spaceUsed
-		int spaceUsed = 10;//valueHardcodeado
+		int spaceUsed = getTotalSettedEntries();//valueHardcodeado
 		if (sendInt(spaceUsed, coordinadorSocket) == CUSTOM_FAILURE) {
 			log_error(logger, "I cannot send my spaceUsed to coordinador");
 			exit(-1);
@@ -234,6 +242,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 				//TODO kiwo aca tambien hay que mandar a compactar (lo que esta sobre compactar en handleOperationRequest es para
 				//la instancia que mando a compactar)
 
+				//compact();
 				char response = INSTANCIA_DID_COMPACT;
 				if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
 					log_error(logger, "I cannot tell coordinador that my compactation finished");
@@ -299,9 +308,9 @@ int finish() {
 	list_destroy_and_destroy_elements(entryTable, (void *) destroyTableInfo);
 	free(storage);
 	free(biMap);
-	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
 	log_destroy(replaceAlgorithmsLogger);
 	log_destroy(logger);
+	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
 
 	return 0;
 }
@@ -482,13 +491,17 @@ char compact() {
 			 // Update ValueStart on dictionary(key) element
 			 setValueStart(element->data, auxIndex);
 
-			 for (; auxIndex < totalUsedMemory; auxIndex++) {
+			 while (j < valueSize && auxIndex < totalUsedMemory) {
 				 auxStorage[auxIndex] = value[j];
-				 j++;
+				 auxIndex++;
+				 auxIndex++;
 			 }
 
 			 // Get the next able position to store values
-			 auxIndex = wholeUpperDivision(valueSize, entrySize) * entrySize;
+			 if(valueSize % entrySize != 0){
+				 auxIndex += valueSize % entrySize;
+			 }
+			 auxIndex++;
 			 free(value);
 		}
 
