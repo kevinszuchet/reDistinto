@@ -80,7 +80,7 @@ int sendString(char* value, int sendSocket) {
 		return addToPackageGeneric(&package, value, size, &offset);
 	}
 
-	int sizeValue = strlen(value) + 1;
+	int sizeValue = value != NULL ? strlen(value) + 1 : 0;
 
 	addToPackage(&sizeValue, sizeof(sizeValue));
 	if (sizeValue != 0) addToPackage(value, sizeValue);
