@@ -363,7 +363,7 @@ Instancia* leastSpaceUsed(t_list* aliveInstancias, char* key){
 	Instancia* res = list_get(aliveInstancias, 0);
 
 	void selector(Instancia* someInstance) {
-		if (res->spaceUsed < someInstance->spaceUsed) {
+		if (res->spaceUsed > someInstance->spaceUsed) {
 			res = someInstance;
 		}
 	}
