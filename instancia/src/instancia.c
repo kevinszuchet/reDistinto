@@ -145,11 +145,12 @@ void receiveCoordinadorConfiguration(int coordinadorSocket) {
 		exit(-1);
 	}
 
+	log_info(logger, "I recieve the coordinador configuration, so I can work");
+	initialize(instanciaConfiguration.entriesAmount, instanciaConfiguration.entrySize);
+
+	log_info(logger, "Starting to receive keys to set from files");
 	recieveKeysFromCoordinador(coordinadorSocket);
 
-	log_info(logger, "I recieve the coordinador configuration, so I can work");
-
-	initialize(instanciaConfiguration.entriesAmount, instanciaConfiguration.entrySize);
 }
 
 void initialize(int entraces, int entryStorage){
