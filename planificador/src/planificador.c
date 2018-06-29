@@ -416,6 +416,14 @@ char isLockedKey(char* key) {
 	return (list_any_satisfy(allSystemTakenKeys, &itemIsKey) ? BLOCKED : NOTBLOCKED);
 }
 
+bool isValidEsiId(int esiID) {
+	bool itemIsKey(void* element) {
+		return ((Esi*) element)->id == esiID;
+	}
+
+	return list_any_satisfy(allSystemEsis, &itemIsKey);
+}
+
 void addEsiToReady(Esi* esi) {
 	pthread_mutex_lock(&mutexReadyList);
 	list_add(readyEsis, (void*) esi);

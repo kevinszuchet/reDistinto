@@ -124,6 +124,7 @@
 	void freeTakenKeys(Esi* esi);
 	void freeKey(char* key, Esi* esiTaker);
 	void lockKey(char* key, int esiID);
+	bool isValidEsiId(int esiID);
 
 	// Connection Functions
 	void welcomeEsi(int clientSocket);

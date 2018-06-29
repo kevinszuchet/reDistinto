@@ -115,7 +115,22 @@ void execute(char** parameters) {
 		break;
 
 		case KILL:
-			// TODO nico, falta enviar el KILL al esi
+		    esiID = atoi(parameters[1]);
+
+		    if (!isValidEsiId(esiID)) {
+		    	printf("The entered esiID (%d) does not belong to the system.\n", esiID);
+		    } else {
+		    	Esi * esi = getEsiById(esiID);
+		    	int message = KILLESI;
+		    	if (sendInt(message, esi->socketConection) == CUSTOM_FAILURE) {
+				   log_error(logger, "Coultn't send message to ESI %d", esiID);
+				} else {
+					log_info(logger, "Send kill message to ESI %d in socket %d", esiID, esi->socketConection);
+				}
+
+		    	// REVIEW se aborta en los 2 casos? o si no le puedo mandar el kill no hago nada?
+		    	abortEsi(esi);
+		    }
 		break;
 
 		case STATUS:
