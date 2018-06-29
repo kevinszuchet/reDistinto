@@ -360,13 +360,33 @@ Instancia* equitativeLoadSimulation(t_list* aliveInstancias, char* key){
 }
 
 Instancia* leastSpaceUsed(t_list* aliveInstancias, char* key){
-	//TODO
-	return NULL;
+	Instancia* res = list_get(aliveInstancias, 0);
+
+	void selector(Instancia* someInstance) {
+		if (res->spaceUsed < someInstance->spaceUsed) {
+			res = someInstance;
+		}
+	}
+
+	list_iterate(aliveInstancias, &selector);
+
+	return res;
 }
 
 Instancia* keyExplicit(t_list* aliveInstancias, char* key){
-	//TODO
-	return NULL;
+	int cantInstances = list_size(aliveInstancias);
+	int cantChars = 'z' - 'a';
+	int cantCharsByInstance = cantInstances / cantChars + 1;
+
+	char initialChar = key[0];
+
+	if (initialChar >= 'A' && initialChar <= 'Z') {
+		initialChar += 32;
+	}
+
+	int indexRes = (initialChar - 'a') / cantCharsByInstance;
+
+	return list_get(aliveInstancias, indexRes);
 }
 
 void setDistributionAlgorithm(){
