@@ -129,7 +129,7 @@ Instancia* simulateChooseInstancia(char* key){
 	return chosenInstancia;
 }
 
-char* valueFromKeyDirect(Instancia* instancia, char* key){
+char* getValueFromKey(Instancia* instancia, char* key){
 	instancia->actualCommand = INSTANCIA_CHECK_KEY_STATUS;
 
 	if(send_all(instancia->socket, &instancia->actualCommand, sizeof(char)) == CUSTOM_FAILURE){
@@ -160,12 +160,15 @@ int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* val
 		log_warning(logger, "Couldn't send type of message to planificador to respond status command");
 		planificadorFell();
 	}
+	log_info(logger, "Sent type of message (status response) to planificador");
 
 	//esta habiendo un seg fault aca y supongo que es porque el valor es null. que se hace?
+	//avance: no es null...
 	if(send_all(planificadorSocket, &instanciaOrigin, sizeof(instanciaOrigin)) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send instancia origin to planificador to respond status command");
 		planificadorFell();
 	}
+	log_info(logger, "Sent instancia status to planificador to response status");
 
 	if(instanciaOrigin == STATUS_NO_INSTANCIAS_AVAILABLE){
 		return -1;
@@ -175,11 +178,17 @@ int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* val
 		log_warning(logger, "Couldn't send instancia's name to planificador to respond status command");
 		planificadorFell();
 	}
+	log_info(logger, "Sent name of instancia to response status");
+
+	if(instanciaOrigin == STATUS_SIMULATED_INSTANCIA || instanciaOrigin == STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN){
+		return -1;
+	}
 
 	if(sendString(value, planificadorSocket) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send value to planificador to respond status command");
 		planificadorFell();
 	}
+	log_info(logger, "Sent value %s from key to planificador, because an instancia was found", value);
 
 	return 0;
 }
@@ -206,23 +215,22 @@ int respondStatusToPlanificador(char* key){
 	char* instanciaThatSatisfiesStatus = NULL;
 	char* valueThatSatisfiesStatus = NULL;
 
-	//TODO el planificador va a tener que validar que si el valor devuelto es null, no hay valor
-
+	//TODO ojo que se esta accediendo a los campos de una instancia sin tomar el semaforo (no se lo toma porque el hilo de la instancia lo pide)
 	if(instanciaThatMightHaveValue){
 		instanciaThatSatisfiesStatus = instanciaThatMightHaveValue->name;
 
 		if(instanciaThatMightHaveValue->isFallen){
 			log_info(logger, "Instancia %s is the response to status. It's fallen", instanciaThatSatisfiesStatus);
-			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA);
+			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN);
 			free(valueThatSatisfiesStatus);
 			return -1;
 		}
 
-		valueThatSatisfiesStatus = valueFromKeyDirect(instanciaThatMightHaveValue, key);
+		valueThatSatisfiesStatus = getValueFromKey(instanciaThatMightHaveValue, key);
 
 		if(instanciaStatusFromValueRequest == INSTANCIA_RESPONSE_FALLEN){
 			log_info(logger, "Instancia %s is the response to status. It felt in the middle of the status request", instanciaThatSatisfiesStatus);
-			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA);
+			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN);
 			free(valueThatSatisfiesStatus);
 			return -1;
 		}
@@ -361,26 +369,16 @@ Instancia* keyExplicit(t_list* aliveInstancias, char* key){
 	return NULL;
 }
 
-Instancia* leastSpaceUsedSimulation(t_list* aliveInstancias, char* key){
-	//TODO
-	return NULL;
-}
-
-Instancia* keyExplicitSimulation(t_list* aliveInstancias, char* key){
-	//TODO
-	return NULL;
-}
-
 void setDistributionAlgorithm(){
 	if(strcmp(algorithm, "EL") == 0){
 		distributionAlgorithm = &equitativeLoad;
 		distributionAlgorithmSimulation = &equitativeLoadSimulation;
 	}else if(strcmp(algorithm, "LSU") == 0){
 		distributionAlgorithm = &leastSpaceUsed;
-		distributionAlgorithmSimulation = &leastSpaceUsedSimulation;
+		distributionAlgorithmSimulation = &leastSpaceUsed;
 	}else if(strcmp(algorithm, "KE") == 0){
 		distributionAlgorithm = &keyExplicit;
-		distributionAlgorithmSimulation = &keyExplicitSimulation;
+		distributionAlgorithmSimulation = &keyExplicit;
 	}
 }
 
@@ -673,26 +671,6 @@ int recieveStentenceToProcess(int esiSocket){
 }
 
 int sendKeysToInstancia(Instancia* arrivedInstancia){
-
-	/*int deliverStatus = 0;
-
-	void sendKeyToInstancia(char* key){
-		//TODO alguna forma mejor de cortar el list_iterate?
-		if(deliverStatus < 0){ return; }
-
-		if(sendStingList(arrivedInstancia->storedKeys, arrivedInstancia->socket) == CUSTOM_FAILURE){
-			log_error(logger, "Couldn't send key list to instancia, killing his thread");
-			deliverStatus = -1;
-		}
-	}
-
-	log_info(logger, "About to send keys to instancia");
-	list_iterate(arrivedInstancia->storedKeys, (void*) sendKeyToInstancia);
-
-	if(deliverStatus == 0){
-		log_info(logger, "Keys sent to instancia");
-	}*/
-
 	log_info(logger, "About to send keys to instancia");
 	if(sendStingList(arrivedInstancia->storedKeys, arrivedInstancia->socket) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't send key list to instancia, killing his thread");

@@ -215,6 +215,33 @@ void handleOperationRequest(int coordinadorSocket){
 	log_info(logger, "The operation was successfully notified to coordinador");
 }
 
+void checkValueFromKey(int coordinadorSocket){
+	char* keyFromStatus;
+	//TODO kiwo. aca se recibe un string que es el valor de la clave, y vos tenes que devolver su valor.
+	if(recieveString(&keyFromStatus, coordinadorSocket) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't receive key from coordinador to check its status");
+		exit(-1);
+	}
+
+	log_info(logger, "Gonna get value from key %s", keyFromStatus);
+
+	//TODO aca obtener el valor de la clave. la funcion que obtenga el valor tiene que devolver NULL si la clave no tiene valor
+	char* valueFromKey = "hola";
+
+	char responseKeyStatus = INSTANCIA_DID_CHECK_KEY_STATUS;
+	if (send_all(coordinadorSocket, &responseKeyStatus, sizeof(responseKeyStatus)) == CUSTOM_FAILURE) {
+		log_error(logger, "I cannot tell coordinador that I'm gonna send the value from key %s to response status", keyFromStatus);
+		exit(-1);
+	}
+	log_info(logger, "Sent coordinador that i'm gonna send status response");
+
+	if (sendString(valueFromKey, coordinadorSocket) == CUSTOM_FAILURE) {
+		log_error(logger, "I cannot send the value from ");
+		exit(-1);
+	}
+	log_info(logger, "Sent value %s from key %s to response status", valueFromKey, keyFromStatus);
+}
+
 void waitForCoordinadorStatements(int coordinadorSocket) {
 	while (1) {
 		log_info(logger, "Wait dump, if it is executing I can recieve statements");
@@ -227,6 +254,9 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 			log_error(logger, "Couldn't receive execution command from coordinador");
 			exit(-1);
 		}
+
+		log_info(logger, "I recieved %c command", command);
+		printf("command is %c\n", command);
 
 		switch(command){
 			case INSTANCIA_DO_OPERATION:
@@ -253,8 +283,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 
 			case INSTANCIA_CHECK_KEY_STATUS:
 
-				//TODO kiwo. aca se recibe un string que es el valor de la clave, y vos tenes que devolver su valor.
-				//devolves NULL si no tenes la clave
+				checkValueFromKey(coordinadorSocket);
 
 				break;
 

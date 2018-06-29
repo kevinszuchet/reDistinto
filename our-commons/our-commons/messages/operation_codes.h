@@ -64,6 +64,7 @@
 #define STATUS_SIMULATED_INSTANCIA 'I'
 #define STATUS_NOT_SIMULATED_INSTANCIA 'O'
 #define STATUS_NO_INSTANCIAS_AVAILABLE 'P'
+#define STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN 'A'
 
 char* getCoordinadorResponseName(char coordinadorResponse);
 char* getEsiInformationResponseName(char esiInformation);
