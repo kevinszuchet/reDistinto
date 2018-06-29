@@ -376,7 +376,7 @@ Instancia* leastSpaceUsed(t_list* aliveInstancias, char* key){
 Instancia* keyExplicit(t_list* aliveInstancias, char* key){
 	int cantInstances = list_size(aliveInstancias);
 	int cantChars = 'z' - 'a';
-	int cantCharsByInstance = cantInstances / cantChars + 1;
+	int cantCharsByInstance = cantChars / cantInstances + 1;
 
 	char initialChar = key[0];
 
