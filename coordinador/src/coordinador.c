@@ -368,21 +368,27 @@ Instancia* leastSpaceUsed(t_list* aliveInstancias, char* key){
 		}
 	}
 
-	list_iterate(aliveInstancias, &selector);
+	list_iterate(aliveInstancias, &selector);//Ignore Warning
 
 	return res;
 }
 
 Instancia* keyExplicit(t_list* aliveInstancias, char* key){
-	int cantInstances = list_size(aliveInstancias);
-	int cantChars = 'z' - 'a';
-	int cantCharsByInstance = cantChars / cantInstances + 1;
 
-	char initialChar = key[0];
-
-	if (initialChar >= 'A' && initialChar <= 'Z') {
-		initialChar += 32;
+	char toLower(char _char) {
+		if (_char >= 'A' && _char <= 'Z') {
+			_char += 32;
+		}
+		return _char;
 	}
+
+	int cantInstances = list_size(aliveInstancias);
+	int cantChars = 26;
+	int cantCharsByInstance = cantChars / cantInstances;
+
+	if(cantChars % cantInstances != 0) cantCharsByInstance++;
+
+	char initialChar = toLower(key[0]);
 
 	int indexRes = (initialChar - 'a') / cantCharsByInstance;
 
