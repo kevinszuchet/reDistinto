@@ -79,28 +79,22 @@ void getConfig(int* listeningPort){
 	config_destroy(config);
 }
 
-Instancia* chooseInstancia(char* key){
+Instancia* applyDistributionAlgorithm(char* key, Instancia* (*theAlgorithm)(t_list* aliveInstancias, char* key)){
 	Instancia* chosenInstancia = NULL;
-
 	if(list_size(instancias) != 0){
 		t_list* aliveInstancias = list_filter(instancias, (void*) instanciaIsAlive);
-		chosenInstancia = (*distributionAlgorithm)(aliveInstancias, key);
+		chosenInstancia = (*theAlgorithm)(aliveInstancias, key);
 		list_destroy(aliveInstancias);
 	}
 	return chosenInstancia;
 }
 
 Instancia* simulateChooseInstancia(char* key){
-	Instancia* chosenInstancia = NULL;
-	//TODO revisar si hace falta
-	pthread_mutex_lock(&instanciasListMutex);
-	if(list_size(instancias) != 0){
-		t_list* aliveInstancias = list_filter(instancias, (void*) instanciaIsAlive);
-		chosenInstancia = (*distributionAlgorithmSimulation)(aliveInstancias, key);
-		list_destroy(aliveInstancias);
-	}
-	pthread_mutex_unlock(&instanciasListMutex);
-	return chosenInstancia;
+	return applyDistributionAlgorithm(key, distributionAlgorithmSimulation);
+}
+
+Instancia* chooseInstancia(char* key){
+	return applyDistributionAlgorithm(key, distributionAlgorithm);
 }
 
 char* getValueFromKey(Instancia* instancia, char* key){
@@ -118,12 +112,13 @@ char* getValueFromKey(Instancia* instancia, char* key){
 		return NULL;
 	}
 
+	pthread_mutex_unlock(&instanciasListMutex);
 	sem_wait(&valueFromKeyInstanciaSemaphore);
 
 	return valueFromKey;
 }
 
-//TODO mariano que pasa si se quiere enviar algo null?
+//TODO mariano que pasa si se quiere enviar algo null? ahora no se mandan mas strings nulos pero probarlo por las dudas.
 //TODO mariano pasar al addToPackageGeneric
 int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* value, char instanciaOrigin){
 	//si la clave esta en instancia caida, no se simula y se devuelve NOT_SIMULATED_INSTANCIA
@@ -162,7 +157,7 @@ int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* val
 		log_warning(logger, "Couldn't send value to planificador to respond status command");
 		planificadorFell();
 	}
-	log_info(logger, "Sent value %s from key to planificador, because an instancia was found", value);
+	log_info(logger, "Sent value %s to planificador as a status response, because an instancia was found", value);
 
 	return 0;
 }
@@ -179,32 +174,31 @@ void handleInstanciaSimulationForStatus(char* key) {
 }
 
 //TODO + importante. fijarse si hay problemas con accesos simultaneos a campos distintos de un mismo struct
-
-//TODO revisar casos en los que se hace exit. Se deberian liberar los recursos?
 int respondStatusToPlanificador(char* key){
 	pthread_mutex_lock(&instanciasListMutex);
 	Instancia* instanciaThatMightHaveValue = lookForKey(key);
-	pthread_mutex_unlock(&instanciasListMutex);
 
 	char* instanciaThatSatisfiesStatus = NULL;
 	char* valueThatSatisfiesStatus = NULL;
 
-	//TODO ojo que se esta accediendo a los campos de una instancia sin tomar el semaforo (no se lo toma porque el hilo de la instancia lo pide)
 	if(instanciaThatMightHaveValue){
 		instanciaThatSatisfiesStatus = instanciaThatMightHaveValue->name;
 
 		if(instanciaThatMightHaveValue->isFallen){
 			log_info(logger, "Instancia %s is the response to status. It's fallen", instanciaThatSatisfiesStatus);
 			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN);
+			pthread_mutex_unlock(&instanciasListMutex);
 			free(valueThatSatisfiesStatus);
 			return -1;
 		}
 
 		valueThatSatisfiesStatus = getValueFromKey(instanciaThatMightHaveValue, key);
+		pthread_mutex_lock(&instanciasListMutex);
 
 		if(instanciaStatusFromValueRequest == INSTANCIA_RESPONSE_FALLEN){
 			log_info(logger, "Instancia %s is the response to status. It felt in the middle of the status request", instanciaThatSatisfiesStatus);
 			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN);
+			pthread_mutex_unlock(&instanciasListMutex);
 			free(valueThatSatisfiesStatus);
 			return -1;
 		}
@@ -221,6 +215,7 @@ int respondStatusToPlanificador(char* key){
 		handleInstanciaSimulationForStatus(key);
 	}
 
+	pthread_mutex_unlock(&instanciasListMutex);
 	free(valueThatSatisfiesStatus);
 	return 0;
 }
@@ -264,6 +259,7 @@ void handleStatusRequest(){
 	pthread_mutex_lock(&esisMutex);
 
 	respondStatusToPlanificador(key);
+	free(key);
 
 	pthread_mutex_unlock(&esisMutex);
 }
