@@ -268,7 +268,7 @@ void sendKeyStatusToCoordinador(char* key) {
 	}
 	char op = PLANIFICADOR_KEY_STATUS_RESPONSE;
 	send_all(coordinadorSocket, &op, sizeof(op));
-	if (send(coordinadorSocket, &keyStatus, sizeof(char), 0) < 0){
+	if (send_all(coordinadorSocket, &keyStatus, sizeof(char)) == CUSTOM_FAILURE){
 	   log_error(logger, "Coultn't send message to Coordinador about key status");
 	} else {
 		log_info(logger, "Send key status (%s) to coordinador", getKeyStatusName(keyStatus));
@@ -558,14 +558,14 @@ int handleConcurrence() {
 					} else {
 						clientSocket = i;
 						// handle data from a client
-						resultRecv = recv(clientSocket, &clientMessage, sizeof(char), 0);
-						if (resultRecv <= 0) {
+						resultRecv = recv_all(clientSocket, &clientMessage, sizeof(char));
+						if (resultRecv == CUSTOM_FAILURE) {
 							if (clientSocket == coordinadorSocket) {
 								log_error(logger, "Coordinador disconnected. Exit planificador");
 								exitPlanificador();
 							} else {
 								log_warning(logger, "ESI disconnected.");
-								sleep(1); //todo eliminar y testear que siga andando
+								sleep(1); // TODO eliminar y testear que siga andando
 								abortEsi(getEsiBySocket(clientSocket));
 							}
 							close(clientSocket);
@@ -648,8 +648,6 @@ void initializePlanificador() {
 	sentenceCounter = 0;
 	actualID = 1;
 	finishedExecutingInstruccion = true;
-
-
 
 	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
 }

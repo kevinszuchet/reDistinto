@@ -180,7 +180,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	destroy_operation(operation);
 
 	log_info(logger, "Waiting for coordinador response...");
-	if (recv(coordinadorSocket, &coordinadorResponse, sizeof(char), 0) <= 0) {
+	if (recv_all(coordinadorSocket, &coordinadorResponse, sizeof(char)) == CUSTOM_FAILURE) {
 		log_error(logger, "recv failed on try to get the coordinador operation response", line);
 		exit(-1);
 	}
