@@ -1,0 +1,6 @@
+GET d2
+GET d1
+SET d1 TraemeElDeadlock
+SET d2 LaBandaDelDeadlock
+STORE d2
+STORE d1
