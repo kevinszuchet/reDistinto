@@ -11,7 +11,6 @@
 #define INSTANCIA_FALLEN 1
 
 	#include "../../coordinador.h"
-	#include <semaphore.h>
 
 	typedef struct Instancia{
 		int socket;
@@ -25,24 +24,24 @@
 		char actualCommand;
 	}Instancia;
 
+	Instancia* lastInstanciaChosen;
+
+	Instancia* initialiceArrivedInstancia(int instanciaSocket);
+	Instancia* initialiceArrivedInstanciaDummy(int instanciaSocket);
+	t_list* sendCompactRequestToEveryAliveInstaciaButActual(Instancia* compactCausative);
+	int handleInstanciaCompact(Instancia* actualInstancia, t_list* instanciasToBeCompactedButCausative);
+	int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBeCompactedButCausative);
+	void instanciaExitGracefully(Instancia* instancia);
 	void instanciaDestroyer(Instancia* instancia);
 	int instanciaIsAlive(Instancia* instancia);
-	int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket, t_log* logger);
-	int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize, t_log* logger);
+	int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket);
 	void recieveInstanciaNameDummy(char** arrivedInstanciaName);
-	Instancia* existsInstanciaWithName(char* arrivedInstanciaName);
-	void instanciaIsBack(Instancia* instancia, int instanciaSocket);
-	char instanciaDoOperation(Instancia* instancia, Operation* operation, t_log* logger);
-	char instanciaDoOperationDummy(Instancia* instancia, Operation* operation, t_log* logger);
+	char instanciaDoOperation(Instancia* instancia, Operation* operation);
 	Instancia* lookForKey(char* key);
 	void removeKeyFromFallenInstancia(char* key, Instancia* instancia);
 	void addKeyToInstanciaStruct(Instancia* instancia, char* key);
 	void instanciaHasFallen(Instancia* fallenInstancia);
-	char waitForInstanciaResponse(Instancia* chosenInstancia);
-	char waitForInstanciaResponseDummy();
-	int firstInstanciaBeforeSecond(Instancia* firstInstancia, Instancia* secondInstancia);
 	Instancia* createNewInstancia(int instanciaSocket, char* name);
-	Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char lastLetter, char* name);
 
 	/*-----------------------------------------------------*/
 
