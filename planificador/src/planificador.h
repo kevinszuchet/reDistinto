@@ -63,17 +63,15 @@
 	pthread_t threadConsole;
 	pthread_t threadConsoleInstructions;
 
-	pthread_mutex_t mutexReadyList;
-	pthread_mutex_t mutexEsiReady;
+
+
+
 
 	int sentenceCounter;
 
-	int actualID; // ID number for ESIs, when a new one is created, this number increases by 1
+	int actualID;
 
 	int coordinadorSocket;
-
-	char* keyRecieved;
-	OperationResponse* esiInformation;
 
 	bool finishedExecutingInstruccion;
 
@@ -85,6 +83,7 @@
 
 	// REVIEW donde se usa esta funcion? es necesario el prototipo aca?
 	void removeFdFromSelect(int socket);
+	void showBlockedEsisInKey(char* key);
 
 	// Algorithms (dispatcher) functions
 	void addEsiToReady(Esi* esi);
@@ -120,7 +119,7 @@
 	void blockEsi(char* lockedKey, int esiBlocked);
 	char isLockedKey(char* key);
 	void addKeyToGeneralKeys(char* key);
-	void unlockEsi(char* key);
+	void unlockEsi(char* key,bool isConsoleInstruccion);
 	void freeTakenKeys(Esi* esi);
 	void freeKey(char* key, Esi* esiTaker);
 	void lockKey(char* key, int esiID);

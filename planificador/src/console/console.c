@@ -67,8 +67,8 @@ void execute(char** parameters) {
 
 	char* key = malloc(40);
 	int esiID;
-	int* esiIDpointer;
-	t_queue* blockedEsis;
+
+
 
 	char requestToCoordinador;
 
@@ -90,28 +90,17 @@ void execute(char** parameters) {
 		    	lockKey(key, CONSOLE_BLOCKED);
 			blockEsi(key,esiID);
 
-			log_info(logger, "ESI (%d) was blocked in (%s) key:\n", esiID, key);
+			log_info(logger, "ESI (%d) was blocked in key (%s)\n", esiID, key);
 		break;
 
 		case DESBLOQUEAR:
 			 key = parameters[1];
-			unlockEsi(key);
+			unlockEsi(key,true);
 		break;
 
 		case LISTAR:
 			 key = parameters[1];
-			 blockedEsis = (t_queue*) dictionary_get(blockedEsiDic, key);
-
-			 if (queue_is_empty(blockedEsis))
-				 printf("There are no blocked esis in key (%s)\n", key);
-
-			 for (int i = 0; i < queue_size(blockedEsis); i++) {
-				 printf("ID BEFORE POP = %d\n", *((int*) queue_peek(blockedEsis)));
-				 esiIDpointer = (int*) queue_pop(blockedEsis);
-				 printf("ID BEFORE PRINT = %d\n", *esiIDpointer);
-				 printEsi(getEsiById(*esiIDpointer));
-				 queue_push(blockedEsis, esiIDpointer);
-			 }
+			showBlockedEsisInKey(key);
 		break;
 
 		case KILL:

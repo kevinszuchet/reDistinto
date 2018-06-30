@@ -9,41 +9,14 @@
 
 fd_set master;
 
-int pauseState = CONTINUE; // 1 is running, 0 is paussed
-
-t_dictionary* blockedEsiDic = NULL;
-t_list* readyEsis = NULL;
-t_list* finishedEsis = NULL;
-Esi* runningEsi;
-
-t_list* allSystemTakenKeys = NULL;
-t_list* allSystemKeys = NULL;
-t_list* allSystemEsis = NULL;
-
-int listeningPort;
-char* algorithm;
-int alphaEstimation;
-int initialEstimation;
-char* ipCoordinador;
-int portCoordinador;
-char** blockedKeys;
-
-pthread_t threadConsole;
-pthread_t threadConsoleInstructions;
-
-pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
-
-int sentenceCounter = 0;
-
-int actualID = 1; // ID number for ESIs, when a new one is created, this number increases by 1
 
 char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 
-bool finishedExecutingInstruccion = true;
+pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
 
-int main(void) {
+int main(void){
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
@@ -114,19 +87,12 @@ void addToFinishedList(Esi* finishedEsi) {
 }
 
 void removeFromReady(Esi* esi) {
-
-	pthread_mutex_lock(&mutexReadyList);
-	Esi* esiFromReady;
-	int idToRemove = -1;
-
-	for (int i = 0; i < list_size(readyEsis); i++) {
-		esiFromReady = list_get(readyEsis, i);
-		if (esiFromReady->id == esi->id) {
-			idToRemove = i;
-		}
+	bool isEsiByID(void* element) {
+		return ((Esi*) element)->id == esi->id;
 	}
-
-	list_remove(readyEsis, idToRemove);
+	pthread_mutex_lock(&mutexReadyList);
+	list_remove_by_condition(readyEsis, &isEsiByID);
+	log_info(logger,"After removing an ESI from ready, there are (%d) ESIs ready",list_size(readyEsis));
 	pthread_mutex_unlock(&mutexReadyList);
 }
 
@@ -180,7 +146,7 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key)
 		case BLOCK:
 			log_info(logger, "Operation didn't succed, esi (%d) blocked in key (%s)", runningEsi->id, key);
 			blockEsi(key, runningEsi->id);
-			dislodgeEsi(runningEsi, false);
+
 		break;
 
 		case FREE:
@@ -334,19 +300,24 @@ void addKeyToGeneralKeys(char* key) {
 void blockEsi(char* lockedKey, int esiBlocked) {
 	t_queue* esiQueue;
 	int* esiBlockedCopy = malloc(sizeof(int));
+	*esiBlockedCopy = esiBlocked;
 	if (!dictionary_has_key(blockedEsiDic, lockedKey)) {
-		log_warning(logger, "Trying to block an ESI in a key that is not already in the dictionary");
+		esiQueue = queue_create();
+		queue_push(esiQueue, esiBlockedCopy);
+		dictionary_put(blockedEsiDic,lockedKey,esiQueue);
+		log_info(logger,"Creating a queue with an ESI in blockedEsiDic");
 	} else {
 		esiQueue = dictionary_get(blockedEsiDic, lockedKey);
-		*esiBlockedCopy = esiBlocked;
 		queue_push(esiQueue, esiBlockedCopy);
-
-		log_info(logger, "Added ESI (%d) to blocked dictionary in existing key (%s)", *esiBlockedCopy, lockedKey);
 	}
+	log_info(logger, "Added ESI (%d) to blocked dictionary in key (%s)", *esiBlockedCopy, lockedKey);
 
-	if (runningEsi->id != esiBlocked) {
+	if(runningEsi!=NULL && runningEsi->id == esiBlocked){
+		dislodgeEsi(getEsiById(esiBlocked),false);
+	}else{
 		removeFromReady(getEsiById(esiBlocked));
 	}
+
 }
 
 void lockKey(char* key, int esiID) {
@@ -360,6 +331,7 @@ void lockKey(char* key, int esiID) {
 	if (!dictionary_has_key(blockedEsiDic, key)) {
 		t_queue* esiQueue = queue_create();
 		dictionary_put(blockedEsiDic, key, esiQueue);
+		log_info(logger,"Creating an empty key in blockedEsiDic");
 	}
 
 	if (isLockedKey(key) == NOTBLOCKED) {
@@ -387,17 +359,26 @@ Esi* getEsiBySocket(int socket) {
 
 void freeKey(char* key, Esi* esiTaker) {
 	removeLockedKey(key, esiTaker);
-	unlockEsi(key);
+	unlockEsi(key,false);
 }
 
-void unlockEsi(char* key) {
+void unlockEsi(char* key,bool isConsoleInstruccion) {
 	bool keyCompare(void* takenKey) {
 		return string_equals_ignore_case((char*) takenKey, key);
 	}
 
-	list_remove_by_condition(allSystemTakenKeys, &keyCompare);
 	t_queue* blockedEsisQueue = dictionary_get(blockedEsiDic, key);
 	int* unlockedEsi;
+
+	if(isConsoleInstruccion){
+		if(queue_is_empty(blockedEsisQueue)){
+			list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+		}
+	}else{
+		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+	}
+
+
 
 	if (!queue_is_empty(blockedEsisQueue)) {
 		unlockedEsi = (int*) queue_pop(blockedEsisQueue);
@@ -406,6 +387,22 @@ void unlockEsi(char* key) {
 	} else {
 		log_info(logger, "There are no ESIs to unlock from key (%s)", key);
 	}
+}
+
+void showBlockedEsisInKey(char* key){
+	 t_queue* blockedEsis;
+	 blockedEsis = (t_queue*)dictionary_get(blockedEsiDic, key);
+	 int* esiIDpointer;
+	 if (queue_is_empty(blockedEsis))
+		 printf("There are no blocked esis in key (%s)\n", key);
+
+	 for (int i = 0; i < queue_size(blockedEsis); i++) {
+		 printf("ID BEFORE POP = %d\n", *((int*) queue_peek(blockedEsis)));
+		 esiIDpointer = (int*) queue_pop(blockedEsis);
+		 printf("ID BEFORE PRINT = %d\n", *esiIDpointer);
+		 printEsi(getEsiById(*esiIDpointer));
+		 queue_push(blockedEsis, esiIDpointer);
+	 }
 }
 
 char isLockedKey(char* key) {
@@ -568,7 +565,7 @@ int handleConcurrence() {
 								exitPlanificador();
 							} else {
 								log_warning(logger, "ESI disconnected.");
-								sleep(1);
+								sleep(1); //todo eliminar y testear que siga andando
 								abortEsi(getEsiBySocket(clientSocket));
 							}
 							close(clientSocket);
@@ -585,6 +582,7 @@ int handleConcurrence() {
 					if (finishedExecutingInstruccion) {
 						if (runningEsi == NULL) {
 							if (list_size(readyEsis) > 0) {
+								log_info(logger,"Hay (%d) ESIs para ejecutar",list_size(readyEsis));
 								nextEsi = getNextEsi();
 								moveEsiToRunning(nextEsi);
 							}
@@ -644,6 +642,14 @@ void initializePlanificador() {
 	readyEsis = list_create();
 	finishedEsis = list_create();
 	runningEsi = NULL;
+
+	pauseState = CONTINUE;
+
+	sentenceCounter = 0;
+	actualID = 1;
+	finishedExecutingInstruccion = true;
+
+
 
 	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
 }
