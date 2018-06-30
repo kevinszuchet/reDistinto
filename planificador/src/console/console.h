@@ -16,6 +16,7 @@
 	#include <ctype.h>
 	#include <commons/string.h>
 	#include "../planificador.h"
+	#include "../tad_esi/tad_esi.h"
 
 	#define PAUSAR 1
 	#define CONTINUAR 2
@@ -33,6 +34,7 @@
 	void executeDeadlockAlgorithm();
 	int getEsiIndexByID(int id);
 	int getEsiTakerIDByKeyTaken(char* key);
+	Esi* getEsiByIndex(int index);
 
 	int parameterQuantity(char** parameters);
 	int validCommand(char** parameters);

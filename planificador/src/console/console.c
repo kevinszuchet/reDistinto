@@ -152,7 +152,8 @@ void executeDeadlockAlgorithm(){
 	int esiCount = list_size(allSystemEsis);
 	int i, j;
 
-	int *asignationMatrix[esiCount];
+
+	int **asignationMatrix = (int **)malloc(esiCount * sizeof(int*));
 	for (i=0; i<esiCount; i++)
 		asignationMatrix[i] = (int *)malloc(esiCount * sizeof(int));
 
@@ -172,15 +173,10 @@ void executeDeadlockAlgorithm(){
 		for (int j = 0; j < queue_size(blockedEsis); j++) {
 			actualEsiID = *((int*) queue_pop(blockedEsis));
 			takerEsiID = getEsiTakerIDByKeyTaken(key);
-			log_info(logger, "ACTUAL ID = %d", actualEsiID);
-			log_info(logger, "TAKER ID = %d", takerEsiID);
-			if(takerEsiID ==-1){
-				log_info(logger, "Esi (%d) blocked at key (%s), but its not taken", actualEsiID, key);
-			}else{
-				log_info(logger, "Esi (%d) blocked at key (%s), taken by Esi (%d)", actualEsiID, key, takerEsiID);
-				log_info(logger, "Fila (%d)",getEsiIndexByID(actualEsiID));
-				log_info(logger, "Columna (%d)",getEsiIndexByID(takerEsiID));
 
+			if(takerEsiID ==-1){
+
+			}else{
 				asignationMatrix[getEsiIndexByID(actualEsiID)][getEsiIndexByID(takerEsiID)] = 1;
 			}
 
@@ -197,8 +193,79 @@ void executeDeadlockAlgorithm(){
 			  for (j = 0; j < esiCount; j++)
 				 printf("%d ", asignationMatrix[i][j]);
 		}
-	printf("\n");
+	printf("\n"); //todo borrar despues de testear deadlocks mas complejos, sirve para ver la matriz de espera y retencion
 
+	t_list* totalDeadlockEsis = list_create();
+	t_list* actualDeadlockEsis = list_create();
+	bool foundPosibleDeadlock;
+	int indexToContinue;
+	int** indexCopy = malloc(sizeof(int*)*esiCount);
+	for(int i = 0;i<esiCount;i++){
+		indexCopy[i] = malloc(sizeof(int));
+	}
+
+	void showEsiIdByIndex(void* element){
+		int* index = (int*)element;
+		log_info(logger,"Esi (%d)",(getEsiByIndex(*index))->id);
+	}
+
+	for(int indexFila = 0;indexFila<esiCount;indexFila++){
+		//printf("Chequeando deadlock desde fila (%d)\n",indexFila);
+		list_clean(actualDeadlockEsis);
+		foundPosibleDeadlock = true;
+		indexToContinue = indexFila;
+		bool actualIndexInList(void* element) {
+				//printf("Chequeo contra index (%d)\n",indexToContinue);
+				int* elementToIndex = (int*)element;
+				//printf("Elemento existente en posible deadlock (%d)\n",*elementToIndex);
+				if(*elementToIndex== indexToContinue){
+					return true;
+				}else{
+					return false;
+				}
+		}
+		if(!list_any_satisfy(totalDeadlockEsis,&actualIndexInList)){
+			while(foundPosibleDeadlock){
+				foundPosibleDeadlock = false;
+				if(list_any_satisfy(actualDeadlockEsis,&actualIndexInList)){
+					//printf("El primer elemento de la lista de deadlock actual es (%d)",*((int*)list_get(actualDeadlockEsis,0)));
+					//printf("La fila (%d) llega a deadlock\n",indexFila);
+					log_info(logger,"Founded deadlock between ");
+					list_iterate(actualDeadlockEsis,&showEsiIdByIndex);
+					list_add_all(totalDeadlockEsis,actualDeadlockEsis);
+				}else{
+					*(indexCopy[indexToContinue]) = indexToContinue;
+					list_add(actualDeadlockEsis,indexCopy[indexToContinue]);
+					//printf("Agrego index (%d) a la lista de deadlock actual\n",indexToContinue);
+					//printf("El primer elemento de la lista de deadlock actual es (%d)",*((int*)list_get(actualDeadlockEsis,0)));
+					for(int indexColumna = 0;indexColumna<esiCount;indexColumna++){
+						if(asignationMatrix[indexToContinue][indexColumna]==1){
+							foundPosibleDeadlock=true;
+							indexToContinue = indexColumna;
+							//printf("Encontre un 1 en fila (%d) y columna (%d)\n",indexFila,indexColumna);
+
+						}
+					}
+				}
+			}
+			//printf("La fila (%d) no llega a deadlock\n",indexFila);
+		}else{
+			//printf("La fila (%d) ya esta contemplada en deadlock\n",indexFila);
+		}
+	}
+	if(list_size(totalDeadlockEsis)==0){
+		log_info(logger,"There is no deadlock");
+	}
+	//todo borrar todos los comentarios despues de testear deadlocks mas complejos
+
+	for (i=0; i<esiCount; i++)
+		free(asignationMatrix[i]);
+
+	//free(asignationMatrix);
+	for(int i = 0;i<esiCount;i++){
+		free(indexCopy[i]);
+	}
+	//free(indexCopy);
 
 }
 int getEsiIndexByID(int id){
@@ -219,16 +286,23 @@ int getEsiIndexByID(int id){
 	/*exitPlanificador();
 	exit(-1);*/
 }
+Esi* getEsiByIndex(int index){
+	Esi* esi;
+	esi = (Esi*)list_get(allSystemEsis,index);
+	return esi;
+
+}
 int getEsiTakerIDByKeyTaken(char* key){
 	bool itemIsKey(void* item) {
 		return strcmp(key, (char*) item) == 0;
 	}
 	Esi* esi;
-
+	int idCopy;
 	for(int i = 0;i<list_size(allSystemEsis);i++){
 		esi = list_get(allSystemEsis,i);
 		if(list_any_satisfy(esi->lockedKeys,&itemIsKey)){
-			return esi->id;
+			idCopy = esi->id;
+			return idCopy;
 		}
 	}
 	return -1;
