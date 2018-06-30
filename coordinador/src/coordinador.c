@@ -992,6 +992,7 @@ int handleInstancia(int instanciaSocket){
 				break;
 		}
 
+		actualInstancia->actualCommand = 0;
 		pthread_mutex_unlock(&instanciasListMutex);
 	}
 
