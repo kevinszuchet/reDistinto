@@ -185,7 +185,7 @@ void abortEsi(Esi* esi) {
 
 	freeTakenKeys(esi);
 	deleteEsiFromSystem(esi);
-	list_remove_and_destroy_by_condition(allSystemEsis, &isEsiById, destroyEsi);
+	list_remove_by_condition(allSystemEsis, &isEsiById);
 }
 
 void deleteEsiFromSystem(Esi* esiToDelete) {

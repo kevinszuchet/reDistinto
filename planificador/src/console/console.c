@@ -118,7 +118,7 @@ void execute(char** parameters) {
 				}
 
 		    	// REVIEW se aborta en los 2 casos? o si no le puedo mandar el kill no hago nada?
-		    	abortEsi(esi);
+		    	//abortEsi(esi);
 		    }
 		break;
 
