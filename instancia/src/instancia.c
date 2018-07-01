@@ -233,7 +233,6 @@ void checkValueFromKey(int coordinadorSocket){
 		log_error(logger, "I cannot send the value from ");
 		exit(-1);
 	}
-	free(valueFromKey);
 	log_info(logger, "Sent value %s from key %s to response status", valueFromKey, keyFromStatus);
 }
 
@@ -609,6 +608,8 @@ char store(char *key) {
 	t_link_element * selectedElemByKey = list_find_with_param(entryTable, key, hasKey);
 
 	if (selectedElemByKey == NULL) {
+
+		log_info(logger, "The key: %s, was not found, the store couldn't be done", key);
 		return INSTANCIA_RESPONSE_FAILED;
 	}
 
@@ -623,7 +624,7 @@ void handleDump() {
 	while(1) {
 		sleep(dumpDelay);
 		pthread_mutex_lock(&dumpMutex);
-		printf("Hago el dump despues de haber esperado el delay: %d\n", dumpDelay);
+		log_info(logger, "DUMP is done after delay waiting: %d\n", dumpDelay);
 		// REVIEW descomentar esto despues de probarlo que funcione bien -> dump();
 		pthread_mutex_unlock(&dumpMutex);
 	}
