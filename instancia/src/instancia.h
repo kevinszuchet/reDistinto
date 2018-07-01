@@ -47,6 +47,8 @@
 	char * algorithm;
 	char* path;
 	int dumpDelay;
+	char * name;
+	char* ipCoordinador;
 
 	t_log * logger;
 	t_log * replaceAlgorithmsLogger;
@@ -79,7 +81,7 @@
 	void handleDump();
 	char dump();
 	char store(char *key);
-	char * getValueForCoordinador(char * key, char * value);
+	char * getValueForCoordinador(char * key);
 	char getKeyByFile(char * key);
 
 	int wholeUpperDivision(int x, int y);

@@ -15,9 +15,9 @@ int main(void) {
 	initSerializationLogger(logger);
 	replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
 
-	char* ipCoordinador;
+
 	int portCoordinador;
-	char * name;
+
 
 	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dumpDelay);
 
@@ -35,9 +35,6 @@ int main(void) {
 	 * */
 
 	mkdir(path, S_IRWXU);
-
-	// TODO Tratar de levantar la instancia si existe una carpeta con el mismo nombre
-	// void tryToComeAliveAgain(name)
 
 	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA, logger);
 
@@ -65,11 +62,6 @@ int main(void) {
 	}
 
 	waitForCoordinadorStatements(coordinadorSocket);
-
-	free(ipCoordinador);
-	free(algorithm);
-	free(path);
-	free(name);
 
 	finish();
 	return 0;
@@ -186,7 +178,7 @@ void handleOperationRequest(int coordinadorSocket){
 		}
 
 		//TODO mandar a compactar. chequear que no se haga nada del compactar dos veces!!!
-		//con alvarez estamos suponiendo que no va a mandar dos need to compact seguidos, siempre como maixmo uno solo
+		//con alvarez estamos suponiendo que no va a mandar dos need to compact seguidos, siempre como maximo uno solo
 
 		//compact(); Lo dejo comentado por que no esta testeado todavia
 
@@ -205,7 +197,7 @@ void handleOperationRequest(int coordinadorSocket){
 	}
 
 	if (operation->operationCode == OURSET) {
-		//TODO calcular spaceUsed
+
 		int spaceUsed = getTotalSettedEntries();//valueHardcodeado
 		if (sendInt(spaceUsed, coordinadorSocket) == CUSTOM_FAILURE) {
 			log_error(logger, "I cannot send my spaceUsed to coordinador");
@@ -217,8 +209,9 @@ void handleOperationRequest(int coordinadorSocket){
 }
 
 void checkValueFromKey(int coordinadorSocket){
+
 	char* keyFromStatus;
-	//TODO kiwo. aca se recibe un string que es el valor de la clave, y vos tenes que devolver su valor.
+
 	if(recieveString(&keyFromStatus, coordinadorSocket) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't receive key from coordinador to check its status");
 		exit(-1);
@@ -227,7 +220,7 @@ void checkValueFromKey(int coordinadorSocket){
 	log_info(logger, "Gonna get value from key %s", keyFromStatus);
 
 	//TODO aca obtener el valor de la clave. la funcion que obtenga el valor tiene que devolver NULL si la clave no tiene valor
-	char* valueFromKey = "hola";
+	char* valueFromKey = getValueForCoordinador(keyFromStatus);
 
 	char responseKeyStatus = INSTANCIA_DID_CHECK_KEY_STATUS;
 	if (send_all(coordinadorSocket, &responseKeyStatus, sizeof(responseKeyStatus)) == CUSTOM_FAILURE) {
@@ -240,6 +233,7 @@ void checkValueFromKey(int coordinadorSocket){
 		log_error(logger, "I cannot send the value from ");
 		exit(-1);
 	}
+	free(valueFromKey);
 	log_info(logger, "Sent value %s from key %s to response status", valueFromKey, keyFromStatus);
 }
 
@@ -338,6 +332,10 @@ int finish() {
 	list_destroy_and_destroy_elements(entryTable, (void *) destroyTableInfo);
 	free(storage);
 	free(biMap);
+	free(ipCoordinador);
+	free(algorithm);
+	free(path);
+	free(name);
 	log_destroy(replaceAlgorithmsLogger);
 	log_destroy(logger);
 	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
@@ -398,10 +396,6 @@ char set(char *key, char *value){
 	// If the key exists, the value is updated
 	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
 
-		/*
-		 * Por las dudas guardo la información de la key que voy a borrar para hacerle update por si algo sale mal la reetablesco.
-		 * TODO revisarlo bien y pensar bien como y cuando chequear si no se pudo hacer el set para reetablecer la key.
-		 * */
 
 		log_info(logger, "The key: %s already exists, so we are about to update it.", key);
 
@@ -658,9 +652,9 @@ char dump() {
 	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
-//TODO Esta mal esta función, estoy esperando el refactor del coordinador para hacerla bien
-/*char * getValueForCoordinador(char * key, char * value) {
+char * getValueForCoordinador(char * key) {
 
+	char * value = NULL;
 	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
 
 		log_info(logger, "The key: %s exists, so we are about to get its associated value.", key);
@@ -671,15 +665,21 @@ char dump() {
 
 		entryInfo = findedElement->data;
 		valueStart = entryInfo->valueStart;
+		log_info(logger, "Value start: %d", valueStart);
 		valueSize = entryInfo->valueSize;
+		log_info(logger, "Value size: %d", valueSize);
 		value = malloc((valueSize * sizeof(char)) + 1);
+		log_info(logger, "The key: %s exists, so we are about to get its associated value.", key);
 		getValue(value, valueStart * entrySize, valueSize);
+		log_info(logger, "Value: %s", value);
+	}
+	else{
 
-		return value;
+		log_info(logger, "The key %s doesn't exist", key);
 	}
 
-	return INSTANCIA_RESPONSE_FAILED;
-}*/
+	return value;
+}
 
 
 char getKeyByFile(char * key) {
