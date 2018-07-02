@@ -206,7 +206,7 @@ void handleOperationRequest(int coordinadorSocket) {
 			exit(-1);
 		}
 
-		log_error(logger, "Sended space used to coordinador, total setted entries: %d", spaceUsed);
+		log_info(logger, "Sended space used to coordinador, total setted entries: %d", spaceUsed);
 	}
 
 	log_info(logger, "The operation was successfully notified to coordinador");
@@ -233,7 +233,7 @@ void checkValueFromKey(int coordinadorSocket) {
 	log_info(logger, "Sent coordinador that i'm gonna send status response");
 
 	if (sendString(valueFromKey, coordinadorSocket) == CUSTOM_FAILURE) {
-		log_error(logger, "I cannot send the value from key: %",keyFromStatus);
+		log_error(logger, "I cannot send the value from key: %s",keyFromStatus);
 		exit(-1);
 	}
 	log_info(logger, "Sent value %s from key %s to response status", valueFromKey, keyFromStatus);
@@ -397,7 +397,7 @@ char set(char *key, char *value) {
 		}
 		else {
 
-			log_error(logger,"The key: %s can be updated because the current value occupies more or equals entries than the new one", key);
+			log_info	(logger,"The key: %s can be updated because the current value occupies more or equals entries than the new one", key);
 			biMapUpdate(entryInfo->valueStart, wholeUpperDivision(entryInfo->valueSize, entrySize), IS_EMPTY);
 
 			valueStart = entryInfo->valueStart;
@@ -563,7 +563,7 @@ int getTotalSettedEntries() {
 	int totalEntries = 0;
 
 	for (int i = 0; i < entriesAmount; i++) {
-		if (!biMap[i]) {
+		if (biMap[i] == 1) {
 			totalEntries++;
 		}
 	}
@@ -659,7 +659,7 @@ void dump() {
 			log_error(logger, "The store number %d couldn't be done", position);
 		}
 
-		log_error(logger, "The store number %d was successfully done", position);
+		log_info(logger, "The store number %d was successfully done", position);
 
 		element = element->next;
 		position++;
