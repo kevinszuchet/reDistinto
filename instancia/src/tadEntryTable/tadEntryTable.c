@@ -11,7 +11,7 @@ void createTableInfo(entryTableInfo * entryInfo, char * key, int valueEntryStart
 	setKey(entryInfo, key);
 	entryInfo->valueStart = valueEntryStart;
 	entryInfo->valueSize = valueTotalSize;
-	entryInfo->usage = 0;
+	entryInfo->lastReference = 0;
 }
 
 char * getKey(entryTableInfo * entryInfo) {
@@ -35,16 +35,13 @@ int getValueSize(entryTableInfo * entryInfo) {
 	return entryInfo->valueSize;
 }
 
-int getKeyUsage(entryTableInfo *entryInfo) {
-	return entryInfo->usage;
+int getLastReference(entryTableInfo *entryInfo) {
+	return entryInfo->lastReference;
 }
 
-void increaseKeyUsage(entryTableInfo *entryInfo) {
-	entryInfo->usage++;
-}
-
-void setUsageToZero(entryTableInfo *entryInfo) {
-	entryInfo->usage = 0;
+void increaseLastReference(entryTableInfo *entryInfo) {
+	entryInfo->lastReference = currentReference;
+	currentReference++;
 }
 
 bool hasKey(void * entryInfo, void * key) {

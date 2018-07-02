@@ -89,28 +89,28 @@ void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 	log_info(logger, "I send my name to coordinador");
 }
 
-char* recieveKeyFromCoordinador(int coordinadorSocket){
+char* recieveKeyFromCoordinador(int coordinadorSocket) {
 	char* key;
-	if(recieveString(&key, coordinadorSocket) == CUSTOM_FAILURE){
+	if (recieveString(&key, coordinadorSocket) == CUSTOM_FAILURE) {
 		log_warning(logger, "Couldn't receive key from coordinador");
 		exit(-1);
 	}
 	return key;
 }
 
-void recieveKeysFromCoordinador(int coordinadorSocket){
+void recieveKeysFromCoordinador(int coordinadorSocket) {
 	int keysAmount;
-	if(recieveInt(&keysAmount, coordinadorSocket) == CUSTOM_FAILURE){
+	if (recieveInt(&keysAmount, coordinadorSocket) == CUSTOM_FAILURE) {
 		log_error(logger, "Cannot recieve number of keys from coordinador");
 		exit(-1);
 	}
 
-	if(keysAmount == 0){
+	if (keysAmount == 0) {
 		log_info(logger, "There are no keys to raise");
 		return;
 	}
 
-	for(int i = 0 ; i < keysAmount ; i++){
+	for(int i = 0 ; i < keysAmount ; i++) {
 		//TODO kiwo fijate si hay que liberar esta clave
 
 		char* recievedKey = recieveKeyFromCoordinador(coordinadorSocket);
@@ -118,10 +118,9 @@ void recieveKeysFromCoordinador(int coordinadorSocket){
 
 		char response = getKeyByFile(recievedKey);
 
-		if(response == INSTANCIA_RESPONSE_SUCCESS){
+		if (response == INSTANCIA_RESPONSE_SUCCESS) {
 			log_info(logger, "The key %s was successfully brought back", recievedKey);
-		}
-		else{
+		} else {
 			log_error(logger, "The key %s was couldn't been brought back", recievedKey);
 		}
 	}
@@ -145,7 +144,7 @@ void receiveCoordinadorConfiguration(int coordinadorSocket) {
 
 }
 
-void initialize(int entraces, int entryStorage){
+void initialize(int entraces, int entryStorage) {
 
 	entriesAmount = entraces;
 	entrySize = entryStorage;
@@ -155,10 +154,12 @@ void initialize(int entraces, int entryStorage){
 	storage = calloc(1, entraces * entryStorage);
 	biMapInitialize(entraces);
 
+	currentReference = 0;
+
 	log_info(logger, "Instancia was intialized correctly");
 }
 
-void handleOperationRequest(int coordinadorSocket){
+void handleOperationRequest(int coordinadorSocket) {
 	Operation * operation = NULL;
 	char response;
 
@@ -171,7 +172,7 @@ void handleOperationRequest(int coordinadorSocket){
 
 	response = interpretateStatement(operation);
 
-	if(response == INSTANCIA_COMPACT_REQUEST){
+	if (response == INSTANCIA_COMPACT_REQUEST) {
 		if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
 			log_error(logger, "I cannot send my response to coordinador");
 			exit(-1);
@@ -186,7 +187,7 @@ void handleOperationRequest(int coordinadorSocket){
 	}
 
 	char typeOfResponse = INSTANCIA_DID_OPERATION;
-	if(send_all(coordinadorSocket, &typeOfResponse, sizeof(char)) == CUSTOM_FAILURE){
+	if (send_all(coordinadorSocket, &typeOfResponse, sizeof(char)) == CUSTOM_FAILURE) {
 		log_error(logger, "I cannot send the type of response to coordinador");
 		exit(-1);
 	}
@@ -208,11 +209,11 @@ void handleOperationRequest(int coordinadorSocket){
 	log_info(logger, "The operation was successfully notified to coordinador");
 }
 
-void checkValueFromKey(int coordinadorSocket){
+void checkValueFromKey(int coordinadorSocket) {
 
 	char* keyFromStatus;
 
-	if(recieveString(&keyFromStatus, coordinadorSocket) == CUSTOM_FAILURE){
+	if (recieveString(&keyFromStatus, coordinadorSocket) == CUSTOM_FAILURE) {
 		log_warning(logger, "Couldn't receive key from coordinador to check its status");
 		exit(-1);
 	}
@@ -244,7 +245,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 		log_info(logger, "Wait coordinador statement to execute");
 
 		char command;
-		if(recv_all(coordinadorSocket, &command, sizeof(command)) == CUSTOM_FAILURE){
+		if (recv_all(coordinadorSocket, &command, sizeof(command)) == CUSTOM_FAILURE) {
 			log_error(logger, "Couldn't receive execution command from coordinador");
 			exit(-1);
 		}
@@ -252,7 +253,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 		log_info(logger, "I recieved %c command", command);
 		printf("command is %c\n", command);
 
-		switch(command){
+		switch(command) {
 			case INSTANCIA_DO_OPERATION:
 
 				handleOperationRequest(coordinadorSocket);
@@ -360,7 +361,7 @@ void biMapUpdate(int valueStart, int entriesForValue, int biMapValue) {
 }
 
 /* Set */
-char set(char *key, char *value){
+char set(char *key, char *value) {
 
 	int entriesForValue;
 	int valueStart = ENTRY_START_ERROR;
@@ -521,7 +522,7 @@ char compact() {
 			 }
 
 			 // Get the next able position to store values
-			 if(valueSize % entrySize != 0){
+			 if (valueSize % entrySize != 0) {
 				 auxIndex += valueSize % entrySize;
 			 }
 			 auxIndex++;
@@ -615,9 +616,13 @@ char store(char *key) {
 
 	entryTableInfo * selectedEntryByKey = selectedElemByKey->data;
 
-	updateAccodringToAlgorithm(key);
+	char response = storeKeyAndValue(selectedEntryByKey);
 
-	return storeKeyAndValue(selectedEntryByKey);
+	if (response == INSTANCIA_RESPONSE_SUCCESS) {
+		updateAccodringToAlgorithm(key);
+	}
+
+	return response;
 }
 
 void handleDump() {
@@ -638,7 +643,7 @@ char dump() {
 	t_link_element * element = entryTable->head;
 	while (element != NULL) {
 
-		if(storeKeyAndValue(element->data) == INSTANCIA_RESPONSE_FAILED) {
+		if (storeKeyAndValue(element->data) == INSTANCIA_RESPONSE_FAILED) {
 			//TODO se sigue con el dump o se corta acá si falla??
 			log_error(logger, "The store number %d couldn't be done", position);
 		}
@@ -673,9 +678,7 @@ char * getValueForCoordinador(char * key) {
 		log_info(logger, "The key: %s exists, so we are about to get its associated value.", key);
 		getValue(value, valueStart * entrySize, valueSize);
 		log_info(logger, "Value: %s", value);
-	}
-	else{
-
+	} else {
 		log_info(logger, "The key %s doesn't exist", key);
 	}
 
@@ -695,7 +698,7 @@ char getKeyByFile(char * key) {
 	struct stat sb;
 	free(filePath);
 
-	if(fstat(fd, &sb) == -1) {
+	if (fstat(fd, &sb) == -1) {
 
 		log_error(logger, "Couldn't open the file that contains the key to set");
 

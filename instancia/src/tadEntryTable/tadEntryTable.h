@@ -13,14 +13,14 @@
 	#include <stdio.h>
 	#include <stdbool.h>
 
-
 	typedef struct entryTableInfo{
 		char * key;
 		int valueStart;
 		int valueSize;
-		int usage;
-
+		int lastReference;
 	} entryTableInfo;
+
+	int currentReference;
 
 	void createTableInfo(entryTableInfo * entryInfo, char * key, int valueEntryStart, int valueTotalSize);
 
@@ -32,9 +32,8 @@
 
 	int getValueSize(entryTableInfo *entryInfo);
 
-	int getKeyUsage(entryTableInfo *entryInfo);
-	void increaseKeyUsage(entryTableInfo *entryInfo);
-	void setUsageToZero(entryTableInfo *entryInfo);
+	int getLastReference(entryTableInfo *entryInfo);
+	void increaseLastReference(entryTableInfo *entryInfo);
 
 	void destroyTableInfo(entryTableInfo * entryInfo);
 
