@@ -39,7 +39,7 @@ int main(void) {
 	int coordinadorSocket = connectToServer(ipCoordinador, portCoordinador, COORDINADOR, INSTANCIA, logger);
 
 	if (coordinadorSocket < 0) {
-		//reintentar conexion?
+
 		log_error(logger, "An error has occurred while trying to connect to coordinador\n socket number: %d", coordinadorSocket);
 		return -1;
 	}
@@ -56,7 +56,8 @@ int main(void) {
 	}
 
 	if (pthread_detach(dumpThread) != 0) {
-		//TODO habria que matar al hilo que se acaba de crear -> pthread_cancel?
+		//TODO habria que matar al hilo que se acaba de crear -> pthread_cancel(dumpThread);
+		pthread_cancel(dumpThread);
 		log_error(logger,"Couldn't detach dump thread");
 		return -1;
 	}
@@ -199,11 +200,13 @@ void handleOperationRequest(int coordinadorSocket) {
 
 	if (operation->operationCode == OURSET) {
 
-		int spaceUsed = getTotalSettedEntries();//valueHardcodeado
+		int spaceUsed = getTotalSettedEntries();
 		if (sendInt(spaceUsed, coordinadorSocket) == CUSTOM_FAILURE) {
 			log_error(logger, "I cannot send my spaceUsed to coordinador");
 			exit(-1);
 		}
+
+		log_error(logger, "Sended space used to coordinador, total setted entries: %d", spaceUsed);
 	}
 
 	log_info(logger, "The operation was successfully notified to coordinador");
@@ -220,7 +223,6 @@ void checkValueFromKey(int coordinadorSocket) {
 
 	log_info(logger, "Gonna get value from key %s", keyFromStatus);
 
-	//TODO aca obtener el valor de la clave. la funcion que obtenga el valor tiene que devolver NULL si la clave no tiene valor
 	char* valueFromKey = getValueForCoordinador(keyFromStatus);
 
 	char responseKeyStatus = INSTANCIA_DID_CHECK_KEY_STATUS;
@@ -231,7 +233,7 @@ void checkValueFromKey(int coordinadorSocket) {
 	log_info(logger, "Sent coordinador that i'm gonna send status response");
 
 	if (sendString(valueFromKey, coordinadorSocket) == CUSTOM_FAILURE) {
-		log_error(logger, "I cannot send the value from ");
+		log_error(logger, "I cannot send the value from key: %",keyFromStatus);
 		exit(-1);
 	}
 	log_info(logger, "Sent value %s from key %s to response status", valueFromKey, keyFromStatus);
@@ -249,9 +251,6 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 			log_error(logger, "Couldn't receive execution command from coordinador");
 			exit(-1);
 		}
-
-		log_info(logger, "I recieved %c command", command);
-		printf("command is %c\n", command);
 
 		switch(command) {
 			case INSTANCIA_DO_OPERATION:
@@ -355,7 +354,7 @@ void emptyBiMap(int entraces) {
 
 void biMapUpdate(int valueStart, int entriesForValue, int biMapValue) {
 	for (int i = valueStart; i < (valueStart + entriesForValue); i++) {
-		// TODO resolver warning: assignment makes pointer from integer without a cast [-Wint-conversion]
+
 		biMap[i] = biMapValue;
 	}
 }
@@ -382,16 +381,6 @@ char set(char *key, char *value) {
 	log_info(logger, "Total entries for value: %d", entriesForValue);
 
 	// Get the start position to store the value
-	valueStart = getStartEntryToSet(entriesForValue);
-
-	if (valueStart == ENTRY_START_ERROR) {
-		log_error(logger, "There was an error trying to set, no valid entry start was found");
-		return INSTANCIA_RESPONSE_FAILED;
-	}
-
-	else if (valueStart == I_NEED_TO_COMPACT) {
-		return INSTANCIA_COMPACT_REQUEST;
-	}
 
 	// If the key exists, the value is updated
 	if (list_find_with_param(entryTable, key, hasKey) != NULL) {
@@ -400,22 +389,44 @@ char set(char *key, char *value) {
 		log_info(logger, "The key: %s already exists, so we are about to update it.", key);
 
 		t_link_element * findedElement = list_find_with_param(entryTable, key, hasKey);
-
 		entryInfo = findedElement->data;
+		if (wholeUpperDivision(entryInfo->valueSize, entrySize) < entriesForValue) {
 
-		biMapUpdate(entryInfo->valueStart, wholeUpperDivision(entryInfo->valueSize, entrySize), IS_EMPTY);
+			log_error(logger,"Unable to update the key: %s because the current value occupies less entries than the new one", key);
+			return INSTANCIA_RESPONSE_FAILED;
+		}
+		else {
 
-		entryInfo->valueSize = valueSize;
-		entryInfo->valueStart = valueStart;
+			log_error(logger,"The key: %s can be updated because the current value occupies more or equals entries than the new one", key);
+			biMapUpdate(entryInfo->valueStart, wholeUpperDivision(entryInfo->valueSize, entrySize), IS_EMPTY);
 
-	} else {
+			valueStart = entryInfo->valueStart;
+			entryInfo->valueSize = valueSize;
 
+		}
+
+	}
+	else {
+
+		valueStart = getStartEntryToSet(entriesForValue);
+
+		if (valueStart == ENTRY_START_ERROR) {
+			log_error(logger, "There was an error trying to set, no valid entry start was found");
+			return INSTANCIA_RESPONSE_FAILED;
+		}
+
+		else if (valueStart == I_NEED_TO_COMPACT) {
+			log_error(logger, "I need to compact");
+			return INSTANCIA_COMPACT_REQUEST;
+		}
 		// Create the entry structure
+		log_info(logger, "The key: %s doesn't exist, so we are about to set it", key);
 		entryInfo = malloc(sizeof(entryTableInfo));
 		createTableInfo(entryInfo, key, valueStart, valueSize);
 
 		list_add(entryTable, entryInfo);
 	}
+
 
 	storageSet(valueStart, value);
 	biMapUpdate(valueStart, entriesForValue, IS_SET);
@@ -629,13 +640,13 @@ void handleDump() {
 	while(1) {
 		sleep(dumpDelay);
 		pthread_mutex_lock(&dumpMutex);
-		log_info(logger, "DUMP is done after delay waiting: %d\n", dumpDelay);
-		// REVIEW descomentar esto despues de probarlo que funcione bien -> dump();
+		log_info(logger, "DUMP is about to be done, after delay waiting: %d\n", dumpDelay);
+		dump();
 		pthread_mutex_unlock(&dumpMutex);
 	}
 }
 
-char dump() {
+void dump() {
 
 	log_info(logger, "We are about to dump all the keys");
 
@@ -644,18 +655,18 @@ char dump() {
 	while (element != NULL) {
 
 		if (storeKeyAndValue(element->data) == INSTANCIA_RESPONSE_FAILED) {
-			//TODO se sigue con el dump o se corta acá si falla??
+
 			log_error(logger, "The store number %d couldn't be done", position);
 		}
 
-		log_error(logger, "The store number %d was succesfully done", position);
+		log_error(logger, "The store number %d was successfully done", position);
 
 		element = element->next;
 		position++;
 	}
 
 	log_info(logger, "Dump was successfully done");
-	return INSTANCIA_RESPONSE_SUCCESS;
+
 }
 
 char * getValueForCoordinador(char * key) {
@@ -678,7 +689,8 @@ char * getValueForCoordinador(char * key) {
 		log_info(logger, "The key: %s exists, so we are about to get its associated value.", key);
 		getValue(value, valueStart * entrySize, valueSize);
 		log_info(logger, "Value: %s", value);
-	} else {
+	}
+	else {
 		log_info(logger, "The key %s doesn't exist", key);
 	}
 

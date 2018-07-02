@@ -37,10 +37,10 @@
 	#include <unistd.h>
 	#include <pthread.h>
 
-	// Global vars
+	// Global variables
 	int entriesAmount;
 	int entrySize;
-	t_list * entryTable; // Takes record of the key + how many entraces the value occupies
+	t_list * entryTable; // Takes record of the key + how many entrances the value occupies
 
 	char * storage;
 	int * biMap;
@@ -79,7 +79,7 @@
 	int getValueStartEntry(char * key);
 
 	void handleDump();
-	char dump();
+	void dump();
 	char store(char *key);
 	char * getValueForCoordinador(char * key);
 	char getKeyByFile(char * key);

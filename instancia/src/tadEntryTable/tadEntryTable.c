@@ -40,8 +40,8 @@ int getLastReference(entryTableInfo *entryInfo) {
 }
 
 void increaseLastReference(entryTableInfo *entryInfo) {
-	entryInfo->lastReference = currentReference;
 	currentReference++;
+	entryInfo->lastReference = currentReference;
 }
 
 bool hasKey(void * entryInfo, void * key) {
