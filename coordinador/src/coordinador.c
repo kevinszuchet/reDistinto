@@ -121,7 +121,7 @@ char* getValueFromKey(Instancia* instancia, char* key){
 //TODO mariano que pasa si se quiere enviar algo null? ahora no se mandan mas strings nulos pero probarlo por las dudas.
 //TODO mariano pasar al addToPackageGeneric
 int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* value, char instanciaOrigin){
-	//si la clave esta en instancia caida, no se simula y se devuelve NOT_SIMULATED_INSTANCIA
+	//si la clave esta en instancia caida, no se simula y se devuelve NOT_SIMULATED_INSTANCIA_BUT_FALLEN
 	char typeOfMessage = CORDINADORCONSOLERESPONSEMESSAGE;
 
 	log_info(logger, "About to send type of message to planificador");

@@ -455,6 +455,43 @@ void welcomeEsi(int clientSocket) {
 	list_add(allSystemEsis,newEsi);
 }
 
+void recieveConsoleStatusResponse(){
+
+	//si la clave esta en instancia caida, no se simula y se devuelve NOT_SIMULATED_INSTANCIA
+	char instanciaOrigin;
+
+	if(recv_all(coordinadorSocket, &instanciaOrigin, sizeof(instanciaOrigin)) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't recieve instancia origin from coordinador to respond status command");
+		exitPlanificador();
+	}
+	log_info(logger, "Recieved instancia status from coordinador to response status command");
+
+	if(instanciaOrigin == STATUS_NO_INSTANCIAS_AVAILABLE){
+		return;
+	}
+
+
+	char* instanciaThatSatisfiesStatus = NULL;
+	if(recieveString(&instanciaThatSatisfiesStatus, coordinadorSocket) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't recieve instancia's name from coordinador to respond status command");
+		exitPlanificador();
+	}
+	log_info(logger, "Recieved name of instancia (%s) to response status command", instanciaThatSatisfiesStatus);
+
+	if(instanciaOrigin == STATUS_SIMULATED_INSTANCIA || instanciaOrigin == STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN){
+		return;
+	}
+
+	char* value = NULL;
+	if(recieveString(&value, coordinadorSocket) == CUSTOM_FAILURE){
+		log_warning(logger, "Couldn't recieve value from coordinador to respond status command");
+		exitPlanificador();
+	}
+	log_info(logger, "Recieved value %s from coordinador as a status response, because an instancia was found", value);
+
+}
+
+
 int clientMessageHandler(char clientMessage, int clientSocket) {
 	if (clientSocket == coordinadorSocket) {
 		if (clientMessage == KEYSTATUSMESSAGE) {
@@ -470,6 +507,7 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 
 		} else if (clientMessage == CORDINADORCONSOLERESPONSEMESSAGE) {
 			log_info(logger, "I recieved a coordinador console response message");
+			recieveConsoleStatusResponse();
 			// TODO Para el status
 		}
 	} else {
@@ -532,12 +570,13 @@ int handleConcurrence() {
 		readfds = master; // copy it
 
 		if (select(fdmax+1, &readfds, NULL, NULL, &tv) == -1) {
-			perror("select");
+			perror("select failed");
+			if (errno == EINTR) {
+				continue;
+			}
 		}
 
-		if (errno == EINTR) {
-			continue;
-		}
+
 
 		// run through the existing connections looking for data to read
 		for (i = 0; i <= fdmax + 1; i++) {

@@ -136,6 +136,10 @@ void execute(char** parameters) {
 				log_error(logger, "I cannot send the key to resolve status to coordinador");
 				exitPlanificador();
 			}
+
+
+
+
 		break;
 
 		case DEADLOCK:
@@ -262,7 +266,7 @@ void executeDeadlockAlgorithm(){
 		free(asignationMatrix[i]);
 
 	//free(asignationMatrix);
-	for(int i = 0;i<esiCount;i++){
+	for(i = 0;i<esiCount;i++){
 		free(indexCopy[i]);
 	}
 	//free(indexCopy);
