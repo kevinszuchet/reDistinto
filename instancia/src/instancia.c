@@ -51,14 +51,13 @@ int main(void) {
 
 	pthread_t dumpThread;
 	if (pthread_create(&dumpThread, NULL, (void*) handleDump, NULL) != 0) {
-		log_error(logger, "Error creating dump thread");
+		log_error(logger, "Error creating dump thread, quitting...");
 		return -1;
 	}
 
 	if (pthread_detach(dumpThread) != 0) {
-		//TODO habria que matar al hilo que se acaba de crear -> pthread_cancel(dumpThread);
 		pthread_cancel(dumpThread);
-		log_error(logger,"Couldn't detach dump thread");
+		log_error(logger, "Couldn't detach dump thread, quitting...");
 		return -1;
 	}
 
@@ -245,8 +244,6 @@ void checkValueFromKey(int coordinadorSocket) {
 
 void waitForCoordinadorStatements(int coordinadorSocket) {
 	while (1) {
-		log_info(logger, "Wait dump, if it is executing I can recieve statements");
-		pthread_mutex_lock(&dumpMutex);
 
 		log_info(logger, "Wait coordinador statement to execute");
 
@@ -255,6 +252,10 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 			log_error(logger, "Couldn't receive execution command from coordinador");
 			exit(-1);
 		}
+
+		//TODO reveer este log, creo que no es claro
+		log_info(logger, "Wait dump, if it is executing I can recieve statements");
+		pthread_mutex_lock(&dumpMutex);
 
 		switch(command) {
 			case INSTANCIA_DO_OPERATION:
