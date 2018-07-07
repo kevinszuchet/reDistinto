@@ -72,7 +72,7 @@ int handshakeWithClient(int clientSocket, char clientHandshakeValue, const char*
 	}
 
 	if (send(clientSocket, &clientHandshakeValue, sizeof(char), 0) < 0){
-		log_error(logger, "The socket (%d) where %s is trying to connect to %s is not a valid one", clientSocket, serverName, clientName);
+		log_error(logger, "%s cannot send handshake value to %s (in socket %d)", serverName, clientName, clientSocket);
 		close(clientSocket);
 		return -1;
 	}
