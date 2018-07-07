@@ -121,7 +121,7 @@ void recieveKeysFromCoordinador(int coordinadorSocket) {
 		if (response == INSTANCIA_RESPONSE_SUCCESS) {
 			log_info(logger, "The key %s was successfully brought back", recievedKey);
 		} else {
-			log_error(logger, "The key %s couldn't be brought back", recievedKey);
+			log_warning(logger, "The key %s couldn't be brought back", recievedKey);
 		}
 	}
 }
@@ -288,7 +288,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 				break;
 
 			default:
-				log_error(logger, "Couldn't understand execution command from coordinador");
+				log_warning(logger, "Couldn't understand execution command from coordinador");
 				exit(-1);
 				break;
 		}
@@ -378,7 +378,7 @@ char set(char *key, char *value) {
 
 	// Asks if the size of the value can be stored
 	if (valueSize > (entriesAmount * entrySize) || valueSize == 0) {
-		log_error(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
+		log_warning(logger, "Unable to set the value: %s, due to his size is bigger than the total Instancia storage size", value);
 		return INSTANCIA_RESPONSE_FAILED;
 	}
 
@@ -398,7 +398,7 @@ char set(char *key, char *value) {
 		entryInfo = findedElement->data;
 		if (wholeUpperDivision(entryInfo->valueSize, entrySize) < entriesForValue) {
 
-			log_error(logger,"Unable to update the key: %s because the current value occupies less entries than the new one", key);
+			log_warning(logger,"Unable to update the key: %s because the current value occupies less entries than the new one", key);
 			return INSTANCIA_RESPONSE_FAILED;
 		}
 		else {
@@ -417,12 +417,12 @@ char set(char *key, char *value) {
 		valueStart = getStartEntryToSet(entriesForValue);
 
 		if (valueStart == ENTRY_START_ERROR) {
-			log_error(logger, "There was an error trying to set, no valid entry start was found");
+			log_warning(logger, "There was an error trying to set, no valid entry start was found");
 			return INSTANCIA_RESPONSE_FAILED;
 		}
 
 		else if (valueStart == I_NEED_TO_COMPACT) {
-			log_error(logger, "I need to compact");
+			log_warning(logger, "I need to compact");
 			return INSTANCIA_COMPACT_REQUEST;
 		}
 		// Create the entry structure
@@ -661,7 +661,7 @@ void dump() {
 
 		if (storeKeyAndValue(element->data) == INSTANCIA_RESPONSE_FAILED) {
 
-			log_error(logger, "The store number %d couldn't be done", position);
+			log_warning(logger, "The store number %d couldn't be done", position);
 		}
 
 		log_info(logger, "The store number %d was successfully done", position);
@@ -736,8 +736,7 @@ char getKeyByFile(char * key) {
 		log_info(logger, "The key: %s was successfully set again", key);
 	}
 	else {
-		log_error(logger, "There was an error trying to set again the key %s", key);
+		log_warning(logger, "There was an error trying to set again the key %s", key);
 	}
 	return response;
 }
-
