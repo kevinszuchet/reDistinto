@@ -49,7 +49,6 @@
 	char instanciaStatusFromValueRequest;
 	sem_t valueFromKeyInstanciaSemaphore;
 
-	char* getOperationName(Operation* operation);
 	void showConfig(int listeningPort);
 	void getConfig(int* listeningPort);
 

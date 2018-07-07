@@ -587,17 +587,6 @@ int recieveStentenceToProcess(int esiSocket){
 	}
 	//recieveOperationDummy(&esiRequest.operation);
 
-	if(validateOperationKeySize(esiRequest.operation) < 0){
-		log_warning(operationsLogger, "Esi is aborted for sending an operation with a key size greater than 40");
-		showOperation(esiRequest.operation);
-		//TODO hay que rediseniar esto, porque no se conoce el id del esi aun y la funcion sendRespondeToEsi lo usa (va a romper)
-		//y la verdad que no queremos mostrar que el id del esi es 0.
-		esiRequest.id = 0;
-		sendResponseToEsi(&esiRequest, ABORT);
-		destroyOperation(esiRequest.operation);
-		return -1;
-	}
-
 	pthread_mutex_lock(&esisMutex);
 
 	log_info(logger, "Arrived esi is going to do:");
