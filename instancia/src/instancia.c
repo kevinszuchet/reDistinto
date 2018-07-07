@@ -183,7 +183,7 @@ void handleOperationRequest(int coordinadorSocket) {
 		//con alvarez estamos suponiendo que no va a mandar dos need to compact seguidos, siempre como maximo uno solo
 
 		//compact(); Lo dejo comentado por que no esta testeado todavia
-
+		compact();
 		response = interpretateStatement(operation);
 	}
 
@@ -267,6 +267,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 				//la instancia que mando a compactar)
 
 				//compact();
+				compact();
 				char response = INSTANCIA_DID_COMPACT;
 				if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
 					log_error(logger, "I cannot tell coordinador that my compactation finished");
@@ -480,9 +481,8 @@ int getStartEntryToSet(int valueNeededEntries) {
 				deleteAccodringToAlgorithm();
 			} else {
 				// A compactation is needed, we notify coordinador so he can order to compact all instancias.
-				return I_NEED_TO_COMPACT;
 				log_info(logger, "There are not enough contiguous free entries to set the value. A compactation is needed, we are about to notify coordinador");
-				break;
+				return I_NEED_TO_COMPACT;
 			}
 		}
 	}
@@ -506,7 +506,7 @@ char compact() {
 	if (totalSettedEntries > 0) {
 
 		int totalUsedMemory = totalSettedEntries * entrySize;
-		char * auxStorage = malloc(totalSettedEntries);
+		char * auxStorage = calloc(1, totalUsedMemory);//cambiar por calloc(totalUsedMemory)
 		int auxIndex = 0;
 
 		int valueSize, valueStart, j;
@@ -529,15 +529,15 @@ char compact() {
 			 while (j < valueSize && auxIndex < totalUsedMemory) {
 				 auxStorage[auxIndex] = value[j];
 				 auxIndex++;
-				 auxIndex++;
+				 j++;
 			 }
 
 			 // Get the next able position to store values
 			 if (valueSize % entrySize != 0) {
-				 auxIndex += valueSize % entrySize;
+				 auxIndex += (valueSize % entrySize) - 1;
 			 }
-			 auxIndex++;
 			 free(value);
+			 element = element->next;
 		}
 
 		strcpy(storage, auxStorage);

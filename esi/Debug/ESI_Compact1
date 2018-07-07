@@ -1,0 +1,11 @@
+GET Key1
+GET Key2
+GET Key3
+SET Key1 abc
+SET Key2 de
+SET Key1 ab
+SET Key2 d
+SET Key3 fg
+STORE Key1
+STORE Key2
+STORE Key3
