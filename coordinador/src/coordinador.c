@@ -173,7 +173,6 @@ void handleInstanciaSimulationForStatus(char* key) {
 	}
 }
 
-//TODO + importante. fijarse si hay problemas con accesos simultaneos a campos distintos de un mismo struct
 int respondStatusToPlanificador(char* key){
 	pthread_mutex_lock(&instanciasListMutex);
 	Instancia* instanciaThatMightHaveValue = lookForKey(key);
@@ -221,18 +220,9 @@ int respondStatusToPlanificador(char* key){
 }
 
 void freeResources(){
-	//TODO que pasa con los semaforos que estan tomados?
-	//de la documentacion: Destroying a semaphore that other processes or threads are currently
-    //blocked on (in sem_wait(3)) produces undefined behavior.
 	list_destroy_and_destroy_elements(instancias, (void*) instanciaDestroyer);
 
 	free(algorithm);
-
-	sem_destroy(&instanciaResponse);
-
-	pthread_mutex_destroy(&esisMutex);
-	pthread_mutex_destroy(&instanciasListMutex);
-	pthread_mutex_destroy(&lastInstanciaChosenMutex);
 
 	log_destroy(logger);
 	log_destroy(operationsLogger);
