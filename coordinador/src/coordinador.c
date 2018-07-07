@@ -68,7 +68,7 @@ void getConfig(int* listeningPort){
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
 	algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	if(strcmp(algorithm, "EL") != 0 && strcmp(algorithm, "LSU") != 0 && strcmp(algorithm, "KE") != 0){
-		log_error(operationsLogger, "Aborting: cannot recognize distribution algorithm");
+		log_error(logger, "Aborting: cannot recognize distribution algorithm");
 		freeResources();
 		exit(-1);
 	}
@@ -368,10 +368,9 @@ void setDistributionAlgorithm(){
 
 int sendResponseToEsi(EsiRequest* esiRequest, char response){
 	//TODO aca tambien hay que reintentar hasta que se mande tooodo?
-	//TODO que pasa cuando se pasa una constante por parametro? vimos que hubo drama con eso
 
 	if(send_all(esiRequest->socket, &response, sizeof(response)) == CUSTOM_FAILURE){
-		log_warning(operationsLogger, "ESI %d perdio conexion con el coordinador al intentar hacer %s", esiRequest->id,
+		log_warning(operationsLogger, "ESI %d lost conection with coordinador while trying %s", esiRequest->id,
 				getOperationName(esiRequest->operation));
 		return -1;
 	}
@@ -410,7 +409,7 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 
 	log_info(logger, "Esi's thread is gonna send the operation request to instancia");
 	if(instanciaDoOperation(chosenInstancia, esiRequest->operation) == CUSTOM_FAILURE){
-		log_warning(logger, "Esi %d is aborted because instancia %s fell", esiRequest->id, chosenInstancia->name);
+		log_warning(operationsLogger, "Esi %d is aborted because instancia %s fell", esiRequest->id, chosenInstancia->name);
 		sendResponseToEsi(actualEsiRequest, ABORT);
 		return -1;
 	}
@@ -589,7 +588,7 @@ int recieveStentenceToProcess(int esiSocket){
 	//recieveOperationDummy(&esiRequest.operation);
 
 	if(validateOperationKeySize(esiRequest.operation) < 0){
-		log_warning(logger, "Esi is aborted for sending an operation whose key size is greater than 40");
+		log_warning(operationsLogger, "Esi is aborted for sending an operation with a key size greater than 40");
 		showOperation(esiRequest.operation);
 		//TODO hay que rediseniar esto, porque no se conoce el id del esi aun y la funcion sendRespondeToEsi lo usa (va a romper)
 		//y la verdad que no queremos mostrar que el id del esi es 0.
@@ -616,7 +615,7 @@ int recieveStentenceToProcess(int esiSocket){
 	log_info(logger, "Status from key %s, from esi %d, is %s", esiRequest.operation->key, esiRequest.id, getKeyStatusName(keyStatus));
 
 	if(strcmp(getKeyStatusName(keyStatus), "UNKNOWN KEY STATUS") == 0){
-		log_error(logger, "Couldn't receive esi key status from planificador, aborting esi %d...",  esiRequest.id);
+		log_warning(operationsLogger, "Couldn't receive esi key status from planificador, aborting esi %d...",  esiRequest.id);
 		destroyOperation(esiRequest.operation);
 		sendResponseToEsi(&esiRequest, ABORT);
 		pthread_mutex_unlock(&esisMutex);
@@ -675,7 +674,7 @@ int handleInstancia(int instanciaSocket){
 	while(1){
 
 		if(recv_all(actualInstancia->socket, &instanciaCommandResponse, sizeof(instanciaCommandResponse)) == CUSTOM_FAILURE){
-			log_error(logger, "Couldn't recieve instancia's message");
+			log_warning(logger, "Couldn't recieve instancia's message, it fell");
 			pthread_mutex_lock(&instanciasListMutex);
 			instanciaExitGracefully(actualInstancia);
 			return -1;
@@ -725,7 +724,7 @@ int handleInstancia(int instanciaSocket){
 			default:
 
 				//TODO habria que matar a la instancia? porque su hilo muere pero el proceso instancia va a seguir vivo...
-				log_error(logger, "Instancia sent an invalid command. Killing his thread");
+				log_warning(logger, "Instancia sent an invalid command. Killing his thread");
 				instanciaExitGracefully(actualInstancia);
 				return -1;
 
@@ -777,6 +776,8 @@ void planificadorHandler(int* allocatedClientSocket){
 				break;
 			default:
 				log_error(logger, "Invalid planificador message");
+				freeResources();
+				exit(-1);
 				break;
 		}
 	}
@@ -810,7 +811,7 @@ int clientHandler(int clientSocket, void (*handleThreadProcedure)(int* socket)){
 	}
 
 	if(pthread_detach(clientThread) != 0){
-		//TODO habria que matar al hilo que se acaba de crear
+		//TODO habria que matar al hilo que se acaba de crear. pthred_cancel? que pasa con el proceso instancia/esi?
 		log_error(logger,"Couldn't detach thread");
 		free(clientSocketPointer);
 		return -1;

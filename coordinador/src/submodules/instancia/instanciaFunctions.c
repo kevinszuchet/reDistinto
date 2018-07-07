@@ -19,7 +19,7 @@ void instanciaIsBack(Instancia* instancia, int instanciaSocket){
 int sendKeysToInstancia(Instancia* arrivedInstancia){
 	log_info(logger, "About to send keys to instancia");
 	if(sendStingList(arrivedInstancia->storedKeys, arrivedInstancia->socket) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't send key list to instancia, killing his thread");
+		log_warning(logger, "Couldn't send key list to instancia, killing his thread");
 		return -1;
 	}
 	log_info(logger, "Keys sent to instancia");
@@ -40,7 +40,7 @@ int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize
 	config.entriesAmount = cantEntry;
 	config.entrySize = entrySize;
 	if (send_all(instanciaSocket, &config, sizeof(InstanciaConfiguration)) == CUSTOM_FAILURE) {
-		log_error(logger, "Couldn't send configuration to instancia");
+		log_warning(logger, "Couldn't send configuration to instancia");
 		return -1;
 	}
 	return 0;
@@ -69,7 +69,7 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 
 		if(!arrivedInstancia){
 			//TODO aca tambien, el proceso instancia va a seguir vivo (habria que mandarle un mensaje para que muera)
-			log_error(logger, "Couldn't initialize instancia's semaphore, killing the created thread...");
+			log_warning(logger, "Couldn't initialize instancia's semaphore, killing the created thread...");
 			pthread_mutex_unlock(&instanciasListMutex);
 			free(arrivedInstanciaName);
 			return NULL;
@@ -193,7 +193,7 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 
 	char status;
 	if(recv_all(actualInstancia->socket, &status, sizeof(status)) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't recieve instancia response");
+		log_warning(logger, "Couldn't recieve instancia response");
 		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
 		return -1;
 	}
@@ -203,11 +203,11 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 	log_info(logger, "Instancia's response is gonna be processed");
 
 	if(status == INSTANCIA_RESPONSE_FALLEN){
-		log_error(logger, "Instancia %s couldn't do %s because it fell. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
+		log_warning(logger, "Instancia %s couldn't do %s because it fell. His thread dies, and key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
 		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 		return -1;
 	}else if(status == INSTANCIA_RESPONSE_FAILED){
-		log_error(logger, "Instancia %s couldn't do %s, so the key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
+		log_warning(logger, "Instancia %s couldn't do %s, so the key %s is deleted:", actualInstancia->name, getOperationName(actualEsiRequest->operation), actualEsiRequest->operation->key);
 		removeKeyFromFallenInstancia(actualEsiRequest->operation->key, actualInstancia);
 		showInstancia(actualInstancia);
 	}else if(status == INSTANCIA_RESPONSE_SUCCESS){
@@ -278,11 +278,11 @@ int instanciaIsAlive(Instancia* instancia){
 
 int recieveInstanciaName(char** arrivedInstanciaName, int instanciaSocket){
 	if(recieveString(arrivedInstanciaName, instanciaSocket) == CUSTOM_FAILURE){
-		log_error(logger, "Couldn't recieve instancia's name");
+		log_warning(logger, "Couldn't recieve instancia's name");
 		free(*arrivedInstanciaName);
 		return -1;
 	}else if(strlen(*arrivedInstanciaName) == 0){
-		log_error(logger, "An Instancia must have name");
+		log_warning(logger, "An Instancia must have name");
 		free(*arrivedInstanciaName);
 		return -1;
 	}
