@@ -127,6 +127,7 @@ int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* val
 	log_info(logger, "About to send type of message to planificador");
 	if(send_all(planificadorSocket, &typeOfMessage, sizeof(typeOfMessage)) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send type of message to planificador to respond status command");
+		pthread_mutex_unlock(&instanciasListMutex);
 		planificadorFell();
 	}
 	log_info(logger, "Sent type of message (status response) to planificador");
@@ -135,6 +136,7 @@ int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* val
 	//avance: no es null...
 	if(send_all(planificadorSocket, &instanciaOrigin, sizeof(instanciaOrigin)) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send instancia origin to planificador to respond status command");
+		pthread_mutex_unlock(&instanciasListMutex);
 		planificadorFell();
 	}
 	log_info(logger, "Sent instancia status to planificador to response status");
@@ -145,6 +147,7 @@ int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* val
 
 	if(sendString(instanciaThatSatisfiesStatus, planificadorSocket) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send instancia's name to planificador to respond status command");
+		pthread_mutex_unlock(&instanciasListMutex);
 		planificadorFell();
 	}
 	log_info(logger, "Sent name of instancia to response status");
@@ -155,6 +158,7 @@ int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* val
 
 	if(sendString(value, planificadorSocket) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't send value to planificador to respond status command");
+		pthread_mutex_unlock(&instanciasListMutex);
 		planificadorFell();
 	}
 	log_info(logger, "Sent value %s to planificador as a status response, because an instancia was found", value);
@@ -219,7 +223,9 @@ void respondStatusToPlanificador(char* key){
 }
 
 void freeResources(){
+	pthread_mutex_lock(&instanciasListMutex);
 	list_destroy_and_destroy_elements(instancias, (void*) instanciaDestroyer);
+	pthread_mutex_unlock(&instanciasListMutex);
 
 	free(algorithm);
 
@@ -367,8 +373,6 @@ void setDistributionAlgorithm(){
 }
 
 int sendResponseToEsi(EsiRequest* esiRequest, char response){
-	//TODO aca tambien hay que reintentar hasta que se mande tooodo?
-
 	if(send_all(esiRequest->socket, &response, sizeof(response)) == CUSTOM_FAILURE){
 		log_warning(operationsLogger, "ESI %d lost conection with coordinador while trying %s", esiRequest->id,
 				getOperationName(esiRequest->operation));
@@ -573,7 +577,7 @@ void recieveOperationDummy(Operation** operation){
 int recieveStentenceToProcess(int esiSocket){
 	int operationResult = 0;
 	int esiId = 0;
-	//TODO reveer este log, no creo que sea correcto ponerlo aca
+	//TODO reveer este log, hay un test para correr en que se muestran dos de estos seguidos
 	log_info(logger, "Waiting for esi's instruction");
 
 	EsiRequest esiRequest;
@@ -800,7 +804,7 @@ int clientHandler(int clientSocket, void (*handleThreadProcedure)(int* socket)){
 	}
 
 	if(pthread_detach(clientThread) != 0){
-		//TODO habria que matar al hilo que se acaba de crear. pthred_cancel? que pasa con el proceso instancia/esi?
+		//TODO habria que matar al hilo que se acaba de crear. pthred_cancel? que pasa con el proceso instancia/esi? va a seguir vivo
 		log_error(logger,"Couldn't detach thread");
 		free(clientSocketPointer);
 		return -1;
