@@ -173,7 +173,7 @@ void handleInstanciaSimulationForStatus(char* key) {
 	}
 }
 
-int respondStatusToPlanificador(char* key){
+void respondStatusToPlanificador(char* key){
 	pthread_mutex_lock(&instanciasListMutex);
 	Instancia* instanciaThatMightHaveValue = lookForKey(key);
 
@@ -188,7 +188,7 @@ int respondStatusToPlanificador(char* key){
 			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN);
 			pthread_mutex_unlock(&instanciasListMutex);
 			free(valueThatSatisfiesStatus);
-			return -1;
+			return;
 		}
 
 		valueThatSatisfiesStatus = getValueFromKey(instanciaThatMightHaveValue, key);
@@ -199,7 +199,7 @@ int respondStatusToPlanificador(char* key){
 			sendPairKeyValueToPlanificador(instanciaThatSatisfiesStatus, valueThatSatisfiesStatus, STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN);
 			pthread_mutex_unlock(&instanciasListMutex);
 			free(valueThatSatisfiesStatus);
-			return -1;
+			return;
 		}
 
 		if(valueThatSatisfiesStatus){
@@ -216,7 +216,6 @@ int respondStatusToPlanificador(char* key){
 
 	pthread_mutex_unlock(&instanciasListMutex);
 	free(valueThatSatisfiesStatus);
-	return 0;
 }
 
 void freeResources(){
@@ -446,6 +445,7 @@ Instancia* lookForKeyAndRemoveIfInFallenInstancia(EsiRequest* esiRequest){
 				esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 		sendResponseToEsi(esiRequest, ABORT);
 		removeKeyFromFallenInstancia(esiRequest->operation->key, instanciaToBeUsed);
+		showInstancia(instanciaToBeUsed);
 	}
 	return instanciaToBeUsed;
 }
@@ -459,7 +459,6 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 
 	log_info(logger, "Gonna look for instancia to set key %s:", esiRequest->operation->key);
 	Instancia* instanciaToBeUsed = lookForKeyAndRemoveIfInFallenInstancia(esiRequest);
-	showInstancia(instanciaToBeUsed);
 	if(instanciaToBeUsed != NULL && instanciaToBeUsed->isFallen){
 		return -1;
 	}
@@ -768,7 +767,7 @@ void planificadorHandler(int* allocatedClientSocket){
 				sem_post(&keyStatusFromPlanificadorSemaphore);
 				break;
 			case PLANIFICADOR_ESI_ID_RESPONSE:
-				if(recieveInt(&esiIdFromPlanificador, planificadorSocket) <= 0){
+				if(recieveInt(&esiIdFromPlanificador, planificadorSocket) == CUSTOM_FAILURE){
 					planificadorFell();
 				}
 				sem_post(&esiIdFromPlanificadorSemaphore);

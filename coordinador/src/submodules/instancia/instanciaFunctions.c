@@ -158,7 +158,6 @@ void waitInstanciaToCompact(Instancia* instancia){
 }
 
 void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
-
 	pthread_mutex_unlock(&instanciasListMutex);
 
 	list_iterate(instanciasThatNeededToCompact, (void*) waitInstanciaToCompact);
@@ -168,10 +167,13 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 	list_destroy(instanciasThatNeededToCompact);
 }
 
-void actualizarSpaceUsed(Instancia* instancia) {
-	int spaceUsed;
-	recieveInt(&spaceUsed, instancia->socket);
+int updateSpaceUsed(Instancia* instancia) {
+	int spaceUsed = 0;
+	if(recieveInt(&spaceUsed, instancia->socket) == CUSTOM_FAILURE){
+		return -1;
+	}
 	instancia->spaceUsed = spaceUsed;
+	return 0;
 }
 
 char instanciaDoCompactDummy(){
@@ -192,6 +194,7 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 	char status;
 	if(recv_all(actualInstancia->socket, &status, sizeof(status)) == CUSTOM_FAILURE){
 		log_error(logger, "Couldn't recieve instancia response");
+		instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
 		return -1;
 	}
 
@@ -210,7 +213,11 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 	}else if(status == INSTANCIA_RESPONSE_SUCCESS){
 		log_info(logger, "%s could do %s", actualInstancia->name, getOperationName(actualEsiRequest->operation));
 		if(actualEsiRequest->operation->operationCode == OURSET) {
-			actualizarSpaceUsed(actualInstancia);
+			if(updateSpaceUsed(actualInstancia) < 0){
+				log_warning(logger, "Couldn't recieve instancia's space used, so it fell (but the operation was successfully done)");
+				return -1;
+			}
+			log_info(logger, "Successfully updated instancia's space used");
 		}
 	}
 
@@ -224,7 +231,6 @@ void instanciaExitGracefully(Instancia* instancia){
 
 	switch(instancia->actualCommand){
 		case INSTANCIA_DO_OPERATION:
-			instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
 			sem_post(&instanciaResponse);
 			break;
 
