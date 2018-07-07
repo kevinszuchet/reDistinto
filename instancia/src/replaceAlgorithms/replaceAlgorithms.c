@@ -42,7 +42,6 @@ void deleteAccodringToAlgorithm() {
 		deleteKey(toBeDeletedElement);
 	}
 
-	// REVIEW hace falta destruir todos sus elementos o esto destruiria los elementos de la lista original?
 	list_destroy(atomicEntriesList);
 }
 
@@ -51,10 +50,9 @@ void deleteKey(entryTableInfo * toBeDeletedEntryInfo) {
 	log_info(replaceAlgorithmsLogger, "the key %s is about to be deleted", toBeDeletedEntryInfo->key);
 
 	biMapUpdate(toBeDeletedEntryInfo->valueStart, wholeUpperDivision(toBeDeletedEntryInfo->valueSize, entrySize), IS_EMPTY);
-	list_remove_and_destroy_by_condition_with_param(entryTable, toBeDeletedEntryInfo->key, (void *) hasKey, (void *) destroyTableInfo);
 
 	// REVIEW se libera cuando hago el remove?
-
+	list_remove_and_destroy_by_condition_with_param(entryTable, toBeDeletedEntryInfo->key, (void *) hasKey, (void *) destroyTableInfo);
 	log_info(replaceAlgorithmsLogger, "the key was successfully deleted");
 }
 

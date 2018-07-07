@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	initSerializationLogger(logger);
 
 	if (argc != 2) {
-		log_warning(logger, "ESI cannot execute: you must enter a script file to read");
+		log_error(logger, "ESI cannot execute: you must enter a script file to read");
 		return -1;
 	}
 
@@ -212,7 +212,7 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	free(package);
 
 	if (coordinadorResponse == ABORT) {
-		log_warning(logger, "I cannot keep running", line);
+		log_error(logger, "I cannot keep running", line);
 		exit(-1);
 	}
 }
@@ -221,7 +221,7 @@ void interpretateOperation(Operation * operation, char * line) {
 	t_esi_operacion parsedLine = parse(line);
 
 	if (!parsedLine.valido) {
-		log_warning(logger, "Parsi cannot understand the line %s", line);
+		log_error(logger, "Parsi cannot understand the line %s", line);
 		exit(-1);
 	}
 
@@ -232,7 +232,7 @@ void interpretateOperation(Operation * operation, char * line) {
 
 		case SET:
 			if (empty_string(parsedLine.argumentos.SET.valor) == 1) {
-				log_warning(logger, "ESI cannot parse a SET without value");
+				log_error(logger, "ESI cannot parse a SET without value");
 				exit(-1);
 			}
 			initializeOperation(operation, OURSET, parsedLine.argumentos.SET.clave, parsedLine.argumentos.SET.valor);
@@ -243,7 +243,7 @@ void interpretateOperation(Operation * operation, char * line) {
 			break;
 
 		default:
-			log_warning(logger, "Parsi could not understand the keyword %s", line);
+			log_error(logger, "Parsi could not understand the keyword %s", line);
 			exit(-1);
 	}
 

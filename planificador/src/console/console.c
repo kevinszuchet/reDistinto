@@ -116,9 +116,6 @@ void execute(char** parameters) {
 				} else {
 					log_info(logger, "Send kill message to ESI %d in socket %d", esiID, esi->socketConection);
 				}
-
-		    	// REVIEW se aborta en los 2 casos? o si no le puedo mandar el kill no hago nada?
-		    	//abortEsi(esi);
 		    }
 		break;
 

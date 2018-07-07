@@ -92,7 +92,7 @@ void sendMyNameToCoordinador(char * name, int coordinadorSocket) {
 char* recieveKeyFromCoordinador(int coordinadorSocket) {
 	char* key;
 	if (recieveString(&key, coordinadorSocket) == CUSTOM_FAILURE) {
-		log_warning(logger, "Couldn't receive key from coordinador");
+		log_error(logger, "Couldn't receive key from coordinador");
 		exit(-1);
 	}
 	return key;
@@ -110,9 +110,7 @@ void recieveKeysFromCoordinador(int coordinadorSocket) {
 		return;
 	}
 
-	for(int i = 0 ; i < keysAmount ; i++) {
-		//TODO kiwo fijate si hay que liberar esta clave
-
+	for (int i = 0 ; i < keysAmount ; i++) {
 		char* recievedKey = recieveKeyFromCoordinador(coordinadorSocket);
 		log_info(logger, "I recieved key %s", recievedKey);
 
@@ -123,6 +121,9 @@ void recieveKeysFromCoordinador(int coordinadorSocket) {
 		} else {
 			log_warning(logger, "The key %s couldn't be brought back", recievedKey);
 		}
+
+		if (recievedKey)
+			free(recievedKey);
 	}
 }
 
@@ -160,7 +161,6 @@ void initialize(int entraces, int entryStorage) {
 	entrySize = entryStorage;
 	entryTable = list_create();
 
-	// REVIEW Hace falta un +1 para el \0?
 	storage = calloc(1, entraces * entryStorage);
 	biMapInitialize(entraces);
 
@@ -188,10 +188,7 @@ void handleOperationRequest(int coordinadorSocket) {
 			exit(-1);
 		}
 
-		//TODO mandar a compactar. chequear que no se haga nada del compactar dos veces!!!
-		//con alvarez estamos suponiendo que no va a mandar dos need to compact seguidos, siempre como maximo uno solo
-
-		//compact(); Lo dejo comentado por que no esta testeado todavia
+		// Only the instancia that send that needed to compact
 		compact();
 		response = interpretateStatement(operation);
 	}
@@ -220,7 +217,7 @@ void checkValueFromKey(int coordinadorSocket) {
 	char* keyFromStatus;
 
 	if (recieveString(&keyFromStatus, coordinadorSocket) == CUSTOM_FAILURE) {
-		log_warning(logger, "Couldn't receive key from coordinador to check its status");
+		log_error(logger, "Couldn't receive key from coordinador to check its status");
 		exit(-1);
 	}
 
@@ -253,8 +250,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 			exit(-1);
 		}
 
-		//TODO reveer este log, creo que no es claro
-		log_info(logger, "Wait dump, if it is executing I can recieve statements");
+		log_info(logger, "If dump is not executing we can run the statements");
 		pthread_mutex_lock(&dumpMutex);
 
 		switch(command) {
@@ -267,11 +263,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 			case INSTANCIA_DO_COMPACT:
 
 				log_info(logger, "Gonna do compact");
-
-				//TODO kiwo aca tambien hay que mandar a compactar (lo que esta sobre compactar en handleOperationRequest es para
-				//la instancia que mando a compactar)
-
-				//compact();
+				// All instancias do compact
 				compact();
 				char response = INSTANCIA_DID_COMPACT;
 				if (send_all(coordinadorSocket, &response, sizeof(response)) == CUSTOM_FAILURE) {
@@ -288,7 +280,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 				break;
 
 			default:
-				log_warning(logger, "Couldn't understand execution command from coordinador");
+				log_error(logger, "Couldn't understand execution command from coordinador");
 				exit(-1);
 				break;
 		}
@@ -716,9 +708,7 @@ char getKeyByFile(char * key) {
 	free(filePath);
 
 	if (fstat(fd, &sb) == -1) {
-
 		log_error(logger, "Couldn't open the file that contains the key to set");
-
 		return INSTANCIA_RESPONSE_FAILED;
 	}
 

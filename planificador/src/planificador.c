@@ -343,8 +343,7 @@ Esi* getEsiById(int id) {
 	bool isId(void* element) {
 		return ((Esi*) element)->id == id;
 	}
-	// Esi* esi = list_get(list_filter(allSystemEsis, &isId), 0);
-	Esi* esi = list_find(allSystemEsis, &isId); // REVIEW ver que funcione
+	Esi* esi = list_find(allSystemEsis, &isId);
 	return esi;
 }
 
@@ -352,8 +351,7 @@ Esi* getEsiBySocket(int socket) {
 	bool isSocket(void* element) {
 		return ((Esi*) element)->socketConection == socket;
 	}
-	//Esi* esi = list_get(list_filter(allSystemEsis, &isSocket), 0);
-	Esi* esi = list_find(allSystemEsis, &isSocket); // REVIEW ver que funcione
+	Esi* esi = list_find(allSystemEsis, &isSocket);
 	return esi;
 }
 
