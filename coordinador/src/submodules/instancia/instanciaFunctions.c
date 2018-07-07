@@ -46,6 +46,16 @@ int sendInstanciaConfiguration(int instanciaSocket, int cantEntry, int entrySize
 	return 0;
 }
 
+int updateSpaceUsed(Instancia* instancia) {
+	int spaceUsed = 0;
+	if(recieveInt(&spaceUsed, instancia->socket) == CUSTOM_FAILURE){
+		return -1;
+	}
+	instancia->spaceUsed = spaceUsed;
+	log_info(logger, "Successfully updated instancia's space used");
+	return 0;
+}
+
 Instancia* initialiceArrivedInstancia(int instanciaSocket){
 	char* arrivedInstanciaName = NULL;
 	if(recieveInstanciaName(&arrivedInstanciaName, instanciaSocket) < 0){
@@ -85,6 +95,13 @@ Instancia* initialiceArrivedInstancia(int instanciaSocket){
 	}
 
 	if(sendKeysToInstancia(arrivedInstancia) < 0){
+		free(arrivedInstanciaName);
+		pthread_mutex_unlock(&instanciasListMutex);
+		return NULL;
+	}
+
+	if(updateSpaceUsed(arrivedInstancia) < 0){
+		log_warning(logger, "Couldn't recieve instancia's space used on initialization");
 		free(arrivedInstanciaName);
 		pthread_mutex_unlock(&instanciasListMutex);
 		return NULL;
@@ -167,15 +184,6 @@ void waitInstanciasToCompact(t_list* instanciasThatNeededToCompact){
 	list_destroy(instanciasThatNeededToCompact);
 }
 
-int updateSpaceUsed(Instancia* instancia) {
-	int spaceUsed = 0;
-	if(recieveInt(&spaceUsed, instancia->socket) == CUSTOM_FAILURE){
-		return -1;
-	}
-	instancia->spaceUsed = spaceUsed;
-	return 0;
-}
-
 char instanciaDoCompactDummy(){
 	return INSTANCIA_RESPONSE_FALLEN;
 }
@@ -217,7 +225,6 @@ int handleInstanciaOperation(Instancia* actualInstancia, t_list** instanciasToBe
 				log_warning(logger, "Couldn't recieve instancia's space used, so it fell (but the operation was successfully done)");
 				return -1;
 			}
-			log_info(logger, "Successfully updated instancia's space used");
 		}
 	}
 

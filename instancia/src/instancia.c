@@ -122,9 +122,18 @@ void recieveKeysFromCoordinador(int coordinadorSocket) {
 		if (response == INSTANCIA_RESPONSE_SUCCESS) {
 			log_info(logger, "The key %s was successfully brought back", recievedKey);
 		} else {
-			log_error(logger, "The key %s was couldn't been brought back", recievedKey);
+			log_error(logger, "The key %s couldn't be brought back", recievedKey);
 		}
 	}
+}
+
+void sendSpaceUsedToCoordinador(int coordinadorSocket) {
+	int spaceUsed = getTotalSettedEntries();
+	if (sendInt(spaceUsed, coordinadorSocket) == CUSTOM_FAILURE) {
+		log_error(logger, "I cannot send my spaceUsed to coordinador");
+		exit(-1);
+	}
+	log_info(logger, "Sent space used to coordinador, total setted entries: %d", spaceUsed);
 }
 
 void receiveCoordinadorConfiguration(int coordinadorSocket) {
@@ -143,6 +152,7 @@ void receiveCoordinadorConfiguration(int coordinadorSocket) {
 	log_info(logger, "Starting to receive keys to set from files");
 	recieveKeysFromCoordinador(coordinadorSocket);
 
+	sendSpaceUsedToCoordinador(coordinadorSocket);
 }
 
 void initialize(int entraces, int entryStorage) {
@@ -200,13 +210,7 @@ void handleOperationRequest(int coordinadorSocket) {
 
 	if (operation->operationCode == OURSET) {
 
-		int spaceUsed = getTotalSettedEntries();
-		if (sendInt(spaceUsed, coordinadorSocket) == CUSTOM_FAILURE) {
-			log_error(logger, "I cannot send my spaceUsed to coordinador");
-			exit(-1);
-		}
-
-		log_info(logger, "Sended space used to coordinador, total setted entries: %d", spaceUsed);
+		sendSpaceUsedToCoordinador(coordinadorSocket);
 	}
 
 	log_info(logger, "The operation was successfully notified to coordinador");
