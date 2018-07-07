@@ -15,8 +15,6 @@
 	typedef struct Instancia{
 		int socket;
 		int spaceUsed;
-		char firstLetter;
-		char lastLetter;
 		t_list* storedKeys;
 		int isFallen;
 		char* name;

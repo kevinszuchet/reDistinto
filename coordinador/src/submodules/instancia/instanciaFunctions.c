@@ -365,12 +365,10 @@ int addSemaphoreToInstancia(Instancia* instancia){
 	return 0;
 }
 
-Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char lastLetter, char* name){
+Instancia* createInstancia(int socket, int spaceUsed, char* name){
 	Instancia* instancia = malloc(sizeof(Instancia));
 	instancia->socket = socket;
 	instancia->spaceUsed = spaceUsed;
-	instancia->firstLetter = firstLetter;
-	instancia->lastLetter = lastLetter;
 	instancia->storedKeys = list_create();
 	instancia->isFallen = INSTANCIA_ALIVE;
 	instancia->name = strdup(name);
@@ -384,7 +382,7 @@ Instancia* createInstancia(int socket, int spaceUsed, char firstLetter, char las
 }
 
 Instancia* createNewInstancia(int instanciaSocket, char* name){
-	Instancia* newInstancia = createInstancia(instanciaSocket, 0, 'a', 'z', name);
+	Instancia* newInstancia = createInstancia(instanciaSocket, 0, name);
 
 	if(newInstancia){
 		list_add(instancias, newInstancia);
@@ -424,8 +422,6 @@ void showInstancia(Instancia* instancia){
 		printf("Name = %s\n", instancia->name);
 		printf("Socket = %d\n", instancia->socket);
 		printf("Space used = %d\n", instancia->spaceUsed);
-		printf("First letter = %c\n", instancia->firstLetter);
-		printf("Last letter = %c\n", instancia->lastLetter);
 		showStoredKeys(instancia);
 		showInstanciaState(instancia);
 		printf("----------\n");
