@@ -81,11 +81,11 @@ void getConfig(int* listeningPort){
 
 Instancia* applyDistributionAlgorithm(char* key, Instancia* (*theAlgorithm)(t_list* aliveInstancias, char* key)){
 	Instancia* chosenInstancia = NULL;
-	if(list_size(instancias) != 0){
-		t_list* aliveInstancias = list_filter(instancias, (void*) instanciaIsAlive);
+	t_list* aliveInstancias = list_filter(instancias, (void*) instanciaIsAlive);
+	if(list_size(aliveInstancias) != 0){
 		chosenInstancia = (*theAlgorithm)(aliveInstancias, key);
-		list_destroy(aliveInstancias);
 	}
+	list_destroy(aliveInstancias);
 	return chosenInstancia;
 }
 
