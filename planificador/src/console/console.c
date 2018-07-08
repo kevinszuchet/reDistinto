@@ -166,23 +166,23 @@ void executeDeadlockAlgorithm(){
 
 
 	t_queue* blockedEsis;
-	int actualEsiID;
+	int* actualEsiID;
 	int takerEsiID;
 	for (int i = 0; i < list_size(allSystemKeys); i++) {
 		char* key = list_get(allSystemKeys, i);
 		blockedEsis = dictionary_get(blockedEsiDic, key);
 		for (int j = 0; j < queue_size(blockedEsis); j++) {
-			actualEsiID = *((int*) queue_pop(blockedEsis));
+			actualEsiID = (int*) queue_pop(blockedEsis);
 			takerEsiID = getEsiTakerIDByKeyTaken(key);
 
 			if(takerEsiID ==-1){
 
 			}else{
-				asignationMatrix[getEsiIndexByID(actualEsiID)][getEsiIndexByID(takerEsiID)] = 1;
+				asignationMatrix[getEsiIndexByID(*actualEsiID)][getEsiIndexByID(takerEsiID)] = 1;
 			}
 
 
-			queue_push(blockedEsis, &actualEsiID);
+			queue_push(blockedEsis, actualEsiID);
 
 		}
 	}
