@@ -223,6 +223,8 @@ void respondStatusToPlanificador(char* key){
 }
 
 void freeResources(){
+	//TODO ver que no quede bloqueado este semaforo en ningun caso
+	//ademas, si se sacan este par de lock y unlock, helgrind tira varios errores (y si se dejan, tira 0)
 	pthread_mutex_lock(&instanciasListMutex);
 	list_destroy_and_destroy_elements(instancias, (void*) instanciaDestroyer);
 	pthread_mutex_unlock(&instanciasListMutex);
