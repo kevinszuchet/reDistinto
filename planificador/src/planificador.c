@@ -195,7 +195,7 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 	}
 
 	t_queue* blockedEsis;
-	int* actualEsi;
+	int* actualEsi = malloc(sizeof(int));
 
 	t_list * filteredList = list_filter(readyEsis, &isEsiByID);
 
@@ -224,10 +224,15 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 
 	for (int i = 0; i < list_size(allSystemKeys); i++) {
 		char* key = list_get(allSystemKeys, i);
+		printf("Key = %s\n",key);
 		blockedEsis = dictionary_get(blockedEsiDic, key);
+		printf("Have %d blocked esis\n",queue_size(blockedEsis));
 		for (int j = 0; j < queue_size(blockedEsis); j++) {
+
 			actualEsi = (int*) queue_pop(blockedEsis);
-			if (getEsiById(*actualEsi)->id == esiToDelete->id) {
+			printf("ActualEsiId = %d\n",*actualEsi);
+			printf("Esi to delete id = %d\n",esiToDelete->id);
+			if (*actualEsi == esiToDelete->id) {
 				log_info(logger, "Aborting esi (%d) from blocked at key (%s)", esiToDelete->id, key);
 				// REVIEW se deberia hacer free del actualEsi?
 			} else {
