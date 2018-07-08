@@ -210,6 +210,7 @@ void handleOperationRequest(int coordinadorSocket) {
 	}
 
 	log_info(logger, "The operation was successfully notified to coordinador");
+	destroyOperation(operation);
 }
 
 void checkValueFromKey(int coordinadorSocket) {
@@ -334,8 +335,8 @@ int finish() {
 	free(path);
 	free(name);
 	log_destroy(replaceAlgorithmsLogger);
-	log_destroy(logger);
 	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
+	log_destroy(logger);
 
 	return 0;
 }
