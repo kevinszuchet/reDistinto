@@ -23,11 +23,11 @@ void openConsole() {
 			add_history(line);
 		}*/
 
-		if (!strncmp(line, "exit", 4)) {
+		/*if (!strncmp(line, "exit", 4)) {
 			free(line);
 			exitPlanificador();
 			break;
-		}
+		}*/
 
 		if (validCommand(parameters)) {
 			log_info(logger, "Instruccion added to pending instruccion List");
