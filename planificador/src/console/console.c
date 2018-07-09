@@ -31,10 +31,17 @@ void openConsole() {
 
 		if (validCommand(parameters)) {
 			log_info(logger, "Instruccion added to pending instruccion List");
-			list_add(instruccionsByConsoleList, parameters);
-			pthread_mutex_lock(&executionMutex);
-			executeConsoleInstruccions();
-			pthread_mutex_unlock(&executionMutex);
+			pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
+			if(finishedExecutingInstruccion){
+
+				sem_wait(&executionSemaphore);
+				execute(parameters);
+				sem_post(&executionSemaphore);
+
+			}else{
+				list_add(instruccionsByConsoleList, parameters);
+			}
+			pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
 			executeInstruccion();
 
 		} else {
@@ -428,12 +435,15 @@ int keyExists(char* key) {
 }
 
 int isReady(int idEsi) {
+	pthread_mutex_lock(&mutexReadyList);
 	if (list_is_empty(readyEsis)) {
+		pthread_mutex_unlock(&mutexReadyList);
 		return 0;
 	}
 
 	for (int i = 0; i < list_size(readyEsis); i++) {
 		if (((Esi*) list_get(readyEsis, i))->id == idEsi) {
+			pthread_mutex_unlock(&mutexReadyList);
 			return 1;
 		}
 	}

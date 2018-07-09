@@ -13,14 +13,15 @@ fd_set master;
 char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 
-pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t executionMutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+sem_t executionSemaphore;
+
 int main(void){
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
-
+	sem_init(&executionSemaphore,1,1);
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
 	if (welcomeCoordinadorResult < 0) {
 		log_error(logger, "Couldn't handhsake with coordinador, quitting...");
@@ -222,8 +223,8 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 	list_destroy(filteredList);
 
 	if (runningEsi != NULL && runningEsi->id == esiToDelete->id) {
-
-		finishedExecutingInstruccion = true;
+		executeConsoleInstruccions();
+		setFinishedExecutingInstruccion(true);
 		runningEsi = NULL;
 	}
 
@@ -541,6 +542,7 @@ void executeInstruccion(){
 
 	Esi* nextEsi;
 	if (pauseState == CONTINUE) {
+		pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
 		if (finishedExecutingInstruccion) {
 			if (runningEsi == NULL) {
 				if (list_size(readyEsis) > 0) {
@@ -566,6 +568,7 @@ void executeInstruccion(){
 				log_info(logger, "Waiting coordinador request");
 			}
 		}
+		pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
 	}
 }
 
@@ -595,8 +598,7 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 			log_info(logger, "Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)", getCoordinadorResponseName(esiInformation->coordinadorResponse), getEsiInformationResponseName(esiInformation->esiStatus));
 			handleEsiInformation(esiInformation, keyRecieved);
 			log_info(logger, "Finish handling one instruction from ESI");
-			executeConsoleInstruccions();
-			finishedExecutingInstruccion = true;
+			setFinishedExecutingInstruccion(true);
 		} else {
 			log_info(logger, "I received a strange in socket %d", clientSocket);
 			printf("Lo que me llego es %c", clientMessage);
@@ -605,6 +607,15 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 	}
 	executeInstruccion();
 	return 0;
+}
+
+void setFinishedExecutingInstruccion(bool value){
+	if(value){
+		executeConsoleInstruccions();
+	}
+	pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
+	finishedExecutingInstruccion = value;
+	pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
 }
 
 int welcomeNewClients(int newCoordinadorSocket) {
@@ -667,8 +678,9 @@ int handleConcurrence() {
 				} else {
 					clientSocket = i;
 					// handle data from a client
+					sem_wait(&executionSemaphore);
 					resultRecv = recv_all(clientSocket, &clientMessage, sizeof(char));
-					pthread_mutex_lock(&executionMutex);
+
 					if (resultRecv == CUSTOM_FAILURE) {
 						if (clientSocket == coordinadorSocket) {
 							log_error(logger, "Coordinador disconnected. Exit planificador");
@@ -683,7 +695,7 @@ int handleConcurrence() {
 					} else {
 						clientMessageHandler(clientMessage, clientSocket);
 					}
-					pthread_mutex_unlock(&executionMutex);
+					sem_post(&executionSemaphore);
 				}
 			}
 		}
@@ -721,8 +733,13 @@ void initializePlanificador() {
 
 	sentenceCounter = 0;
 	actualID = 1;
-	finishedExecutingInstruccion = true;
 
+	pthread_mutex_init(&mutexFinishedExecutingInstruccion,NULL);
+	pthread_mutex_init(&mutexReadyList,NULL);
+
+	pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
+	finishedExecutingInstruccion = true;
+	pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
 	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
 }
 

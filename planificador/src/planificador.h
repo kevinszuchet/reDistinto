@@ -63,7 +63,10 @@
 	pthread_t threadConsole;
 	pthread_t threadConsoleInstructions;
 
-	pthread_mutex_t executionMutex;
+	sem_t executionSemaphore;
+
+	pthread_mutex_t mutexFinishedExecutingInstruccion;
+	pthread_mutex_t mutexReadyList;
 
 
 
@@ -87,6 +90,7 @@
 
 	void executeInstruccion();
 
+	void setFinishedExecutingInstruccion(bool value);
 	// REVIEW donde se usa esta funcion? es necesario el prototipo aca?
 	void removeFdFromSelect(int socket);
 	void showBlockedEsisInKey(char* key);
