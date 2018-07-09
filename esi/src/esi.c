@@ -11,8 +11,6 @@ t_log* logger;
 
 int main(int argc, char* argv[]) {
 
-	logger = log_create("../esi.log", "tpSO", true, LOG_LEVEL_INFO);
-	initSerializationLogger(logger);
 
 	if (argc != 2) {
 		log_error(logger, "ESI cannot execute: you must enter a script file to read");
@@ -33,6 +31,10 @@ int main(int argc, char* argv[]) {
 	int scriptFd;
 	char *script;
 	struct stat sb;
+	char * loggerPath = getLoggerPath(argv);
+	logger = log_create(loggerPath, "tpSO", true, LOG_LEVEL_INFO);
+	free(loggerPath);
+	initSerializationLogger(logger);
 
 	if ((scriptFd = open(argv[1], O_RDONLY)) == -1) {
 		log_error(logger, "The script file cannot be opened");
@@ -91,6 +93,23 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
+char * getLoggerPath(char * argv[]){
+
+	char **splittedPath = string_split(argv[1], "/");
+	int esiNamePosition = numberOfElementsOnArray(splittedPath);
+	char * esiName = strdup(splittedPath[esiNamePosition - 1]);
+	for (int pos = 0; splittedPath[pos] != NULL; pos++) {
+		free(splittedPath[pos]);
+	}
+	free(splittedPath);
+	char *logPath = malloc(strlen("../") + strlen(esiName) + strlen(".log") + 1);
+
+	sprintf(logPath, "%s%s%s", "../", esiName, ".log");
+	logPath[strlen("../") + strlen(esiName) + strlen(".log")] = '\0';
+	free(esiName);
+
+	return logPath;
+}
 /*
  * Configuration
  * */
@@ -147,12 +166,16 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		log_info(logger, "esiPC: %d", esiPC);
 
 		if (line) {
-			munmap(line, strlen(line)+1);
+			free(line);
 		}
 	}
 
 	if (scriptsSplitted) {
 		free(scriptsSplitted);
+	}
+
+	if (script) {
+		munmap(script, strlen(script) + 1);
 	}
 }
 

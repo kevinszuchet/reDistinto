@@ -15,7 +15,7 @@
 
 	#define MAX_KEY_SIZE 40
 
-	#define CFG_FILE "../instancia.cfg"
+	char * CFG_FILE;
 
 	#include <our-commons/sockets/client.h>
 	#include <our-commons/modules/names.h>
@@ -51,7 +51,7 @@
 	char* ipCoordinador;
 
 	t_log * logger;
-	t_log * replaceAlgorithmsLogger;
+	//t_log * replaceAlgorithmsLogger;
 
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
 

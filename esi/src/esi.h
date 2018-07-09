@@ -32,7 +32,7 @@
 	void initializeOperation(Operation * operation, char operationCode, char * key, char * value);
 	void initializeOperationResponse(OperationResponse * operationResponse, char coordinadorResponse, char status);
 	void destroy_operation(Operation * operation);
-
+	char * getLoggerPath(char * argv[]);
 	int numberOfElementsOnArray(char ** array) {
 		int size = 0;
 		for (; array[size] != NULL; size++);

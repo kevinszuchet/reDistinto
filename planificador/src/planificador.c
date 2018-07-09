@@ -9,17 +9,22 @@
 
 fd_set master;
 
-
 char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 
 
 
-sem_t executionSemaphore;
 
-int main(void){
+int main(int argc, char* argv[]) {
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
+
+	if (argc != 2) {
+		log_error(logger, "Planificador cannot execute: you must enter a configuration file");
+		return -1;
+	}
+
+	CFG_FILE = strdup(argv[1]);
 	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
 	sem_init(&executionSemaphore,1,1);
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
@@ -710,6 +715,14 @@ void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation, int* 
 
 	t_config* config;
 	config = config_create(CFG_FILE);
+
+	free(CFG_FILE);
+
+	if (config == NULL) {
+		log_error(logger, "Planificador cannot work because of invalid configuration file");
+		exit(-1);
+	}
+
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
 	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	*alphaEstimation = config_get_int_value(config, "ALPHA_ESTIMATION");

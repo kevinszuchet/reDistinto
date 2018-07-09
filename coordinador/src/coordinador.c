@@ -22,10 +22,17 @@ sem_t keyStatusFromPlanificadorSemaphore;
 int esiIdFromPlanificador;
 sem_t esiIdFromPlanificadorSemaphore;
 
-int main(void) {
+int main(int argc, char* argv[]) {
 	logger = log_create("../coordinador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
 	operationsLogger = log_create("../logOperaciones.log", "tpSO", true, LOG_LEVEL_INFO);
+
+	if (argc != 2) {
+		log_error(logger, "Coordinador cannot execute: you must enter a configuration file");
+		return -1;
+	}
+
+	CFG_FILE = strdup(argv[1]);
 
 	int listeningPort;
 	getConfig(&listeningPort);
@@ -45,11 +52,8 @@ int main(void) {
 
 	if(welcomePlanificadorResponse < 0){
 		log_error(logger, "Couldn't handshake with planificador, quitting...");
-		freeResources();
 		exit(-1);
 	}
-
-	freeResources();
 
 	return 0;
 }
@@ -65,11 +69,18 @@ void showConfig(int listeningPort){
 void getConfig(int* listeningPort){
 	t_config* config;
 	config = config_create(CFG_FILE);
+
+	free(CFG_FILE);
+
+	if (config == NULL) {
+		log_error(logger, "Coordinador cannot work because of invalid configuration file");
+		exit(-1);
+	}
+
 	*listeningPort = config_get_int_value(config, "LISTENING_PORT");
 	algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
 	if(strcmp(algorithm, "EL") != 0 && strcmp(algorithm, "LSU") != 0 && strcmp(algorithm, "KE") != 0){
 		log_error(logger, "Aborting: cannot recognize distribution algorithm");
-		freeResources();
 		exit(-1);
 	}
 	cantEntry = config_get_int_value(config, "CANT_ENTRY");
@@ -119,7 +130,6 @@ char* getValueFromKey(Instancia* instancia, char* key){
 }
 
 //TODO mariano que pasa si se quiere enviar algo null? ahora no se mandan mas strings nulos pero probarlo por las dudas.
-//TODO mariano pasar al addToPackageGeneric
 int sendPairKeyValueToPlanificador(char* instanciaThatSatisfiesStatus, char* value, char instanciaOrigin){
 	//si la clave esta en instancia caida, no se simula y se devuelve NOT_SIMULATED_INSTANCIA_BUT_FALLEN
 	char typeOfMessage = CORDINADORCONSOLERESPONSEMESSAGE;
@@ -222,22 +232,8 @@ void respondStatusToPlanificador(char* key){
 	free(valueThatSatisfiesStatus);
 }
 
-void freeResources(){
-	//TODO ver que no quede bloqueado este semaforo en ningun caso
-	//ademas, si se sacan este par de lock y unlock, helgrind tira varios errores (y si se dejan, tira 0)
-	pthread_mutex_lock(&instanciasListMutex);
-	list_destroy_and_destroy_elements(instancias, (void*) instanciaDestroyer);
-	pthread_mutex_unlock(&instanciasListMutex);
-
-	free(algorithm);
-
-	log_destroy(logger);
-	log_destroy(operationsLogger);
-}
-
 void planificadorFell(){
 	log_error(logger, "Planificador disconnected from coordinador, quitting...");
-	freeResources();
 	exit(-1);
 }
 
@@ -541,7 +537,6 @@ char checkKeyStatusFromPlanificador(int esiId, char* key){
 
 	log_info(logger, "Gonna recieve %s's status from planificador", key);
 
-	//TODO probar esto
 	char typeOfMessage = KEYSTATUSMESSAGE;
 
 	void* package = NULL;
@@ -586,8 +581,7 @@ int recieveStentenceToProcess(int esiSocket){
 	esiRequest.socket = esiSocket;
 
 	if(recieveOperation(&esiRequest.operation, esiSocket) == CUSTOM_FAILURE){
-		//TODO revisar que se estaria usando el esiRequest anterior, y esto podria fallar
-		//log_info(logger, "Couldn't receive operation from esi %d. Finished or fell, so his thread dies", esiRequest.id);
+		log_warning(logger, "Couldn't receive operation from esi on socket %d. Finished or fell, so his thread dies", esiRequest.socket);
 		destroyOperation(esiRequest.operation);
 		return -1;
 	}
@@ -718,7 +712,6 @@ int handleInstancia(int instanciaSocket){
 
 			default:
 
-				//TODO habria que matar a la instancia? porque su hilo muere pero el proceso instancia va a seguir vivo...
 				log_warning(logger, "Instancia sent an invalid command. Killing his thread");
 				instanciaExitGracefully(actualInstancia);
 				return -1;
@@ -771,7 +764,6 @@ void planificadorHandler(int* allocatedClientSocket){
 				break;
 			default:
 				log_error(logger, "Invalid planificador message");
-				freeResources();
 				exit(-1);
 				break;
 		}
@@ -799,18 +791,8 @@ int clientHandler(int clientSocket, void (*handleThreadProcedure)(int* socket)){
 	pthread_t clientThread;
 	int* clientSocketPointer = malloc(sizeof(int));
 	*clientSocketPointer = clientSocket;
-	if(pthread_create(&clientThread, NULL, (void*) handleThreadProcedure, clientSocketPointer) != 0){
-		log_error(logger, "Error creating thread");
-		free(clientSocketPointer);
-		return -1;
-	}
-
-	if(pthread_detach(clientThread) != 0){
-		//TODO habria que matar al hilo que se acaba de crear. pthred_cancel? que pasa con el proceso instancia/esi? va a seguir vivo
-		log_error(logger,"Couldn't detach thread");
-		free(clientSocketPointer);
-		return -1;
-	}
+	pthread_create(&clientThread, NULL, (void*) handleThreadProcedure, clientSocketPointer);
+	pthread_detach(clientThread);
 
 	return 0;
 }

@@ -26,7 +26,7 @@
 	#include <semaphore.h>
 	#include "submodules/instancia/instanciaFunctions.h"
 
-	#define  CFG_FILE "../coordinador.cfg"
+	char * CFG_FILE;
 
 	typedef struct EsiRequest{
 		int id;
@@ -53,7 +53,6 @@
 	void getConfig(int* listeningPort);
 
 	int welcomePlanificador(int coordinadorSocket, int planificadorSocket);
-	void freeResources();
 	void planificadorFell();
 
 #endif /* SRC_COORDINADOR_H_ */

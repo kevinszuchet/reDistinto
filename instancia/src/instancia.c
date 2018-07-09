@@ -9,15 +9,20 @@
 
 pthread_mutex_t dumpMutex = PTHREAD_MUTEX_INITIALIZER;
 
-int main(void) {
+int main(int argc, char* argv[]) {
 
-	logger = log_create("../instancia.log", "tpSO", true, LOG_LEVEL_INFO);
+	//replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
+
 	initSerializationLogger(logger);
-	replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
 
+	if (argc != 2) {
+		log_error(logger, "Instancia cannot execute: you must enter a configuration file");
+		return -1;
+	}
+
+	CFG_FILE = strdup(argv[1]);
 
 	int portCoordinador;
-
 
 	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dumpDelay);
 
@@ -27,8 +32,15 @@ int main(void) {
 	printf("Path = %s\n", path);
 	printf("Name= %s\n", name);
 	printf("Dump= %d\n", dumpDelay);
-	log_info(logger, "trying to connect to coordinador...");
 
+	char *logPath = malloc(strlen("../") + strlen(name) + strlen(".log")+ 1);
+
+	sprintf(logPath, "%s%s%s", "../", name, ".log");
+	logPath[strlen("../") + strlen(name) + strlen(".log")] = '\0';
+	logger = log_create(logPath, "tpSO", true, LOG_LEVEL_INFO);
+	initSerializationLogger(logger);
+
+	log_info(logger, "trying to connect to coordinador...");
 	/*
 	 * Creates path directory with mkdir (if it does not exists)
 	 * S_IRWXU: User mode to Read, Write and eXecute
@@ -69,8 +81,16 @@ int main(void) {
 
 void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dumpDelay) {
 
-	t_config* config;
+	t_config* config = NULL;
 	config = config_create(CFG_FILE);
+
+	free(CFG_FILE);
+
+	if (config == NULL) {
+		log_error(logger, "Instancia cannot work because of invalid configuration file");
+		exit(-1);
+	}
+
 	*ipCoordinador = strdup(config_get_string_value(config, "IP_COORDINADOR"));
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
 	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
@@ -334,7 +354,7 @@ int finish() {
 	free(algorithm);
 	free(path);
 	free(name);
-	log_destroy(replaceAlgorithmsLogger);
+	//log_destroy(replaceAlgorithmsLogger);
 	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
 	log_destroy(logger);
 
@@ -504,7 +524,7 @@ char compact() {
 	if (totalSettedEntries > 0) {
 
 		int totalUsedMemory = totalSettedEntries * entrySize;
-		char * auxStorage = calloc(1, totalUsedMemory);//cambiar por calloc(totalUsedMemory)
+		char * auxStorage = calloc(1, totalUsedMemory);
 		int auxIndex = 0;
 
 		int valueSize, valueStart, j;
@@ -522,7 +542,7 @@ char compact() {
 			 getValue(value, valueStart, valueSize);
 
 			 // Update ValueStart on dictionary(key) element
-			 setValueStart(element->data, auxIndex);
+			 setValueStart(element->data, auxIndex / entrySize);
 
 			 while (j < valueSize && auxIndex < totalUsedMemory) {
 				 auxStorage[auxIndex] = value[j];
