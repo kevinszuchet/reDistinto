@@ -265,11 +265,13 @@ void sendKeyStatusToCoordinador(char* key) {
 	char keyStatus = isLockedKey(key);
 
 	if (keyStatus == BLOCKED) {
-		t_list * filteredList = list_filter(runningEsi->lockedKeys, &keyCompare);
-		if (list_size(filteredList) > 0) {
-			keyStatus = LOCKED;
+		if(runningEsi!=NULL){
+			t_list * filteredList = list_filter(runningEsi->lockedKeys, &keyCompare);
+			if (list_size(filteredList) > 0) {
+				keyStatus = LOCKED;
+			}
+			list_destroy(filteredList);
 		}
-		list_destroy(filteredList);
 	}
 	char op = PLANIFICADOR_KEY_STATUS_RESPONSE;
 	send_all(coordinadorSocket, &op, sizeof(op));
@@ -467,9 +469,10 @@ void recieveConsoleStatusResponse(){
 		log_warning(logger, "Couldn't recieve instancia origin from coordinador to respond status command");
 		exitPlanificador();
 	}
-	log_info(logger, "Recieved instancia status from coordinador to response status command");
 
+	log_info(logger, "Recieved instancia status from coordinador to response status command");
 	if(instanciaOrigin == STATUS_NO_INSTANCIAS_AVAILABLE){
+		log_info(logger, "There are no instancias");
 		return;
 	}
 
@@ -481,7 +484,12 @@ void recieveConsoleStatusResponse(){
 	}
 	log_info(logger, "Recieved name of instancia (%s) to response status command", instanciaThatSatisfiesStatus);
 
-	if(instanciaOrigin == STATUS_SIMULATED_INSTANCIA || instanciaOrigin == STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN){
+	if(instanciaOrigin == STATUS_SIMULATED_INSTANCIA){
+		log_info(logger, "No instancias have the key, it would be on instancia %s", instanciaThatSatisfiesStatus);
+		return;
+	}
+	if(instanciaOrigin == STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN){
+		log_info(logger, "Instancia %s have the key but is fallen", instanciaThatSatisfiesStatus);
 		return;
 	}
 
@@ -490,7 +498,7 @@ void recieveConsoleStatusResponse(){
 		log_warning(logger, "Couldn't recieve value from coordinador to respond status command");
 		exitPlanificador();
 	}
-	log_info(logger, "Recieved value %s from coordinador as a status response, because an instancia was found", value);
+	log_info(logger, "Instancia %s has the key with value %s", instanciaThatSatisfiesStatus, value);
 
 }
 
