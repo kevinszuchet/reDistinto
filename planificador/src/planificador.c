@@ -541,6 +541,7 @@ void recieveConsoleStatusResponse(){
 void executeInstruccion(){
 
 	Esi* nextEsi;
+	pthread_mutex_lock(&mutexPauseState);
 	if (pauseState == CONTINUE) {
 		pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
 		if (finishedExecutingInstruccion) {
@@ -570,6 +571,7 @@ void executeInstruccion(){
 		}
 		pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
 	}
+	pthread_mutex_unlock(&mutexPauseState);
 }
 
 int clientMessageHandler(char clientMessage, int clientSocket) {
@@ -605,6 +607,7 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 			exitPlanificador();
 		}
 	}
+	executeConsoleInstruccions();
 	executeInstruccion();
 	return 0;
 }
@@ -736,6 +739,8 @@ void initializePlanificador() {
 
 	pthread_mutex_init(&mutexFinishedExecutingInstruccion,NULL);
 	pthread_mutex_init(&mutexReadyList,NULL);
+	pthread_mutex_init(&mutexInstruccionsByConsole,NULL);
+	pthread_mutex_init(&mutexPauseState,NULL);
 
 	pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
 	finishedExecutingInstruccion = true;

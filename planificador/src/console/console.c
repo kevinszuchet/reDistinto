@@ -39,7 +39,9 @@ void openConsole() {
 				sem_post(&executionSemaphore);
 
 			}else{
+				pthread_mutex_lock(&mutexInstruccionsByConsole);
 				list_add(instruccionsByConsoleList, parameters);
+				pthread_mutex_unlock(&mutexInstruccionsByConsole);
 			}
 			pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
 			executeInstruccion();
@@ -63,7 +65,7 @@ void executeConsoleInstruccions() {
 			execute((char**) parameters);
 		}
 	}
-
+	pthread_mutex_lock(&mutexInstruccionsByConsole);
 	if (list_size(instruccionsByConsoleList) > 0) {
 		log_info(logger, "Hay (%d) instrucciones de consola para ejecutar", list_size(instruccionsByConsoleList));
 		list_iterate(instruccionsByConsoleList, &validateAndexecuteComand);
@@ -71,6 +73,7 @@ void executeConsoleInstruccions() {
 		//list_clean_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
 		list_clean(instruccionsByConsoleList);
 	}
+	pthread_mutex_unlock(&mutexInstruccionsByConsole);
 }
 
 void execute(char** parameters) {
@@ -86,12 +89,16 @@ void execute(char** parameters) {
 
 	switch(commandNumber) {
 		case PAUSAR:
+			pthread_mutex_lock(&mutexPauseState);
 			pauseState = PAUSE;
+			pthread_mutex_unlock(&mutexPauseState);
 			log_info(logger, "Execution paused by console");
 		break;
 
 		case CONTINUAR:
+			pthread_mutex_lock(&mutexPauseState);
 			pauseState = CONTINUE;
+			pthread_mutex_unlock(&mutexPauseState);
 			log_info(logger, "Execution continued by console");
 		break;
 
@@ -155,7 +162,6 @@ void execute(char** parameters) {
 		case DEADLOCK:
 			executeDeadlockAlgorithm();
 		break;
-
 		default:
 			printf("%s: command not found\n", command);
 		break;

@@ -67,6 +67,8 @@
 
 	pthread_mutex_t mutexFinishedExecutingInstruccion;
 	pthread_mutex_t mutexReadyList;
+	pthread_mutex_t mutexInstruccionsByConsole;
+	pthread_mutex_t mutexPauseState;
 
 
 
