@@ -147,12 +147,16 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		log_info(logger, "esiPC: %d", esiPC);
 
 		if (line) {
-			munmap(line, strlen(line)+1);
+			free(line);
 		}
 	}
 
 	if (scriptsSplitted) {
 		free(scriptsSplitted);
+	}
+
+	if (script) {
+		munmap(script, strlen(script) + 1);
 	}
 }
 
