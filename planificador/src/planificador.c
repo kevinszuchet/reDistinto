@@ -648,7 +648,7 @@ int handleConcurrence() {
 								exitPlanificador();
 							} else {
 								log_warning(logger, "ESI disconnected.");
-								sleep(1); // TODO eliminar y testear que siga andando
+
 								abortEsi(getEsiBySocket(clientSocket));
 							}
 							close(clientSocket);
