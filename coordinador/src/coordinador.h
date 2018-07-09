@@ -26,7 +26,7 @@
 	#include <semaphore.h>
 	#include "submodules/instancia/instanciaFunctions.h"
 
-	#define  CFG_FILE "../coordinador.cfg"
+	char * CFG_FILE;
 
 	typedef struct EsiRequest{
 		int id;

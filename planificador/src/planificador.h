@@ -26,7 +26,6 @@
 	#include <our-commons/tads/tads.h>
 	#include <semaphore.h>
 
-	#define  CFG_FILE "../planificador.cfg"
 	#define CONSOLE_BLOCKED 0
 	#define KEYFREE 1
 	#define KEYBLOCKED 0
@@ -38,6 +37,8 @@
 	#define INRUNNING 'd'
 	#define INBLOCKEDDIC 'e'
 	#define NOWHERE 'f'
+
+	char * CFG_FILE;
 
 	t_log * logger;
 
