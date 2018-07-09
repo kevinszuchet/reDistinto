@@ -51,7 +51,7 @@
 	char* ipCoordinador;
 
 	t_log * logger;
-	t_log * replaceAlgorithmsLogger;
+	//t_log * replaceAlgorithmsLogger;
 
 	void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char** path, char** name, int* dump);
 

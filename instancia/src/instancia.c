@@ -11,9 +11,7 @@ pthread_mutex_t dumpMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(void) {
 
-	logger = log_create("../instancia.log", "tpSO", true, LOG_LEVEL_INFO);
-	initSerializationLogger(logger);
-	replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
+	//replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
 
 
 	int portCoordinador;
@@ -27,8 +25,15 @@ int main(void) {
 	printf("Path = %s\n", path);
 	printf("Name= %s\n", name);
 	printf("Dump= %d\n", dumpDelay);
-	log_info(logger, "trying to connect to coordinador...");
 
+	char *logPath = malloc(strlen("../") + strlen(name) + strlen(".log")+ 1);
+
+	sprintf(logPath, "%s%s%s", "../", name, ".log");
+	logPath[strlen("../") + strlen(name) + strlen(".log")] = '\0';
+	initSerializationLogger(logger);
+	logger = log_create(logPath, "tpSO", true, LOG_LEVEL_INFO);
+
+	log_info(logger, "trying to connect to coordinador...");
 	/*
 	 * Creates path directory with mkdir (if it does not exists)
 	 * S_IRWXU: User mode to Read, Write and eXecute
@@ -334,7 +339,7 @@ int finish() {
 	free(algorithm);
 	free(path);
 	free(name);
-	log_destroy(replaceAlgorithmsLogger);
+	//log_destroy(replaceAlgorithmsLogger);
 	log_info(logger, "Instancia was finished correctly, bye bye, it was a pleasure!!");
 	log_destroy(logger);
 

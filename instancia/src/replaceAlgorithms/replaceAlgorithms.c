@@ -10,7 +10,7 @@
 void updateAccodringToAlgorithm(char * key) {
 
 	if (strcmp(algorithm, "LRU") == 0) {
-		log_info(replaceAlgorithmsLogger, "Update: Least Recently Used Algorithm");
+		log_info(logger, "Update: Least Recently Used Algorithm");
 		updateUsage(key);
 	}
 
@@ -47,13 +47,13 @@ void deleteAccodringToAlgorithm() {
 
 void deleteKey(entryTableInfo * toBeDeletedEntryInfo) {
 
-	log_info(replaceAlgorithmsLogger, "the key %s is about to be deleted", toBeDeletedEntryInfo->key);
+	log_info(logger, "the key %s is about to be deleted", toBeDeletedEntryInfo->key);
 
 	biMapUpdate(toBeDeletedEntryInfo->valueStart, wholeUpperDivision(toBeDeletedEntryInfo->valueSize, entrySize), IS_EMPTY);
 
 	// REVIEW se libera cuando hago el remove?
 	list_remove_and_destroy_by_condition_with_param(entryTable, toBeDeletedEntryInfo->key, (void *) hasKey, (void *) destroyTableInfo);
-	log_info(replaceAlgorithmsLogger, "the key was successfully deleted");
+	log_info(logger, "the key was successfully deleted");
 }
 
 void updateUsage(char * key) {
