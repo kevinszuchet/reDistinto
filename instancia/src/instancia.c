@@ -504,7 +504,7 @@ char compact() {
 	if (totalSettedEntries > 0) {
 
 		int totalUsedMemory = totalSettedEntries * entrySize;
-		char * auxStorage = calloc(1, totalUsedMemory);//cambiar por calloc(totalUsedMemory)
+		char * auxStorage = calloc(1, totalUsedMemory);
 		int auxIndex = 0;
 
 		int valueSize, valueStart, j;
@@ -522,7 +522,7 @@ char compact() {
 			 getValue(value, valueStart, valueSize);
 
 			 // Update ValueStart on dictionary(key) element
-			 setValueStart(element->data, auxIndex);
+			 setValueStart(element->data, auxIndex / entrySize);
 
 			 while (j < valueSize && auxIndex < totalUsedMemory) {
 				 auxStorage[auxIndex] = value[j];
