@@ -145,10 +145,6 @@ void waitPlanificadorOrders(int planificadorSocket, char * script, int coordinad
 		}
 
 		log_info(logger, "esiPC: %d", esiPC);
-
-		if (line) {
-			free(line);
-		}
 	}
 
 	if (scriptsSplitted) {
@@ -218,6 +214,10 @@ void tryToExecute(int planificadorSocket, char * line, int coordinadorSocket, in
 	if (coordinadorResponse == ABORT) {
 		log_error(logger, "I cannot keep running", line);
 		exit(-1);
+	}
+
+	if ((coordinadorResponse == SUCCESS || coordinadorResponse == LOCK || coordinadorResponse == FREE) && line) {
+		free(line);
 	}
 }
 

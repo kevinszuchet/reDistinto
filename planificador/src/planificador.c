@@ -25,7 +25,14 @@ int main(int argc, char* argv[]) {
 	}
 
 	CFG_FILE = strdup(argv[1]);
-	getConfig(&listeningPort, &algorithm,&alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
+	getConfig(&listeningPort, &algorithm, &alphaEstimation, &initialEstimation, &ipCoordinador, &portCoordinador, &blockedKeys);
+
+	printf("Listening port = %d\n", listeningPort);
+	printf("Algorithm = %s\n", algorithm);
+	printf("Alpha estimation = %d\n", alphaEstimation);
+	printf("Estimation = %d\n", initialEstimation);
+	printf("Ip coordinador= %s\n", ipCoordinador);
+	printf("Port coordinador= %d\n", portCoordinador);
 
 	int welcomeCoordinadorResult = welcomeServer(ipCoordinador, portCoordinador, COORDINADOR, PLANIFICADOR, COORDINADORID, &welcomeNewClients, logger);
 	if (welcomeCoordinadorResult < 0) {
