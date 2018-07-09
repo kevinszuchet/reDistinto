@@ -36,13 +36,13 @@ int id(Esi* esi) {
 
 void addLockedKeyToEsi(char** key, Esi** esi) {
 	list_add((*esi)->lockedKeys, (void*) *key);
+	printf("Locked key %s in ESI %d \n",*key,(*esi)->id);
 }
 
 void removeLockedKey(char* key, Esi* esi) {
 	bool keyCompare(void* takenKeys) {
 		return string_equals_ignore_case((char*) takenKeys, key);
 	}
-
 	list_remove_by_condition(esi->lockedKeys, &keyCompare);
 }
 

@@ -129,6 +129,7 @@ void execute(char** parameters) {
 			}
 
 			key = parameters[1];
+			globalKey = key;
 			if (sendString(key, coordinadorSocket) == CUSTOM_FAILURE) {
 				log_error(logger, "I cannot send the key to resolve status to coordinador");
 				exitPlanificador();

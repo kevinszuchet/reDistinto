@@ -72,18 +72,31 @@ void finishEsi(Esi* esiToFinish) {
 	printEsi(esiToFinish);
 }
 
-void freeTakenKeys(Esi* esi) {
-	for (int i = 0; i < list_size(esi->lockedKeys); i++) {
-		char* keyToFree = (char*) list_get(esi->lockedKeys, i);
-		freeKey(keyToFree, esi);
-	}
+typedef struct KeyEsi{
+	Esi* esi;
+	char* key;
+}KeyEsi;
 
+void freeKeyGeneral(void* keyEsiStruct){
+	char* key = (char*) keyEsiStruct;
+	freeKey(key,globalEsi);
+
+	bool keyCompare(void* takenKey) {
+		return string_equals_ignore_case((char*) takenKey, key);
+	}
+	list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+
+}
+
+void freeTakenKeys(Esi* esi) {
+	globalEsi = esi;
+	list_iterate(esi->lockedKeys,&freeKeyGeneral);
 	list_clean(esi->lockedKeys);
 }
 
 void addToFinishedList(Esi* finishedEsi) {
 	list_add(finishedEsis, finishedEsi);
-	log_info(logger, "Esi (%d) agregado a finalizados", finishedEsi->id);
+	log_info(logger, "Esi (%d) added to finished list", finishedEsi->id);
 }
 
 void removeFromReady(Esi* esi) {
@@ -92,7 +105,7 @@ void removeFromReady(Esi* esi) {
 	}
 	pthread_mutex_lock(&mutexReadyList);
 	list_remove_by_condition(readyEsis, &isEsiByID);
-	log_info(logger,"After removing an ESI from ready, there are (%d) ESIs ready",list_size(readyEsis));
+
 	pthread_mutex_unlock(&mutexReadyList);
 }
 
@@ -133,25 +146,25 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key)
 
 	switch(esiExecutionInformation->coordinadorResponse) {
 		case SUCCESS:
-			log_info(logger, "Operation succeded, nothing to do");
+
 			handleEsiStatus(esiExecutionInformation->esiStatus);
 		break;
 
 		case LOCK:
 			lockKey(key, runningEsi->id);
-			log_info(logger, "Key (%s) locked", key);
+
 			handleEsiStatus(esiExecutionInformation->esiStatus);
 		break;
 
 		case BLOCK:
-			log_info(logger, "Operation didn't succed, esi (%d) blocked in key (%s)", runningEsi->id, key);
+
 			blockEsi(key, runningEsi->id);
 
 		break;
 
 		case FREE:
 			freeKey(key, runningEsi);
-			log_info(logger, "Operation succeded, key (%s) freed", key);
+
 			handleEsiStatus(esiExecutionInformation->esiStatus);
 		break;
 
@@ -172,7 +185,7 @@ void handleEsiStatus(char esiStatus) {
 		break;
 
 		case NOTFINISHED:
-			log_info(logger, "Esi didn't finish execution");
+
 		break;
 	}
 }
@@ -200,7 +213,7 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 	t_list * filteredList = list_filter(readyEsis, &isEsiByID);
 
 	if (list_size(filteredList) > 0) {
-		log_info(logger, "Aborting esi (%d) from ready list", esiToDelete->id);
+
 		pthread_mutex_lock(&mutexReadyList);
 		list_remove_and_destroy_by_condition(readyEsis, &isEsiByID, destroyEsi);
 		pthread_mutex_unlock(&mutexReadyList);
@@ -209,7 +222,7 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 	list_destroy(filteredList);
 
 	if (runningEsi != NULL && runningEsi->id == esiToDelete->id) {
-		log_info(logger, "Aborting esi (%d) from running", esiToDelete->id);
+
 		finishedExecutingInstruccion = true;
 		runningEsi = NULL;
 	}
@@ -224,17 +237,16 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 
 	for (int i = 0; i < list_size(allSystemKeys); i++) {
 		char* key = list_get(allSystemKeys, i);
-		printf("Key = %s\n",key);
+
 		blockedEsis = dictionary_get(blockedEsiDic, key);
-		printf("Have %d blocked esis\n",queue_size(blockedEsis));
+
 		for (int j = 0; j < queue_size(blockedEsis); j++) {
 
 			actualEsi = (int*) queue_pop(blockedEsis);
-			printf("ActualEsiId = %d\n",*actualEsi);
-			printf("Esi to delete id = %d\n",esiToDelete->id);
+
 			if (*actualEsi == esiToDelete->id) {
-				log_info(logger, "Aborting esi (%d) from blocked at key (%s)", esiToDelete->id, key);
-				// REVIEW se deberia hacer free del actualEsi?
+
+				// REVIEW se deberia hacer free del actualEsi? Nooooo, esta metido adentro de blockedEsiDic ahora
 			} else {
 				queue_push(blockedEsis, actualEsi);
 			}
@@ -341,8 +353,15 @@ void lockKey(char* key, int esiID) {
 		log_info(logger,"Creating an empty key in blockedEsiDic");
 	}
 
+
 	if (isLockedKey(key) == NOTBLOCKED) {
-		list_add(allSystemTakenKeys, key);
+		bool itemIsKey(void* item) {
+			return strcmp(key, (char*) item) == 0;
+		}
+		if(!list_any_satisfy(allSystemTakenKeys,&itemIsKey)){
+			list_add(allSystemTakenKeys, key);
+		}
+
 	}
 }
 
@@ -470,6 +489,17 @@ void recieveConsoleStatusResponse(){
 		exitPlanificador();
 	}
 
+	Esi* auxEsi;
+	for(int i =0;i<list_size(allSystemEsis);i++){
+		auxEsi = list_get(allSystemEsis,i);
+		bool keyCompare(void* takenKey) {
+			return string_equals_ignore_case((char*) takenKey, globalKey);
+		}
+		if(list_any_satisfy(auxEsi->lockedKeys,&keyCompare)){
+			log_info(logger, "Key %s is taken by ESI %d", globalKey, auxEsi->id);
+		}
+	}
+
 	log_info(logger, "Recieved instancia status from coordinador to response status command");
 	if(instanciaOrigin == STATUS_NO_INSTANCIAS_AVAILABLE){
 		log_info(logger, "There are no instancias");
@@ -499,6 +529,9 @@ void recieveConsoleStatusResponse(){
 		exitPlanificador();
 	}
 	log_info(logger, "Instancia %s has the key with value %s", instanciaThatSatisfiesStatus, value);
+
+
+
 
 }
 
