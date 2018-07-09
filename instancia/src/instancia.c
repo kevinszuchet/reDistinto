@@ -9,13 +9,20 @@
 
 pthread_mutex_t dumpMutex = PTHREAD_MUTEX_INITIALIZER;
 
-int main(void) {
+int main(int argc, char* argv[]) {
 
 	//replaceAlgorithmsLogger = log_create("../replaceAlgorithms.log", "tpSO", true, LOG_LEVEL_INFO);
 
+	initSerializationLogger(logger);
+
+	if (argc != 2) {
+		log_error(logger, "Instancia cannot execute: you must enter a configuration file");
+		return -1;
+	}
+
+	CFG_FILE = strdup(argv[1]);
 
 	int portCoordinador;
-
 
 	getConfig(&ipCoordinador, &portCoordinador, &algorithm, &path, &name, &dumpDelay);
 
@@ -74,8 +81,16 @@ int main(void) {
 
 void getConfig(char** ipCoordinador, int* portCoordinador, char** algorithm, char**path, char** name, int* dumpDelay) {
 
-	t_config* config;
+	t_config* config = NULL;
 	config = config_create(CFG_FILE);
+
+	free(CFG_FILE);
+
+	if (config == NULL) {
+		log_error(logger, "Instancia cannot work because of invalid configuration file");
+		exit(-1);
+	}
+
 	*ipCoordinador = strdup(config_get_string_value(config, "IP_COORDINADOR"));
 	*portCoordinador = config_get_int_value(config, "PORT_COORDINADOR");
 	*algorithm = strdup(config_get_string_value(config, "ALGORITHM"));
