@@ -63,6 +63,7 @@
 	pthread_t threadConsole;
 	pthread_t threadConsoleInstructions;
 
+	pthread_mutex_t executionMutex;
 
 
 
@@ -83,6 +84,8 @@
 
 	// Console functions
 	void executeConsoleInstruccions();
+
+	void executeInstruccion();
 
 	// REVIEW donde se usa esta funcion? es necesario el prototipo aca?
 	void removeFdFromSelect(int socket);

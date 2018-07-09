@@ -14,8 +14,8 @@ char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 
 pthread_mutex_t mutexReadyList = PTHREAD_MUTEX_INITIALIZER;
-	pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
-
+pthread_mutex_t mutexEsiReady = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t executionMutex = PTHREAD_MUTEX_INITIALIZER;
 int main(void){
 	logger = log_create("../planificador.log", "tpSO", true, LOG_LEVEL_INFO);
 	initSerializationLogger(logger);
@@ -536,6 +536,39 @@ void recieveConsoleStatusResponse(){
 }
 
 
+
+void executeInstruccion(){
+
+	Esi* nextEsi;
+	if (pauseState == CONTINUE) {
+		if (finishedExecutingInstruccion) {
+			if (runningEsi == NULL) {
+				if (list_size(readyEsis) > 0) {
+					log_info(logger,"Hay (%d) ESIs para ejecutar",list_size(readyEsis));
+					nextEsi = getNextEsi();
+					moveEsiToRunning(nextEsi);
+				}
+			} else {
+				if (strcmp(algorithm, "SJF-CD") == 0) {
+					if (mustDislodgeRunningEsi()) {
+						dislodgeEsi(runningEsi, true);
+						nextEsi = getNextEsi();
+						moveEsiToRunning(nextEsi);
+					}
+				}
+			}
+
+			if (runningEsi != NULL) {
+				finishedExecutingInstruccion = false;
+				log_info(logger, "Executing ESI (%d)", runningEsi->id);
+				sendEsiIdToCoordinador(runningEsi->id);
+				sendMessageExecuteToEsi(runningEsi);
+				log_info(logger, "Waiting coordinador request");
+			}
+		}
+	}
+}
+
 int clientMessageHandler(char clientMessage, int clientSocket) {
 	if (clientSocket == coordinadorSocket) {
 		if (clientMessage == KEYSTATUSMESSAGE) {
@@ -552,7 +585,6 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 		} else if (clientMessage == CORDINADORCONSOLERESPONSEMESSAGE) {
 			log_info(logger, "I recieved a coordinador console response message");
 			recieveConsoleStatusResponse();
-			// TODO Para el status
 		}
 	} else {
 		if (clientMessage == ESIID) {
@@ -571,7 +603,7 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 			exitPlanificador();
 		}
 	}
-
+	executeInstruccion();
 	return 0;
 }
 
@@ -606,14 +638,9 @@ int handleConcurrence() {
 
 	while (1) {
 
-		struct timeval tv;
-
-		 tv.tv_sec = 0;
-		 tv.tv_usec = 500000;
-
 		readfds = master; // copy it
 
-		if (select(fdmax+1, &readfds, NULL, NULL, &tv) == -1) {
+		if (select(fdmax+1, &readfds, NULL, NULL, NULL) == -1) {
 			perror("select failed");
 			if (errno == EINTR) {
 				continue;
@@ -623,80 +650,44 @@ int handleConcurrence() {
 
 
 		// run through the existing connections looking for data to read
-		for (i = 0; i <= fdmax + 1; i++) {
-			if (i != fdmax+1) {
-				if (FD_ISSET(i, &readfds)) { // we got one!!
-					if (i == serverSocket) {
+		for (i = 0; i <= fdmax; i++) {
+			if (FD_ISSET(i, &readfds)) { // we got one!!
+				if (i == serverSocket) {
 
-						clientSocket = acceptUnknownClient(serverSocket, PLANIFICADOR, logger);
+					clientSocket = acceptUnknownClient(serverSocket, PLANIFICADOR, logger);
 
-						if (clientSocket == -1) {
-							perror("accept");
-						} else {
-							FD_SET(clientSocket, &master); // add to master set
-							if (clientSocket > fdmax) {    // keep track of the max
-								fdmax = clientSocket;
-							}
-						}
+					if (clientSocket == -1) {
+						perror("accept");
 					} else {
-						clientSocket = i;
-						// handle data from a client
-						resultRecv = recv_all(clientSocket, &clientMessage, sizeof(char));
-						if (resultRecv == CUSTOM_FAILURE) {
-							if (clientSocket == coordinadorSocket) {
-								log_error(logger, "Coordinador disconnected. Exit planificador");
-								exitPlanificador();
-							} else {
-								log_warning(logger, "ESI disconnected.");
-								abortEsi(getEsiBySocket(clientSocket));
-								log_warning(logger, "ESI aborted.");
-							}
-							close(clientSocket);
-							FD_CLR(clientSocket, &master);
-						} else {
-							clientMessageHandler(clientMessage, clientSocket);
+						FD_SET(clientSocket, &master); // add to master set
+						if (clientSocket > fdmax) {    // keep track of the max
+							fdmax = clientSocket;
 						}
 					}
-				}
-			} else {
-
-				Esi* nextEsi;
-				if (pauseState == CONTINUE) {
-					if (finishedExecutingInstruccion) {
-						if (runningEsi == NULL) {
-							if (list_size(readyEsis) > 0) {
-								log_info(logger,"Hay (%d) ESIs para ejecutar",list_size(readyEsis));
-								nextEsi = getNextEsi();
-								moveEsiToRunning(nextEsi);
-							}
-						} else {
-							if (strcmp(algorithm, "SJF-CD") == 0) {
-								if (mustDislodgeRunningEsi()) {
-									dislodgeEsi(runningEsi, true);
-									nextEsi = getNextEsi();
-									moveEsiToRunning(nextEsi);
-								}
-							}
-						}
-
-						if (runningEsi != NULL) {
-							finishedExecutingInstruccion = false;
-							log_info(logger, "Executing ESI (%d)", runningEsi->id);
-							sendEsiIdToCoordinador(runningEsi->id);
-							sendMessageExecuteToEsi(runningEsi);
-							log_info(logger, "Waiting coordinador request");
-						} else {
-							executeConsoleInstruccions();
-						}
-					}
-
 				} else {
-					executeConsoleInstruccions();
+					clientSocket = i;
+					// handle data from a client
+					resultRecv = recv_all(clientSocket, &clientMessage, sizeof(char));
+					pthread_mutex_lock(&executionMutex);
+					if (resultRecv == CUSTOM_FAILURE) {
+						if (clientSocket == coordinadorSocket) {
+							log_error(logger, "Coordinador disconnected. Exit planificador");
+							exitPlanificador();
+						} else {
+							log_warning(logger, "ESI disconnected.");
+							abortEsi(getEsiBySocket(clientSocket));
+
+						}
+						close(clientSocket);
+						FD_CLR(clientSocket, &master);
+					} else {
+						clientMessageHandler(clientMessage, clientSocket);
+					}
+					pthread_mutex_unlock(&executionMutex);
 				}
 			}
 		}
 	}
-
 	return 0;
 }
 

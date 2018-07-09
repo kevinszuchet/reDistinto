@@ -32,6 +32,11 @@ void openConsole() {
 		if (validCommand(parameters)) {
 			log_info(logger, "Instruccion added to pending instruccion List");
 			list_add(instruccionsByConsoleList, parameters);
+			pthread_mutex_lock(&executionMutex);
+			executeConsoleInstruccions();
+			pthread_mutex_unlock(&executionMutex);
+			executeInstruccion();
+
 		} else {
 			int i = 0;
 			while(parameters[i]) {
