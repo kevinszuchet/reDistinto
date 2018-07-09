@@ -648,8 +648,8 @@ int handleConcurrence() {
 								exitPlanificador();
 							} else {
 								log_warning(logger, "ESI disconnected.");
-
 								abortEsi(getEsiBySocket(clientSocket));
+								log_warning(logger, "ESI aborted.");
 							}
 							close(clientSocket);
 							FD_CLR(clientSocket, &master);
