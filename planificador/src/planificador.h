@@ -64,6 +64,12 @@
 	pthread_t threadConsole;
 	pthread_t threadConsoleInstructions;
 
+	sem_t executionSemaphore;
+
+	pthread_mutex_t mutexFinishedExecutingInstruccion;
+	pthread_mutex_t mutexReadyList;
+	pthread_mutex_t mutexInstruccionsByConsole;
+	pthread_mutex_t mutexPauseState;
 
 
 
@@ -85,6 +91,9 @@
 	// Console functions
 	void executeConsoleInstruccions();
 
+	void executeInstruccion();
+
+	void setFinishedExecutingInstruccion(bool value);
 	// REVIEW donde se usa esta funcion? es necesario el prototipo aca?
 	void removeFdFromSelect(int socket);
 	void showBlockedEsisInKey(char* key);

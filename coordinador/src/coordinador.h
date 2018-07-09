@@ -53,7 +53,6 @@
 	void getConfig(int* listeningPort);
 
 	int welcomePlanificador(int coordinadorSocket, int planificadorSocket);
-	void freeResources();
 	void planificadorFell();
 
 #endif /* SRC_COORDINADOR_H_ */
