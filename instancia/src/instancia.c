@@ -30,8 +30,8 @@ int main(void) {
 
 	sprintf(logPath, "%s%s%s", "../", name, ".log");
 	logPath[strlen("../") + strlen(name) + strlen(".log")] = '\0';
-	initSerializationLogger(logger);
 	logger = log_create(logPath, "tpSO", true, LOG_LEVEL_INFO);
+	initSerializationLogger(logger);
 
 	log_info(logger, "trying to connect to coordinador...");
 	/*
