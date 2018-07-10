@@ -32,7 +32,6 @@ void openConsole() {
 		}*/
 
 		if (validCommand(parameters)) {
-			log_info(logger, "Instruccion added to pending instruccion List");
 			pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
 			if(finishedExecutingInstruccion){
 
@@ -43,6 +42,7 @@ void openConsole() {
 			}else{
 				pthread_mutex_lock(&mutexInstruccionsByConsole);
 				list_add(instruccionsByConsoleList, parameters);
+				log_info(logger, "Instruccion added to pending instruccion List");
 				pthread_mutex_unlock(&mutexInstruccionsByConsole);
 			}
 			pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
@@ -252,7 +252,7 @@ void executeDeadlockAlgorithm(){
 				if(list_any_satisfy(actualDeadlockEsis,&actualIndexInList)){
 					//printf("El primer elemento de la lista de deadlock actual es (%d)",*((int*)list_get(actualDeadlockEsis,0)));
 					//printf("La fila (%d) llega a deadlock\n",indexFila);
-					log_info(logger,"Founded deadlock between ");
+					log_info(logger,"Found deadlock between ");
 					list_iterate(actualDeadlockEsis,&showEsiIdByIndex);
 					list_add_all(totalDeadlockEsis,actualDeadlockEsis);
 				}else{
@@ -292,15 +292,12 @@ void executeDeadlockAlgorithm(){
 }
 int getEsiIndexByID(int id){
 	Esi* esi;
-	for(int i = 0;i<list_size(allSystemEsis);i++){
-		esi = list_get(allSystemEsis,i);
-		log_info(logger, "Esi (%d) is in position (%d)", esi->id, i);
-	}
+
 	int index = -1;
 	for(int i = 0;i<list_size(allSystemEsis);i++){
 		esi = list_get(allSystemEsis,i);
 		if(esi->id == id){
-			log_info(logger, "Esi (%d) position is (%d)", esi->id, i);
+
 			index = i;
 		}
 	}
