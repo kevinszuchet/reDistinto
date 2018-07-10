@@ -512,9 +512,17 @@ int getStartEntryToSet(int valueNeededEntries) {
 void storageSet(int initialEntry,  char * value) {
 	int base = initialEntry * entrySize;
 	int j = 0;
-	for (int i = base; i < (strlen(value) + base) ; i++) {
+	int i = 0;
+	for (i = base; i < (strlen(value) + base) ; i++) {
 		storage[i] = value[j];
 		j++;
+	}
+	if(i%entrySize != 0){
+		int reminder = entrySize - (i%entrySize);
+		for(int k = i ; k <i + reminder; k++) {
+
+			storage[k] = SENTINEL_VALUE;
+		}
 	}
 }
 
@@ -553,7 +561,12 @@ char compact() {
 
 			 // Get the next able position to store values
 			 if (valueSize % entrySize != 0) {
-				 auxIndex += (valueSize % entrySize) - 1;
+				int reminder = entrySize - (auxIndex%entrySize);
+				for(int k = auxIndex ; k < auxIndex + reminder; k++) {
+
+					auxStorage[k] = SENTINEL_VALUE;
+				}
+				 auxIndex += reminder;
 			 }
 			 free(value);
 			 element = element->next;

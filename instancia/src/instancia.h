@@ -14,7 +14,7 @@
 	#define I_NEED_TO_COMPACT -2
 
 	#define MAX_KEY_SIZE 40
-
+	#define SENTINEL_VALUE '0'
 	char * CFG_FILE;
 
 	#include <our-commons/sockets/client.h>
