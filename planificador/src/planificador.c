@@ -412,6 +412,7 @@ void unlockEsi(char* key,bool isConsoleInstruccion) {
 	if(isConsoleInstruccion){
 		if(queue_is_empty(blockedEsisQueue)){
 			list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+			log_info(logger, "Key (%s) freed", key);
 		}
 	}else{
 		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
@@ -423,24 +424,25 @@ void unlockEsi(char* key,bool isConsoleInstruccion) {
 		unlockedEsi = (int*) queue_pop(blockedEsisQueue);
 		log_info(logger, "Unblocked ESI %d from key (%s)", *unlockedEsi, key);
 		addEsiToReady(getEsiById(*unlockedEsi));
-	} else {
-		log_info(logger, "There are no ESIs to unlock from key (%s)", key);
 	}
 }
 
 void showBlockedEsisInKey(char* key){
-	 t_queue* blockedEsis;
-	 blockedEsis = (t_queue*)dictionary_get(blockedEsiDic, key);
-	 int* esiIDpointer;
-	 if (queue_is_empty(blockedEsis))
-		 printf("There are no blocked esis in key (%s)\n", key);
+	 if(dictionary_has_key(blockedEsiDic,key)){
+		 t_queue* blockedEsis;
+		 blockedEsis = (t_queue*)dictionary_get(blockedEsiDic, key);
+		 int* esiIDpointer;
+		 if (queue_is_empty(blockedEsis))
+			 log_info(logger,"There are no blocked ESIs in key (%s)", key);
 
-	 for (int i = 0; i < queue_size(blockedEsis); i++) {
-		 printf("ID BEFORE POP = %d\n", *((int*) queue_peek(blockedEsis)));
-		 esiIDpointer = (int*) queue_pop(blockedEsis);
-		 printf("ID BEFORE PRINT = %d\n", *esiIDpointer);
-		 printEsi(getEsiById(*esiIDpointer));
-		 queue_push(blockedEsis, esiIDpointer);
+		 log_info(logger,"Blocked ESIs in key (%s):", key);
+		 for (int i = 0; i < queue_size(blockedEsis); i++) {
+			 esiIDpointer = (int*) queue_pop(blockedEsis);
+			 printEsi(getEsiById(*esiIDpointer));
+			 queue_push(blockedEsis, esiIDpointer);
+		 }
+	 }else{
+		 log_info(logger,"Key doesn't exists, there are no ESIs to show");
 	 }
 }
 
@@ -504,16 +506,7 @@ void recieveConsoleStatusResponse(){
 		exitPlanificador();
 	}
 
-	Esi* auxEsi;
-	for(int i =0;i<list_size(allSystemEsis);i++){
-		auxEsi = list_get(allSystemEsis,i);
-		bool keyCompare(void* takenKey) {
-			return string_equals_ignore_case((char*) takenKey, globalKey);
-		}
-		if(list_any_satisfy(auxEsi->lockedKeys,&keyCompare)){
-			log_info(logger, "Key %s is taken by ESI %d", globalKey, auxEsi->id);
-		}
-	}
+
 
 	log_info(logger, "Recieved instancia status from coordinador to response status command");
 	if(instanciaOrigin == STATUS_NO_INSTANCIAS_AVAILABLE){
@@ -527,7 +520,7 @@ void recieveConsoleStatusResponse(){
 		log_warning(logger, "Couldn't recieve instancia's name from coordinador to respond status command");
 		exitPlanificador();
 	}
-	log_info(logger, "Recieved name of instancia (%s) to response status command", instanciaThatSatisfiesStatus);
+	showBlockedEsisInKey(globalKey);
 
 	if(instanciaOrigin == STATUS_SIMULATED_INSTANCIA){
 		log_info(logger, "No instancias have the key, it would be on instancia %s", instanciaThatSatisfiesStatus);
@@ -557,6 +550,7 @@ void executeInstruccion(){
 	Esi* nextEsi;
 	pthread_mutex_lock(&mutexPauseState);
 	if (pauseState == CONTINUE) {
+		pthread_mutex_unlock(&mutexPauseState);
 		pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
 		if (finishedExecutingInstruccion) {
 			if (runningEsi == NULL) {
@@ -584,8 +578,10 @@ void executeInstruccion(){
 			}
 		}
 		pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
+	}else{
+		pthread_mutex_unlock(&mutexPauseState);
 	}
-	pthread_mutex_unlock(&mutexPauseState);
+
 }
 
 int clientMessageHandler(char clientMessage, int clientSocket) {
@@ -749,6 +745,8 @@ void initializePlanificador() {
 	blockedEsiDic = dictionary_create();
 	addConfigurationLockedKeys(blockedKeys);
 
+	globalKey = malloc(41);
+
 	allSystemEsis = list_create();
 	readyEsis = list_create();
 	finishedEsis = list_create();
@@ -796,7 +794,7 @@ void exitPlanificador() {
 	pthread_cancel(threadConsoleInstructions);
 
 	log_destroy(logger);
-
+	free(globalKey);
 	exit(-1);
 }
 

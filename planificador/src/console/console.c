@@ -12,7 +12,9 @@ t_list* instruccionsByConsoleList = NULL;
 void openConsole() {
 	char* line, ** parameters;
 	printf("Listado de comandos\n1.Pausar\n2.Continuar\n3.Bloquear <clave> <id>\n4.Desbloquear <clave>\n5.Listar <recurso>\n6.Kill <ID>\n7.Status <clave>\n8.Deadlock\n");
+	pthread_mutex_lock(&mutexInstruccionsByConsole);
 	instruccionsByConsoleList = list_create();
+	pthread_mutex_unlock(&mutexInstruccionsByConsole);
 
 	while(1) {
 		line = readline("> ");
@@ -500,6 +502,8 @@ void destroyConsoleParam(void * param) {
 }
 
 void destroyConsole() {
+	pthread_mutex_lock(&mutexInstruccionsByConsole);
 	if (instruccionsByConsoleList)
 		list_destroy_and_destroy_elements(instruccionsByConsoleList, destroyConsoleParam);
+	pthread_mutex_unlock(&mutexInstruccionsByConsole);
 }
