@@ -305,6 +305,8 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 				exit(-1);
 				break;
 		}
+
+		showStorage();
 		pthread_mutex_unlock(&dumpMutex);
 	}
 }
@@ -330,19 +332,18 @@ char interpretateStatement(Operation * operation) {
 void showStorage() {
 	int position = 0;
 	t_link_element * element = entryTable->head;
-	char * value = malloc((entrySize * sizeof(char)) + 1);
+	char * value = NULL;
 
 	while (element != NULL) {
+		value = malloc((getValueSize(element->data) * sizeof(char)) + 1);
 		getValue(value, getValueStart(element->data) * entrySize, getValueSize(element->data));
 
-		printf("Value of entry %d is: %s\n", position, value);
+		log_info(logger, "Value of entry %d is: %s", position, value);
 
 		element = element->next;
 		position++;
-
+		free(value);
 	}
-
-	free(value);
 }
 
 int finish() {
