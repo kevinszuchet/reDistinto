@@ -433,14 +433,22 @@ void showBlockedEsisInKey(char* key){
 		 blockedEsis = (t_queue*)dictionary_get(blockedEsiDic, key);
 		 int* esiIDpointer;
 		 if (queue_is_empty(blockedEsis))
+		 {
 			 log_info(logger,"There are no blocked ESIs in key (%s)", key);
+		 }else{
+			 if(queue_size(blockedEsis)==0){
+				 log_info(logger,"There are no blocked ESIs in key (%s)", key);
+			 }else{
+				 log_info(logger,"Blocked ESIs in key (%s):", key);
+				 for (int i = 0; i < queue_size(blockedEsis); i++) {
+					 esiIDpointer = (int*) queue_pop(blockedEsis);
+					 printEsi(getEsiById(*esiIDpointer));
+					 queue_push(blockedEsis, esiIDpointer);
+				 }
+			 }
 
-		 log_info(logger,"Blocked ESIs in key (%s):", key);
-		 for (int i = 0; i < queue_size(blockedEsis); i++) {
-			 esiIDpointer = (int*) queue_pop(blockedEsis);
-			 printEsi(getEsiById(*esiIDpointer));
-			 queue_push(blockedEsis, esiIDpointer);
 		 }
+
 	 }else{
 		 log_info(logger,"Key doesn't exists, there are no ESIs to show");
 	 }
