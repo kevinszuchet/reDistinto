@@ -224,7 +224,7 @@ void handleOperationRequest(int coordinadorSocket) {
 		exit(-1);
 	}
 
-	if (operation->operationCode == OURSET) {
+	if (operation->operationCode == OURSET && response == INSTANCIA_RESPONSE_SUCCESS) {
 
 		sendSpaceUsedToCoordinador(coordinadorSocket);
 	}
@@ -460,11 +460,12 @@ char set(char *key, char *value) {
 int getStartEntryToSet(int valueNeededEntries) {
 
 	int entryStart = ENTRY_START_ERROR;
-	int totalFreeEntries = 0;
-	int validEntries = 0;
+	int totalFreeEntries;
+	int validEntries;
 
 	while(entryStart == ENTRY_START_ERROR) {
-
+		totalFreeEntries = 0;
+		validEntries = 0;
 		for (int i = 0; i < entriesAmount; i++) {
 
 			// If the entry value is empty (only a sentinel value)
@@ -496,8 +497,17 @@ int getStartEntryToSet(int valueNeededEntries) {
 
 			if (valueNeededEntries > totalFreeEntries) {
 				// Delete any value considering the replacement algorithm
+				int totalFreeEntriesBeforeReplace = totalFreeEntries;
 				log_info(logger, "there is not enough space to set the value, we are about to run the replace algorithm");
 				deleteAccodringToAlgorithm();
+
+				totalFreeEntries = entriesAmount - getTotalSettedEntries();
+				log_info(logger, "Total Free entries before ReplaceAlgorithm: %d", totalFreeEntriesBeforeReplace);
+				log_info(logger, "Total Free entries after ReplaceAlgorithm: %d", totalFreeEntries);
+				if(totalFreeEntriesBeforeReplace == totalFreeEntries){
+					log_warning(logger, "The replace algorithm couldn't erase any entry");
+					break;
+				}
 			} else {
 				// A compactation is needed, we notify coordinador so he can order to compact all instancias.
 				log_info(logger, "There are not enough contiguous free entries to set the value. A compactation is needed, we are about to notify coordinador");

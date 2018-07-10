@@ -41,7 +41,9 @@ void deleteAccodringToAlgorithm() {
 		toBeDeletedElement = atomicEntriesList->head->data;
 		deleteKey(toBeDeletedElement);
 	}
-
+	else{
+		log_warning(logger, "There are no atomic entires to be deleted");
+	}
 	list_destroy(atomicEntriesList);
 }
 
