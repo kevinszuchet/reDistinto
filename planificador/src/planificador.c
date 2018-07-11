@@ -70,8 +70,8 @@ bool mustDislodgeRunningEsi() {
 	if (list_size(readyEsis) > 0) {
 		Esi* bestPosible = simulateAlgoithm(algorithm, alphaEstimation, readyEsis);
 		printEsi(runningEsi);
-		if (getEstimation(bestPosible) < getEstimation(runningEsi)) {
-			log_info(logger, "Must dislodge, ESI (%d) has estimation (%f). Lower than (%f) from running ESI", bestPosible->id, getEstimation(bestPosible), getEstimation(runningEsi));
+		if (getEstimation(bestPosible) < (getEstimation(runningEsi) - runningEsi->sentenceCounter)) {
+			log_info(logger, "Must dislodge, ESI (%d) has estimation (%f). Lower than (%f) from running ESI", bestPosible->id, getEstimation(bestPosible), (getEstimation(runningEsi)-runningEsi->sentenceCounter));
 			return true;
 		}
 	}
@@ -143,10 +143,9 @@ void dislodgeEsi(Esi* esi, bool addToReady) {
 }
 
 void takeRunningEsiOut() {
-	updateLastBurst(sentenceCounter, &runningEsi);
+	updateLastBurst(&runningEsi);
 	runningEsi->lastEstimation = getEstimation(runningEsi);
 	runningEsi = NULL;
-	sentenceCounter = 0;
 }
 
 void moveEsiToRunning(Esi* esiToRun) {
@@ -156,7 +155,10 @@ void moveEsiToRunning(Esi* esiToRun) {
 }
 
 void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key) {
-	sentenceCounter++;
+
+	if(runningEsi!=NULL){
+		addSentenceCounter(runningEsi);
+	}
 	addWaitingTimeToAll(readyEsis);
 
 	switch(esiExecutionInformation->coordinadorResponse) {
@@ -184,7 +186,6 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key)
 		break;
 
 		case ABORT:
-			sentenceCounter = 0;
 			runningEsi = NULL;
 		break;
 	}
@@ -762,7 +763,7 @@ void initializePlanificador() {
 
 	pauseState = CONTINUE;
 
-	sentenceCounter = 0;
+
 	actualID = 1;
 
 	pthread_mutex_init(&mutexFinishedExecutingInstruccion,NULL);

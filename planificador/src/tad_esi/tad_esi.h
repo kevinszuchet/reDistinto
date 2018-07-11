@@ -22,9 +22,11 @@ typedef struct Esi{
 	int socketConection;
 	double lastEstimation;
 	t_list* lockedKeys;
+	int sentenceCounter;
 
 }Esi;
 
+void addSentenceCounter(void* esi);
 void addWaitingTime(void* esi);
 void addWaitingTimeToAll(t_list* esis);
 void reduceWaitingTime(Esi** esi);
@@ -35,7 +37,7 @@ int id(Esi* esi);
 void addLockedKeyToEsi(char** key, Esi** esi);
 void removeLockedKey(char* key, Esi* esi);
 
-void updateLastBurst(int burst, Esi** esi);
+void updateLastBurst(Esi** esi);
 
 void printEsi(void* esiToPrint);
 void printEsiList(t_list* esiList);
