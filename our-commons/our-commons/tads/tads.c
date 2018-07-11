@@ -28,13 +28,20 @@ char* getValueIfPossible(Operation* operation){
 	if(operation->value){
 		return operation->value;
 	}
-	return "Operation with no value";
+	return "NONE";
 }
 
 void showOperation(Operation* operation, t_log* logger){
-	log_info(logger,
-			"\nOperation key = %s\nKey = %s\nValue = %s",
+	if(operation->operationCode == OURSET){
+		log_info(logger,
+			"\nOperation = %s\nKey = %s\nValue = %s",
 			getOperationName(operation), operation->key, getValueIfPossible(operation));
+		return;
+	}
+
+	log_info(logger,
+			"\nOperation = %s\nKey = %s",
+			getOperationName(operation), operation->key);
 }
 
 char* getKeyStatusName(char keyStatus){
