@@ -344,7 +344,7 @@ void showStorage() {
 
 		log_trace(logger, "EntryStart: %d", entryInfo->valueStart);
 		log_trace(logger, "	Key: %s", entryInfo->key);
-		log_trace(logger, "	Used Entries: %d", wholeUpperDivision(entryInfo->valueStart, entrySize));
+		log_trace(logger, "	Used Entries: %d", wholeUpperDivision(entryInfo->valueSize, entrySize));
 		log_trace(logger, "	Value: %s\n", value);
 
 		element = element->next;
@@ -579,7 +579,7 @@ char compact() {
 
 			 // Get the next able position to store values
 			 if (valueSize % entrySize != 0) {
-				int reminder = entrySize - (auxIndex%entrySize);
+				int reminder = entrySize - (auxIndex % entrySize);
 				for(int k = auxIndex ; k < auxIndex + reminder; k++) {
 
 					auxStorage[k] = SENTINEL_VALUE;
@@ -590,7 +590,7 @@ char compact() {
 			 element = element->next;
 		}
 
-		strcpy(storage, auxStorage);
+		strncpy(storage, auxStorage, totalUsedMemory);
 		emptyBiMap(entriesAmount);
 		biMapUpdate(0, totalSettedEntries, IS_SET);
 
