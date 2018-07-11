@@ -312,7 +312,7 @@ void waitForCoordinadorStatements(int coordinadorSocket) {
 }
 
 char interpretateStatement(Operation * operation) {
-	showOperation(operation);
+	showOperation(operation, logger);
 
 	switch (operation->operationCode) {
 		case OURSET:

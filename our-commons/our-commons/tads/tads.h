@@ -28,10 +28,11 @@
 	#include <stdio.h>
 	#include <stdlib.h>
 	#include <string.h>
+	#include <commons/log.h>
 	#include "../messages/operation_codes.h"
 
 	char* getOperationName(Operation* operation);
-	void showOperation(Operation* operation);
+	void showOperation(Operation* operation, t_log* logger);
 	char* getKeyStatusName(char keyStatus);
 	void destroyOperation(Operation* operation);
 

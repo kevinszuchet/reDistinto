@@ -405,7 +405,7 @@ Instancia* createNewInstancia(int instanciaSocket, char* name){
  */
 
 void showStoredKey(char* key){
-	printf("%s\n", key);
+	log_info(logger, "%s", key);
 }
 
 void showStoredKeys(Instancia* instancia){

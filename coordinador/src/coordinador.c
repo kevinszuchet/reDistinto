@@ -590,7 +590,7 @@ int recieveStentenceToProcess(int esiSocket){
 	pthread_mutex_lock(&esisMutex);
 
 	log_info(logger, "Arrived esi is going to do:");
-	showOperation(esiRequest.operation);
+	showOperation(esiRequest.operation, logger);
 
 	esiId = getActualEsiID();
 	//esiId = getActualEsiIDDummy();

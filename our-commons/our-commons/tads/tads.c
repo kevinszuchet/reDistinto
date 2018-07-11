@@ -24,10 +24,17 @@ char* getOperationName(Operation* operation){
 	}
 }
 
-void showOperation(Operation* operation){
-	printf("Operation key = %s\n", getOperationName(operation));
-	printf("Key = %s\n", operation->key);
-	operation->value ? printf("Value = %s\n", operation->value) : printf("Operation with no value\n");
+char* getValueIfPossible(Operation* operation){
+	if(operation->value){
+		return operation->value;
+	}
+	return "Operation with no value";
+}
+
+void showOperation(Operation* operation, t_log* logger){
+	log_info(logger,
+			"\nOperation key = %s\nKey = %s\nValue = %s",
+			getOperationName(operation), operation->key, getValueIfPossible(operation));
 }
 
 char* getKeyStatusName(char keyStatus){
