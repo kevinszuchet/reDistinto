@@ -52,7 +52,7 @@ int updateSpaceUsed(Instancia* instancia) {
 		return -1;
 	}
 	instancia->spaceUsed = spaceUsed;
-	log_info(logger, "Successfully updated instancia's space used");
+	log_info(logger, "Successfully updated instancia's space used: %d", instancia->spaceUsed);
 	return 0;
 }
 
