@@ -1,4 +1,4 @@
-.PHONY: default clean
+.PHONY: default
 
 default: so-commons-library our-commonsRule parsi readline coordinadorRule planificadorRule instanciaRule esiRule
 
