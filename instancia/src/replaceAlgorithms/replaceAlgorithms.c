@@ -78,3 +78,7 @@ bool atomicEntry(void * voidEntryInfo) {
 	entryTableInfo * entryInfo = (entryTableInfo *) voidEntryInfo;
 	return entryInfo->valueSize <= entrySize;
 }
+bool entryStartAsc(void * currentData, void * selectedData){
+
+	return getValueStart((entryTableInfo *) currentData) < getValueStart((entryTableInfo *) selectedData);
+}
