@@ -8,6 +8,6 @@ CONFIGS=$(find . -name '*.cfg' )
 for CONFIG in $CONFIGS
 do
 	chmod 777 $CONFIG
-	sed -i "4s/.*/IP_COORDINADOR=${IP}/" $CONFIG
-	sed -i "5s/.*/PORT_COORDINADOR=${PORT}/" $CONFIG
+	sed -i "5s/.*/IP_COORDINADOR=${IP}/" $CONFIG
+	sed -i "6s/.*/PORT_COORDINADOR=${PORT}/" $CONFIG
 done
