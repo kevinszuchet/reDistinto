@@ -12,7 +12,7 @@
 	#include <string.h>
 	#include <commons/log.h>
 
-	int connectToServer(char* serverIP, int serverPort, const char* serverName, const char* clientName, t_log* logger);
+	int connectToServer(const char* serverIP, int serverPort, const char* serverName, const char* clientName, t_log* logger);
 	int welcomeServer(const char* serverIp, int serverPort, const char* serverName, const char* clientName, char handshakeValue,
 			int (*welcomeProcedure)(int serverSocket), t_log* logger);
 	int sendMyIdToServer(int serverSocket, char clientId, const char* clientName, t_log* logger);
