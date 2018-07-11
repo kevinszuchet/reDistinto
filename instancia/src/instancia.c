@@ -344,7 +344,7 @@ void showStorage() {
 
 		log_trace(logger, "EntryStart: %d", entryInfo->valueStart);
 		log_trace(logger, "	Key: %s", entryInfo->key);
-		log_trace(logger, "	Used Entries: %d", wholeUpperDivision(entryInfo->valueStart, entrySize));
+		log_trace(logger, "	Used Entries: %d", wholeUpperDivision(entryInfo->valueSize, entrySize));
 		log_trace(logger, "	Value: %s\n", value);
 
 		element = element->next;
