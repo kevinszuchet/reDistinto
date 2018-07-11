@@ -7,6 +7,11 @@
 
 #include "tad_esi.h"
 
+
+void addSentenceCounter(void* esi) {
+	((Esi* )esi)->sentenceCounter++;
+}
+
 void addWaitingTime(void* esi) {
 	((Esi* )esi)->waitingTime++;
 }
@@ -26,6 +31,7 @@ Esi *createEsi(int id, double initialEstimation, int socketConection) {
 	newEsi->socketConection = socketConection;
 	newEsi->waitingTime = 0;
 	newEsi->lastEstimation = initialEstimation;
+	newEsi->sentenceCounter = 0;
 	newEsi->lockedKeys = list_create();
 	return newEsi;
 }
@@ -54,6 +60,7 @@ void printEsi(void* esiToPrint) {
 	printf("Last burst = (%f)\n", esi->lastBurst);
 	printf("Last estimation = (%f)\n", esi->lastEstimation);
 	printf("Waiting time = (%d)\n", esi->waitingTime);
+	printf("Sentence counter = (%d)\n", esi->sentenceCounter);
 	printf("Locked keys =\n");
 
 	if (list_is_empty(esi->lockedKeys)) {
@@ -67,8 +74,9 @@ void printEsi(void* esiToPrint) {
 	printf("=============\n");
 }
 
-void updateLastBurst(int burst, Esi** esi) {
-	(*esi)->lastBurst = burst;
+void updateLastBurst(Esi** esi) {
+	(*esi)->lastBurst = (*esi)->sentenceCounter;
+	(*esi)->sentenceCounter = 0;
 }
 
 void printEsiList(t_list* esiList) {

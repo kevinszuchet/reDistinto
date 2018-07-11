@@ -103,9 +103,9 @@
 	void removeFromReady(Esi* esi);
 	void moveFromRunningToReady(Esi* esi);
 	void moveEsiToRunning(Esi* esiToRun);
-	void takeRunningEsiOut();
+	void takeRunningEsiOut(bool updateEstimation);
 
-	void dislodgeEsi(Esi* esi, bool addToReady);
+	void dislodgeEsi(Esi* esi, bool addToReady, bool updateEstimation);
 	bool mustDislodgeRunningEsi();
 
 	void addToFinishedList(Esi* finishedEsi);

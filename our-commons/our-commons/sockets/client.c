@@ -9,7 +9,7 @@
 
 
 
-int connectToServer(char* serverIP, int serverPort, const char* serverName, const char* clientName, t_log* logger){
+int connectToServer(const char* serverIP, int serverPort, const char* serverName, const char* clientName, t_log* logger){
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family  = AF_INET;
 	serverAddress.sin_addr.s_addr = inet_addr(serverIP);
