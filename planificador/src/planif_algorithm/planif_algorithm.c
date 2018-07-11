@@ -27,7 +27,7 @@ bool comparatorHRRN(void* esi_A, void* esi_B) {
 }
 
 double getResponseRatio(Esi* esi) {
-	return (esi->waitingTime + getEstimation(esi)) / esi->waitingTime;
+	return (esi->waitingTime + getEstimation(esi)) / getEstimation(esi);
 }
 
 double getEstimation(Esi* esi) {
