@@ -434,8 +434,6 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 		return -1;
 	}
 
-	log_info(operationsLogger, "Esi %d does %s over key %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
-
 	return 0;
 }
 
@@ -485,6 +483,8 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}
 
+	log_info(operationsLogger, "Esi %d does %s over key %s with value %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key, esiRequest->operation->value);
+
 	return sendResponseToEsi(esiRequest, SUCCESS);
 }
 
@@ -507,6 +507,8 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed) < 0){
 		return -1;
 	}
+
+	log_info(operationsLogger, "Esi %d does %s over key %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 
 	return sendResponseToEsi(esiRequest, FREE);
 }
