@@ -119,7 +119,7 @@ void execute(char** parameters) {
 			key = malloc(40);
 			 key = parameters[1];
 			unlockEsi(key,true);
-			free(key);
+			//free(key);
 		break;
 
 		case LISTAR:

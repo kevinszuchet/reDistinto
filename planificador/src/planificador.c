@@ -219,7 +219,7 @@ void abortEsi(Esi* esi) {
 
 	freeTakenKeys(esi);
 	deleteEsiFromSystem(esi);
-	list_remove_by_condition(allSystemEsis, &isEsiById);
+	list_remove_and_destroy_by_condition(allSystemEsis, &isEsiById,&destroyEsi);
 }
 
 void deleteEsiFromSystem(Esi* esiToDelete) {
@@ -236,7 +236,7 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 	if (list_size(filteredList) > 0) {
 
 		pthread_mutex_lock(&mutexReadyList);
-		list_remove_and_destroy_by_condition(readyEsis, &isEsiByID, destroyEsi);
+		list_remove_and_destroy_by_condition(readyEsis, &isEsiByID, &destroyEsi);
 		pthread_mutex_unlock(&mutexReadyList);
 	}
 
