@@ -267,7 +267,7 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 
 			if (*actualEsi == esiToDelete->id) {
 
-				// REVIEW se deberia hacer free del actualEsi? Nooooo, esta metido adentro de blockedEsiDic ahora
+				free(actualEsi);
 			} else {
 				queue_push(blockedEsis, actualEsi);
 			}
@@ -612,6 +612,7 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 				sendKeyStatusToCoordinador(keyRecieved);
 			}
 
+
 		} else if (clientMessage == CORDINADORCONSOLERESPONSEMESSAGE) {
 			log_info(logger, "I recieved a coordinador console response message");
 			recieveConsoleStatusResponse();
@@ -784,8 +785,14 @@ void initializePlanificador() {
 	pthread_create(&threadConsole, NULL, (void *) openConsole, NULL);
 }
 
-void exitPlanificador() {
+void idDestroyer(void* id){
+	free(id);
+}
 
+void exitPlanificador() {
+	free(keyRecieved);
+	free(esiInformation);
+	free(globalKey);
 	if (allSystemKeys)
 		list_destroy_and_destroy_elements(allSystemKeys, destroyKey);
 
@@ -802,16 +809,15 @@ void exitPlanificador() {
 		list_destroy(allSystemTakenKeys);
 
 	if (blockedEsiDic)
-		dictionary_destroy(blockedEsiDic);
+		dictionary_destroy_and_destroy_elements(blockedEsiDic,idDestroyer);
 
 	destroyConsole();
 
 	pthread_cancel(threadConsole);
 	pthread_cancel(threadConsoleInstructions);
-	free(keyRecieved);
-	free(esiInformation);
+
 	log_destroy(logger);
-	free(globalKey);
+
 	exit(-1);
 }
 

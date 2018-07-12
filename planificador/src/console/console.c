@@ -49,14 +49,14 @@ void openConsole() {
 			executeInstruccion();
 
 		} else {
-			int i = 0;
-			while(parameters[i]) {
-				 free(parameters[i]);
-				i++;
-			}
-			free(parameters);
-		}
 
+		}
+		int i = 0;
+		while(parameters[i]) {
+			 free(parameters[i]);
+			i++;
+		}
+		free(parameters);
 		free(line);
 	}
 }
@@ -82,7 +82,7 @@ void execute(char** parameters) {
 	char* command = parameters[0];
 	int commandNumber = getCommandNumber(command);
 
-	char* key = malloc(40);
+	char* key;
 	int esiID;
 
 
@@ -105,6 +105,7 @@ void execute(char** parameters) {
 		break;
 
 		case BLOQUEAR:
+			key = malloc(40);
 		    key = parameters[1];
 		    esiID = atoi(parameters[2]);
 		    if (!isLockedKey(key))
@@ -115,13 +116,17 @@ void execute(char** parameters) {
 		break;
 
 		case DESBLOQUEAR:
+			key = malloc(40);
 			 key = parameters[1];
 			unlockEsi(key,true);
+			free(key);
 		break;
 
 		case LISTAR:
+			key = malloc(40);
 			 key = parameters[1];
 			showBlockedEsisInKey(key);
+			free(key);
 		break;
 
 		case KILL:
@@ -141,11 +146,13 @@ void execute(char** parameters) {
 		break;
 
 		case STATUS:
+			key = malloc(40);
 			requestToCoordinador = PLANIFICADOR_STATUS_REQUEST;
 
-			//TODO nico chequear
+
 			if (send_all(coordinadorSocket, &requestToCoordinador, sizeof(requestToCoordinador)) == CUSTOM_FAILURE) {
 				log_error(logger, "I cannot send the request from status coordinador");
+				free(key);
 				exitPlanificador();
 			}
 
@@ -153,9 +160,10 @@ void execute(char** parameters) {
 			globalKey = key;
 			if (sendString(key, coordinadorSocket) == CUSTOM_FAILURE) {
 				log_error(logger, "I cannot send the key to resolve status to coordinador");
+				free(key);
 				exitPlanificador();
 			}
-
+			free(key);
 
 
 
