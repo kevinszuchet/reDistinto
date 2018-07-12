@@ -157,7 +157,7 @@ void execute(char** parameters) {
 			}
 
 			strcpy(key, parameters[1]);
-			globalKey = key;
+			globalKey = strdup(key);
 			if (sendString(key, coordinadorSocket) == CUSTOM_FAILURE) {
 				log_error(logger, "I cannot send the key to resolve status to coordinador");
 				free(key);
@@ -430,7 +430,13 @@ int validCommand(char** parameters) {
 		break;
 
 		case STATUS:
-			return parameterQuantityIsValid(cantExtraParameters, 1);
+			if (parameterQuantityIsValid(cantExtraParameters, 1)) {
+				if (validKey(parameters[1])) {
+					return 1;
+				}
+			}
+			printf("Invalid command\n");
+			return 0;
 		break;
 
 		case DEADLOCK:

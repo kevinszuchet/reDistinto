@@ -220,7 +220,11 @@ void abortEsi(Esi* esi) {
 
 	freeTakenKeys(esi);
 	deleteEsiFromSystem(esi);
-	list_remove_and_destroy_by_condition(allSystemEsis, &isEsiById,&destroyEsi);
+	t_list * filteredList = list_filter(finishedEsis, &isEsiById);
+	if (list_size(filteredList) == 0) {
+		list_remove_and_destroy_by_condition(allSystemEsis, &isEsiById,&destroyEsi);
+	}
+
 }
 
 void deleteEsiFromSystem(Esi* esiToDelete) {
@@ -340,12 +344,14 @@ void addKeyToGeneralKeys(char* key) {
 
 void blockEsi(char* lockedKey, int esiBlocked) {
 	t_queue* esiQueue;
+
+	char* lockedKeyCopy = strdup(lockedKey);
 	esiBlockedCopy = malloc(sizeof(int));
 	*esiBlockedCopy = esiBlocked;
 	if (!dictionary_has_key(blockedEsiDic, lockedKey)) {
 		esiQueue = queue_create();
 		queue_push(esiQueue, esiBlockedCopy);
-		dictionary_put(blockedEsiDic,lockedKey,esiQueue);
+		dictionary_put(blockedEsiDic,lockedKeyCopy,esiQueue);
 		log_info(logger,"Creating a queue with an ESI in blockedEsiDic");
 	} else {
 		esiQueue = dictionary_get(blockedEsiDic, lockedKey);
@@ -363,15 +369,16 @@ void blockEsi(char* lockedKey, int esiBlocked) {
 
 void lockKey(char* key, int esiID) {
 
-	addKeyToGeneralKeys(key);
+	char* keyCopy = strdup(key);
+	addKeyToGeneralKeys(keyCopy);
 
 	if (esiID != CONSOLE_BLOCKED) {
-		addLockedKeyToEsi(&key, &runningEsi);
+		addLockedKeyToEsi(&keyCopy, &runningEsi);
 	}
 
 	if (!dictionary_has_key(blockedEsiDic, key)) {
 		t_queue* esiQueue = queue_create();
-		dictionary_put(blockedEsiDic, key, esiQueue);
+		dictionary_put(blockedEsiDic, keyCopy, esiQueue);
 		log_info(logger,"Creating an empty key in blockedEsiDic");
 	}
 
@@ -381,7 +388,7 @@ void lockKey(char* key, int esiID) {
 			return strcmp(key, (char*) item) == 0;
 		}
 		if(!list_any_satisfy(allSystemTakenKeys,&itemIsKey)){
-			list_add(allSystemTakenKeys, key);
+			list_add(allSystemTakenKeys, keyCopy);
 		}
 
 	}
@@ -791,6 +798,10 @@ void idDestroyer(void* id){
 	free(id);
 }
 
+void queueDestroyer(void* queue){
+	queue_destroy_and_destroy_elements(queue,idDestroyer);
+}
+
 void exitPlanificador() {
 
 	free(esiBlockedCopy);
@@ -812,7 +823,7 @@ void exitPlanificador() {
 		list_destroy(allSystemTakenKeys);
 
 	if (blockedEsiDic)
-		dictionary_destroy_and_destroy_elements(blockedEsiDic,idDestroyer);
+		dictionary_destroy_and_destroy_elements(blockedEsiDic,queueDestroyer);
 
 	destroyConsole();
 
@@ -824,13 +835,4 @@ void exitPlanificador() {
 	exit(-1);
 }
 
-// Destroy functions
-void destroyEsiQueue(void * queueVoid) {
-	void destroyBlockedEsi(void * blockedEsi) {
-		if (blockedEsi)
-			free(blockedEsi);
-	}
 
-	t_queue * queue = queueVoid;
-	queue_destroy_and_destroy_elements(queue, &destroyBlockedEsi);
-}
