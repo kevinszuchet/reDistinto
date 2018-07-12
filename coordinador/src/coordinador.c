@@ -638,10 +638,12 @@ int recieveStentenceToProcess(int esiSocket){
 	}
 
 	pthread_mutex_unlock(&instanciasListMutex);
-	pthread_mutex_unlock(&esisMutex);
 
 	destroyOperation(esiRequest.operation);
 	usleep(delay * 1000);
+
+	pthread_mutex_unlock(&esisMutex);
+
 	return operationResult;
 }
 
