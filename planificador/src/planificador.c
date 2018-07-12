@@ -95,19 +95,20 @@ typedef struct KeyEsi{
 	char* key;
 }KeyEsi;
 
-void freeKeyGeneral(void* keyEsiStruct){
-	char* key = (char*) keyEsiStruct;
-	freeKey(key,globalEsi);
-
-	bool keyCompare(void* takenKey) {
-		return string_equals_ignore_case((char*) takenKey, key);
-	}
-	list_remove_by_condition(allSystemTakenKeys, &keyCompare);
-
-}
 
 void freeTakenKeys(Esi* esi) {
-	globalEsi = esi;
+
+	void freeKeyGeneral(void* keyEsiStruct){
+		char* key = (char*) keyEsiStruct;
+		freeKey(key,esi);
+
+		bool keyCompare(void* takenKey) {
+			return string_equals_ignore_case((char*) takenKey, key);
+		}
+		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+
+	}
+
 	list_iterate(esi->lockedKeys,&freeKeyGeneral);
 	list_clean(esi->lockedKeys);
 }

@@ -83,7 +83,7 @@
 	bool finishedExecutingInstruccion;
 
 	char* globalKey;
-	Esi* globalEsi;
+
 
 	void initializePlanificador();
 	void getConfig(int* listeningPort, char** algorithm, int* alphaEstimation, int* initialEstimation, char** ipCoordinador, int* portCoordinador, char*** blockedKeys);
