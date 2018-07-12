@@ -363,9 +363,15 @@ int validCommand(char** parameters) {
 					if (validateBloquear(key, id)) {
 						free(key);
 						return 1;
+					}else{
+						printf("Esi isn't ready or running\n");
 					}
+				}else{
+					printf("Invalid key lenght\n");
+
 				}
 			}
+			free(key);
 			printf("Invalid command\n");
 			return 0;
 		break;
@@ -378,10 +384,15 @@ int validCommand(char** parameters) {
 					if (validateDesbloquear(key)) {
 						free(key);
 						return 1;
+					}else{
+						printf("Key doesn't exists\n");
 					}
+				}else{
+					printf("Invalid lenght\n");
 				}
 			}
 			printf("Invalid command\n");
+			free(key);
 			return 0;
 		break;
 
@@ -393,10 +404,13 @@ int validCommand(char** parameters) {
 					if (keyExists(key)) {
 						free(key);
 						return 1;
+					}else{
+						printf("Key doesn't exists\n");
 					}
 				}
 			}
 			printf("Invalid command\n");
+			free(key);
 			return 0;
 		break;
 

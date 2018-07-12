@@ -709,6 +709,7 @@ int handleConcurrence() {
 						} else {
 							log_warning(logger, "ESI disconnected.");
 							abortEsi(getEsiBySocket(clientSocket));
+							executeInstruccion();
 
 						}
 						close(clientSocket);
@@ -800,7 +801,8 @@ void exitPlanificador() {
 
 	pthread_cancel(threadConsole);
 	pthread_cancel(threadConsoleInstructions);
-
+	free(keyRecieved);
+	free(esiInformation);
 	log_destroy(logger);
 	free(globalKey);
 	exit(-1);
