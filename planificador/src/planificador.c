@@ -224,6 +224,7 @@ void abortEsi(Esi* esi) {
 	if (list_size(filteredList) == 0) {
 		list_remove_and_destroy_by_condition(allSystemEsis, &isEsiById,&destroyEsi);
 	}
+	list_destroy(filteredList);
 
 }
 
@@ -234,7 +235,7 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 	}
 
 	t_queue* blockedEsis;
-	actualEsi = malloc(sizeof(int));
+
 
 	t_list * filteredList = list_filter(readyEsis, &isEsiByID);
 
@@ -546,20 +547,24 @@ void recieveConsoleStatusResponse(){
 
 	if(instanciaOrigin == STATUS_SIMULATED_INSTANCIA){
 		log_info(logger, "No instancias have the key, it would be on instancia %s", instanciaThatSatisfiesStatus);
+		free(instanciaThatSatisfiesStatus);
 		return;
 	}
 	if(instanciaOrigin == STATUS_NOT_SIMULATED_INSTANCIA_BUT_FALLEN){
 		log_info(logger, "Instancia %s have the key but is fallen", instanciaThatSatisfiesStatus);
+		free(instanciaThatSatisfiesStatus);
 		return;
 	}
 
 	char* value = NULL;
 	if(recieveString(&value, coordinadorSocket) == CUSTOM_FAILURE){
 		log_warning(logger, "Couldn't recieve value from coordinador to respond status command");
+		free(instanciaThatSatisfiesStatus);
 		exitPlanificador();
 	}
 	log_info(logger, "Instancia %s has the key with value %s", instanciaThatSatisfiesStatus, value);
-
+	free(instanciaThatSatisfiesStatus);
+	free(value);
 
 
 

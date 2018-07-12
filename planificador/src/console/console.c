@@ -25,11 +25,11 @@ void openConsole() {
 			add_history(line);
 		}*/
 
-		/*if (!strncmp(line, "exit", 4)) {
+		if (!strncmp(line, "exit", 4)) {
 			free(line);
 			exitPlanificador();
 			break;
-		}*/
+		}
 
 		if (validCommand(parameters)) {
 			pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
@@ -159,7 +159,7 @@ void execute(char** parameters) {
 			}
 
 			strcpy(key, parameters[1]);
-			globalKey = strdup(key);
+			strcpy(globalKey,key);
 			if (sendString(key, coordinadorSocket) == CUSTOM_FAILURE) {
 				log_error(logger, "I cannot send the key to resolve status to coordinador");
 				free(key);
