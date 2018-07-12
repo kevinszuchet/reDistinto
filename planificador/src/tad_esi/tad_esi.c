@@ -87,6 +87,8 @@ void destroyEsi(void * voidEsi) {
 	Esi * esi = (Esi*)voidEsi;
 	if (esi != NULL)
 		list_destroy(esi->lockedKeys);
+
+	free(esi);
 }
 
 void destroyKey(void* key){

@@ -12,7 +12,8 @@ fd_set master;
 char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 
-
+int* esiBlockedCopy;
+int* actualEsi;
 
 
 int main(int argc, char* argv[]) {
@@ -194,7 +195,7 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key)
 			runningEsi = NULL;
 		break;
 	}
-
+    free(esiExecutionInformation);
 	esiInformation = NULL;
 }
 
@@ -229,7 +230,7 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 	}
 
 	t_queue* blockedEsis;
-	int* actualEsi = malloc(sizeof(int));
+	actualEsi = malloc(sizeof(int));
 
 	t_list * filteredList = list_filter(readyEsis, &isEsiByID);
 
@@ -339,7 +340,7 @@ void addKeyToGeneralKeys(char* key) {
 
 void blockEsi(char* lockedKey, int esiBlocked) {
 	t_queue* esiQueue;
-	int* esiBlockedCopy = malloc(sizeof(int));
+	esiBlockedCopy = malloc(sizeof(int));
 	*esiBlockedCopy = esiBlocked;
 	if (!dictionary_has_key(blockedEsiDic, lockedKey)) {
 		esiQueue = queue_create();
@@ -625,6 +626,7 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 			esiInformation = recieveEsiInformation(runningEsi->socketConection);
 			log_info(logger, "Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)", getCoordinadorResponseName(esiInformation->coordinadorResponse), getEsiInformationResponseName(esiInformation->esiStatus));
 			handleEsiInformation(esiInformation, keyRecieved);
+			free(keyRecieved);
 			log_info(logger, "Finish handling one instruction from ESI");
 			setFinishedExecutingInstruccion(true);
 		} else {
@@ -790,8 +792,9 @@ void idDestroyer(void* id){
 }
 
 void exitPlanificador() {
-	free(keyRecieved);
-	free(esiInformation);
+
+	free(esiBlockedCopy);
+	free(actualEsi);
 	free(globalKey);
 	if (allSystemKeys)
 		list_destroy_and_destroy_elements(allSystemKeys, destroyKey);

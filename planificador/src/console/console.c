@@ -106,7 +106,7 @@ void execute(char** parameters) {
 
 		case BLOQUEAR:
 			key = malloc(40);
-		    key = parameters[1];
+			strcpy(key, parameters[1]);
 		    esiID = atoi(parameters[2]);
 		    if (!isLockedKey(key))
 		    	lockKey(key, CONSOLE_BLOCKED);
@@ -117,14 +117,14 @@ void execute(char** parameters) {
 
 		case DESBLOQUEAR:
 			key = malloc(40);
-			 key = parameters[1];
+			strcpy(key, parameters[1]);
 			unlockEsi(key,true);
-			//free(key);
+			free(key);
 		break;
 
 		case LISTAR:
 			key = malloc(40);
-			 key = parameters[1];
+			strcpy(key, parameters[1]);
 			showBlockedEsisInKey(key);
 			free(key);
 		break;
@@ -156,7 +156,7 @@ void execute(char** parameters) {
 				exitPlanificador();
 			}
 
-			key = parameters[1];
+			strcpy(key, parameters[1]);
 			globalKey = key;
 			if (sendString(key, coordinadorSocket) == CUSTOM_FAILURE) {
 				log_error(logger, "I cannot send the key to resolve status to coordinador");
@@ -291,11 +291,14 @@ void executeDeadlockAlgorithm(){
 	for (i=0; i<esiCount; i++)
 		free(asignationMatrix[i]);
 
-	//free(asignationMatrix);
+	free(asignationMatrix);
 	for(i = 0;i<esiCount;i++){
 		free(indexCopy[i]);
 	}
-	//free(indexCopy);
+	free(indexCopy);
+
+	list_destroy(actualDeadlockEsis);
+	list_destroy(totalDeadlockEsis);
 
 }
 int getEsiIndexByID(int id){
