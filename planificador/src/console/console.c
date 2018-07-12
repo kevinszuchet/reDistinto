@@ -46,7 +46,9 @@ void openConsole() {
 				pthread_mutex_unlock(&mutexInstruccionsByConsole);
 			}
 			pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
+			log_info(logger,"Ejecute por consola, mando a ejecutar esis");
 			executeInstruccion();
+			log_info(logger,"Mande a ejecutar esis");
 
 		} else {
 
