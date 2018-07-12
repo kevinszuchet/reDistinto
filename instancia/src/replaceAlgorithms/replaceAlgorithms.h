@@ -21,6 +21,7 @@
 
 	bool leastRecentlyUsedComparator(void * currentData, void * selectedData);
 	bool biggestSpaceUsedComparator(void * currentData, void * selectedData);
+	bool entryStartAsc(void * currentData, void * selectedDAta);
 
 	bool atomicEntry(void * entryInfo);
 

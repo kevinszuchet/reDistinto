@@ -270,7 +270,7 @@ void interpretateOperation(Operation * operation, char * line) {
 			exit(-1);
 	}
 
-	showOperation(operation);
+	showOperation(operation, logger);
 
 	destruir_operacion(parsedLine);
 }

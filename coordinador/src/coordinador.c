@@ -434,8 +434,6 @@ int tryToExecuteOperationOnInstancia(EsiRequest* esiRequest, Instancia* chosenIn
 		return -1;
 	}
 
-	log_info(operationsLogger, "Esi %d does %s over key %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
-
 	return 0;
 }
 
@@ -485,6 +483,8 @@ int doSet(EsiRequest* esiRequest, char keyStatus){
 		return -1;
 	}
 
+	log_info(operationsLogger, "Esi %d does %s over key %s with value %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key, esiRequest->operation->value);
+
 	return sendResponseToEsi(esiRequest, SUCCESS);
 }
 
@@ -507,6 +507,8 @@ int doStore(EsiRequest* esiRequest, char keyStatus){
 	if(tryToExecuteOperationOnInstancia(esiRequest, instanciaToBeUsed) < 0){
 		return -1;
 	}
+
+	log_info(operationsLogger, "Esi %d does %s over key %s", esiRequest->id, getOperationName(esiRequest->operation), esiRequest->operation->key);
 
 	return sendResponseToEsi(esiRequest, FREE);
 }
@@ -590,7 +592,7 @@ int recieveStentenceToProcess(int esiSocket){
 	pthread_mutex_lock(&esisMutex);
 
 	log_info(logger, "Arrived esi is going to do:");
-	showOperation(esiRequest.operation);
+	showOperation(esiRequest.operation, logger);
 
 	esiId = getActualEsiID();
 	//esiId = getActualEsiIDDummy();
@@ -636,10 +638,12 @@ int recieveStentenceToProcess(int esiSocket){
 	}
 
 	pthread_mutex_unlock(&instanciasListMutex);
-	pthread_mutex_unlock(&esisMutex);
 
 	destroyOperation(esiRequest.operation);
 	usleep(delay * 1000);
+
+	pthread_mutex_unlock(&esisMutex);
+
 	return operationResult;
 }
 

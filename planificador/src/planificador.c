@@ -70,8 +70,9 @@ bool mustDislodgeRunningEsi() {
 	if (list_size(readyEsis) > 0) {
 		Esi* bestPosible = simulateAlgoithm(algorithm, alphaEstimation, readyEsis);
 		printEsi(runningEsi);
-		if (getEstimation(bestPosible) < getEstimation(runningEsi)) {
-			log_info(logger, "Must dislodge, ESI (%d) has estimation (%f). Lower than (%f) from running ESI", bestPosible->id, getEstimation(bestPosible), getEstimation(runningEsi));
+		printEsi(bestPosible);
+		if (getEstimation(bestPosible) < (getEstimation(runningEsi) - runningEsi->sentenceCounter)) {
+			log_info(logger, "Must dislodge, ESI (%d) has estimation (%f). Lower than (%f) from running ESI", bestPosible->id, getEstimation(bestPosible), (getEstimation(runningEsi)-runningEsi->sentenceCounter));
 			return true;
 		}
 	}
@@ -83,8 +84,9 @@ void finishEsi(Esi* esiToFinish) {
 	freeTakenKeys(esiToFinish);
 	log_info(logger, "Esi (%d) succesfully finished", esiToFinish->id);
 	log_info(logger, "Printing Esi (%d) final values", esiToFinish->id);
-	takeRunningEsiOut();
 	printEsi(esiToFinish);
+	takeRunningEsiOut(false);
+
 }
 
 typedef struct KeyEsi{
@@ -135,18 +137,20 @@ void sendEsiIdToCoordinador(int id){
 	}
 }
 
-void dislodgeEsi(Esi* esi, bool addToReady) {
+void dislodgeEsi(Esi* esi, bool addToReady, bool updateEstimation) {
 	if (addToReady) {
 		addEsiToReady(esi);
 	}
-	takeRunningEsiOut();
+	takeRunningEsiOut(updateEstimation);
 }
 
-void takeRunningEsiOut() {
-	updateLastBurst(sentenceCounter, &runningEsi);
-	runningEsi->lastEstimation = getEstimation(runningEsi);
+void takeRunningEsiOut(bool updateEstimation) {
+
+	if(updateEstimation){
+		updateLastBurst(&runningEsi);
+		runningEsi->lastEstimation = getEstimation(runningEsi);
+	}
 	runningEsi = NULL;
-	sentenceCounter = 0;
 }
 
 void moveEsiToRunning(Esi* esiToRun) {
@@ -156,7 +160,10 @@ void moveEsiToRunning(Esi* esiToRun) {
 }
 
 void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key) {
-	sentenceCounter++;
+
+	if(runningEsi!=NULL){
+		addSentenceCounter(runningEsi);
+	}
 	addWaitingTimeToAll(readyEsis);
 
 	switch(esiExecutionInformation->coordinadorResponse) {
@@ -184,7 +191,6 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key)
 		break;
 
 		case ABORT:
-			sentenceCounter = 0;
 			runningEsi = NULL;
 		break;
 	}
@@ -347,7 +353,7 @@ void blockEsi(char* lockedKey, int esiBlocked) {
 	log_info(logger, "Added ESI (%d) to blocked dictionary in key (%s)", *esiBlockedCopy, lockedKey);
 
 	if(runningEsi!=NULL && runningEsi->id == esiBlocked){
-		dislodgeEsi(getEsiById(esiBlocked),false);
+		dislodgeEsi(getEsiById(esiBlocked), false, true);
 	}else{
 		removeFromReady(getEsiById(esiBlocked));
 	}
@@ -570,7 +576,7 @@ void executeInstruccion(){
 			} else {
 				if (strcmp(algorithm, "SJF-CD") == 0) {
 					if (mustDislodgeRunningEsi()) {
-						dislodgeEsi(runningEsi, true);
+						dislodgeEsi(runningEsi, true, false);
 						nextEsi = getNextEsi();
 						moveEsiToRunning(nextEsi);
 					}
@@ -579,7 +585,8 @@ void executeInstruccion(){
 
 			if (runningEsi != NULL) {
 				finishedExecutingInstruccion = false;
-				log_info(logger, "Executing ESI (%d)", runningEsi->id);
+				log_info(logger, "Executing ESI %d", runningEsi->id);
+				log_info(logger, "Running ESI actual estimation = %f with %d sentences already executed with waitingTime = %d", runningEsi->lastEstimation, runningEsi->sentenceCounter, runningEsi->waitingTime);
 				sendEsiIdToCoordinador(runningEsi->id);
 				sendMessageExecuteToEsi(runningEsi);
 				log_info(logger, "Waiting coordinador request");
@@ -763,7 +770,7 @@ void initializePlanificador() {
 
 	pauseState = CONTINUE;
 
-	sentenceCounter = 0;
+
 	actualID = 1;
 
 	pthread_mutex_init(&mutexFinishedExecutingInstruccion,NULL);

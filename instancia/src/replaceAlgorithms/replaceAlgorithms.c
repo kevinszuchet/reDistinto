@@ -41,7 +41,9 @@ void deleteAccodringToAlgorithm() {
 		toBeDeletedElement = atomicEntriesList->head->data;
 		deleteKey(toBeDeletedElement);
 	}
-
+	else{
+		log_warning(logger, "There are no atomic entires to be deleted");
+	}
 	list_destroy(atomicEntriesList);
 }
 
@@ -75,4 +77,8 @@ bool biggestSpaceUsedComparator(void * currentData, void * selectedData) {
 bool atomicEntry(void * voidEntryInfo) {
 	entryTableInfo * entryInfo = (entryTableInfo *) voidEntryInfo;
 	return entryInfo->valueSize <= entrySize;
+}
+bool entryStartAsc(void * currentData, void * selectedData){
+
+	return getValueStart((entryTableInfo *) currentData) < getValueStart((entryTableInfo *) selectedData);
 }

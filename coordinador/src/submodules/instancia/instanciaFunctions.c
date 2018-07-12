@@ -52,7 +52,7 @@ int updateSpaceUsed(Instancia* instancia) {
 		return -1;
 	}
 	instancia->spaceUsed = spaceUsed;
-	log_info(logger, "Successfully updated instancia's space used");
+	log_info(logger, "Successfully updated instancia's space used: %d", instancia->spaceUsed);
 	return 0;
 }
 
@@ -405,35 +405,37 @@ Instancia* createNewInstancia(int instanciaSocket, char* name){
  */
 
 void showStoredKey(char* key){
-	printf("%s\n", key);
+	log_info(logger, "%s", key);
 }
 
 void showStoredKeys(Instancia* instancia){
 	if(instancia->storedKeys != NULL){
+		printf("Keys = \n");
 		list_iterate(instancia->storedKeys, (void*) showStoredKey);
 	}else{
-		printf("storedKeys cannot be showed\n");
+		log_info(logger, "storedKeys cannot be showed");
 	}
 }
 
-void showInstanciaState(Instancia* instancia){
+char* instanciaState(Instancia* instancia){
 	if(instancia->isFallen == INSTANCIA_ALIVE){
-		printf("State: alive\n");
-	}else{
-		printf("State: fallen\n");
+		return "alive";
 	}
+	return "fallen";
 }
 
 void showInstancia(Instancia* instancia){
 	if(instancia != NULL){
-		printf("Name = %s\n", instancia->name);
-		printf("Socket = %d\n", instancia->socket);
-		printf("Space used = %d\n", instancia->spaceUsed);
+
+		log_info(logger,
+				"\nName = %s\nSocket = %d\nSpace used = %d\nState = %s",
+				instancia->name, instancia->socket, instancia->spaceUsed, instanciaState(instancia));
+
 		showStoredKeys(instancia);
-		showInstanciaState(instancia);
+
 		printf("----------\n");
 	}else{
-		printf("Instance cannot be showed\n");
+		log_info(logger, "Instance cannot be showed");
 	}
 }
 
@@ -443,7 +445,7 @@ void showInstancias(t_list* instanciasList){
 		list_iterate(instanciasList, (void*) &showInstancia);
 	}
 	else{
-		printf("Actual instancias list is empty\n");
+		log_info(logger, "Actual instancias list is empty");
 	}
 }
 /*
