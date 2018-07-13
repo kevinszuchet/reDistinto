@@ -92,24 +92,20 @@ void finishEsi(Esi* esiToFinish) {
 
 }
 
-typedef struct KeyEsi{
-	Esi* esi;
-	char* key;
-}KeyEsi;
+
 
 
 void freeTakenKeys(Esi* esi) {
 
-	void freeKeyGeneral(void* keyEsiStruct){
-		char* key = (char*) keyEsiStruct;
-		freeKey(key,esi);
+	void freeKeyGeneral(void* item){
+		char* key = (char*) item;
 
 		bool keyCompare(void* takenKey) {
 			return string_equals_ignore_case((char*) takenKey, key);
 		}
 		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
-		if(!dictionary_has_key(blockedEsiDic,key))
-			free(key);
+
+		freeKey(key,esi);
 	}
 
 	list_iterate(esi->lockedKeys,&freeKeyGeneral);
@@ -348,15 +344,15 @@ bool addKeyToGeneralKeys(char* key) {
 	}
 
 	bool addedToList = false;
-	char* keyCopy = strdup(key);
+	//char* keyCopy = strdup(key);
 	if (!list_any_satisfy(allSystemTakenKeys, &itemIsKey)){
-		list_add(allSystemTakenKeys, keyCopy);
+		list_add(allSystemTakenKeys, strdup(key));
 		addedToList = true;
 	}else{
-		free(keyCopy);
+		//free(keyCopy);
 	}
 	if (!list_any_satisfy(allSystemKeys, &itemIsKey)){
-		list_add(allSystemKeys, keyCopy);
+		list_add(allSystemKeys, strdup(key));
 		addedToList = true;
 	}
 
@@ -393,13 +389,7 @@ void blockEsi(char* lockedKey, int esiBlocked) {
 }
 
 void lockKey(char* key, int esiID) {
-
-	char* keyCopy = strdup(key);
-
-
 	addKeyToGeneralKeys(key);
-
-
 
 	if (esiID != CONSOLE_BLOCKED) {
 		addLockedKeyToEsi(key, &runningEsi);
@@ -407,24 +397,9 @@ void lockKey(char* key, int esiID) {
 
 	if (!dictionary_has_key(blockedEsiDic, key)) {
 		t_queue* esiQueue = queue_create();
-		dictionary_put(blockedEsiDic, keyCopy, esiQueue);
+		dictionary_put(blockedEsiDic, strdup(key), esiQueue);
 		log_info(logger,"Creating an empty key in blockedEsiDic");
-	}else{
-		free(keyCopy);
 	}
-
-	//if(haveToFreeKey)
-		//free(keyCopy);
-/*
-	if (isLockedKey(key) == NOTBLOCKED) {
-		bool itemIsKey(void* item) {
-			return strcmp(key, (char*) item) == 0;
-		}
-		if(!list_any_satisfy(allSystemTakenKeys,&itemIsKey)){
-			list_add(allSystemTakenKeys, keyCopy);
-		}
-	}*/
-
 }
 
 Esi* getEsiById(int id) {
@@ -444,8 +419,9 @@ Esi* getEsiBySocket(int socket) {
 }
 
 void freeKey(char* key, Esi* esiTaker) {
+	// TODO revisar (estaba al reves el orden de las funciones)
+	unlockEsi(key, false);
 	removeLockedKey(key, esiTaker);
-	unlockEsi(key,false);
 }
 
 void unlockEsi(char* key,bool isConsoleInstruccion) {
@@ -465,8 +441,8 @@ void unlockEsi(char* key,bool isConsoleInstruccion) {
 		}
 	}else{
 		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
-		if(!dictionary_has_key(blockedEsiDic,key))
-						free(key);
+		//if(!dictionary_has_key(blockedEsiDic,key))
+						//free(key);
 	}
 
 
