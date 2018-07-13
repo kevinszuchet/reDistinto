@@ -73,7 +73,7 @@
 	int getStartEntryToSet(int amountOfEtries);
 	void storageSet(int initialEntry,  char * value);
 
-	char compact();
+	void compact();
 	int getTotalSettedEntries();
 	void getValue(char * value, int valueStart, int valueSize);
 	int getValueStartEntry(char * key);

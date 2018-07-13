@@ -544,7 +544,7 @@ void storageSet(int initialEntry,  char * value) {
 	}
 }
 
-char compact() {
+void compact() {
 
 	int totalSettedEntries = getTotalSettedEntries();
 
@@ -598,7 +598,6 @@ char compact() {
 	}
 
 	log_info(logger, "Compactation was successfully done");
-	return INSTANCIA_RESPONSE_SUCCESS;
 }
 
 void getValue(char * value, int valueStart, int valueSize) {
