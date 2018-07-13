@@ -236,8 +236,6 @@ void instanciaExitGracefully(Instancia* instancia){
 
 	instanciaHasFallen(instancia);
 
-	log_info(logger, "Instancia %s actualCommand is %c", instancia->name, instancia->actualCommand);
-
 	switch(instancia->actualCommand){
 		case INSTANCIA_DO_OPERATION:
 			instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
