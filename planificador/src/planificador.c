@@ -863,7 +863,7 @@ void exitPlanificador() {
 	}
 
 	if (allSystemTakenKeys)
-		list_destroy(allSystemTakenKeys);
+		list_destroy_and_destroy_elements(allSystemTakenKeys, destroyKey);
 
 	if (blockedEsiDic)
 		dictionary_destroy_and_destroy_elements(blockedEsiDic,queueDestroyer);
@@ -874,8 +874,6 @@ void exitPlanificador() {
 	pthread_cancel(threadConsoleInstructions);
 
 	log_destroy(logger);
-
-
 
 	exit(-1);
 }

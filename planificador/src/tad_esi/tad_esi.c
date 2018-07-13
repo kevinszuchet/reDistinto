@@ -41,11 +41,8 @@ int id(Esi* esi) {
 }
 
 void addLockedKeyToEsi(char* key, Esi** esi) {
-	char* keyCopy = strdup(key);
-	list_add((*esi)->lockedKeys, (void*) keyCopy);
-	printf("Locked key %s in ESI %d \n",keyCopy,(*esi)->id);
-	printf("Hay %d claves bloqueadas despues de agregar una clave\n",list_size((*esi)->lockedKeys)); //todo borrar despues
-
+	list_add((*esi)->lockedKeys, strdup(key));
+	printf("Locked key %s in ESI %d \n", key, (*esi)->id);
 }
 
 void removeLockedKey(char* key, Esi* esi) {
@@ -95,6 +92,5 @@ void destroyEsi(void * voidEsi) {
 }
 
 void destroyKey(void* key){
-	if ((char *) key != NULL)
-		free(key);
+	free(key);
 }
