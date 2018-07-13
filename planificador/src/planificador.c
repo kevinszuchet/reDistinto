@@ -109,7 +109,7 @@ void freeTakenKeys(Esi* esi) {
 			return string_equals_ignore_case((char*) takenKey, key);
 		}
 		log_warning(logger,"Antes de eliminar la clave %s",key); //todo borrar despues
-		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+		list_remove_and_destroy_by_condition(allSystemTakenKeys, &keyCompare, &destroyKey);
 		log_warning(logger,"A punto de eliminar la clave %s",key); //todo borrar despues
 		freeKey(key,esi);
 	}
@@ -445,13 +445,13 @@ void unlockEsi(char* key,bool isConsoleInstruccion) {
 
 	if(isConsoleInstruccion){
 		if(queue_is_empty(blockedEsisQueue)){
-			list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+			list_remove_and_destroy_by_condition(allSystemTakenKeys, &keyCompare, &destroyKey);
 			log_info(logger, "Key (%s) freed", key);
 			//if(!dictionary_has_key(blockedEsiDic,key))
 				//free(key);
 		}
 	}else{
-		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+		list_remove_and_destroy_by_condition(allSystemTakenKeys, &keyCompare, &destroyKey);
 		log_warning(logger, "Key (%s) freed", key);
 		//if(!dictionary_has_key(blockedEsiDic,key))
 						//free(key);
