@@ -374,19 +374,17 @@ bool addKeyToGeneralKeys(char* key) {
 void blockEsi(char* lockedKey, int esiBlocked) {
 	t_queue* esiQueue;
 
-	char* lockedKeyCopy = strdup(lockedKey);
 	int* esiBlockedCopy;
 	esiBlockedCopy = malloc(sizeof(int));
 	*esiBlockedCopy = esiBlocked;
 	if (!dictionary_has_key(blockedEsiDic, lockedKey)) {
 		esiQueue = queue_create();
 		queue_push(esiQueue, esiBlockedCopy);
-		dictionary_put(blockedEsiDic,lockedKeyCopy,esiQueue);
+		dictionary_put(blockedEsiDic, lockedKey, esiQueue);
 		log_info(logger,"Creating a queue with an ESI in blockedEsiDic");
 	} else {
 		esiQueue = dictionary_get(blockedEsiDic, lockedKey);
 		queue_push(esiQueue, esiBlockedCopy);
-		free(lockedKeyCopy);
 	}
 	log_info(logger, "Added ESI (%d) to blocked dictionary in key (%s)", *esiBlockedCopy, lockedKey);
 
@@ -407,7 +405,7 @@ void lockKey(char* key, int esiID) {
 
 	if (!dictionary_has_key(blockedEsiDic, key)) {
 		t_queue* esiQueue = queue_create();
-		dictionary_put(blockedEsiDic, strdup(key), esiQueue);
+		dictionary_put(blockedEsiDic, key, esiQueue);
 		log_info(logger,"Creating an empty key in blockedEsiDic");
 	}
 }
