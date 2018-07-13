@@ -38,35 +38,51 @@ void openConsole() {
 				sem_wait(&executionSemaphore);
 				execute(parameters);
 				sem_post(&executionSemaphore);
+				int i = 0;
+				while(parameters[i]) {
+					 free(parameters[i]);
+					i++;
+				}
+				free(parameters);
 
 			}else{
 				pthread_mutex_lock(&mutexInstruccionsByConsole);
+
+
 				list_add(instruccionsByConsoleList, parameters);
 				log_info(logger, "Instruccion added to pending instruccion List");
 				pthread_mutex_unlock(&mutexInstruccionsByConsole);
 			}
 			pthread_mutex_unlock(&mutexFinishedExecutingInstruccion);
-			log_info(logger,"Ejecute por consola, mando a ejecutar esis");
+
 			executeInstruccion();
-			log_info(logger,"Mande a ejecutar esis");
+
 
 		} else {
+			int i = 0;
+			while(parameters[i]) {
+				 free(parameters[i]);
+				i++;
+			}
+			free(parameters);
 
 		}
-		int i = 0;
-		while(parameters[i]) {
-			 free(parameters[i]);
-			i++;
-		}
-		free(parameters);
 		free(line);
+
 	}
 }
 
 void executeConsoleInstruccions() {
 	void validateAndexecuteComand(void* parameters) {
-		if (validCommand((char**) parameters)) {
-			execute((char**) parameters);
+		char** parametersChar = (char**) parameters;
+		if (validCommand(parametersChar)) {
+			execute(parametersChar);
+			int i = 0;
+			while(parametersChar[i]) {
+				 free(parametersChar[i]);
+				i++;
+			}
+			free(parametersChar);
 		}
 	}
 	pthread_mutex_lock(&mutexInstruccionsByConsole);
@@ -137,13 +153,28 @@ void execute(char** parameters) {
 		    if (!isValidEsiId(esiID)) {
 		    	printf("The entered esiID (%d) does not belong to the system.\n", esiID);
 		    } else {
-		    	Esi * esi = getEsiById(esiID);
-		    	int message = KILLESI;
-		    	if (sendInt(message, esi->socketConection) == CUSTOM_FAILURE) {
-				   log_error(logger, "Coultn't send message to ESI %d", esiID);
-				} else {
-					log_info(logger, "Send kill message to ESI %d in socket %d", esiID, esi->socketConection);
+
+		    	bool isEsiByID(void* esi) {
+					return ((Esi*) esi)->id == esiID;
 				}
+
+		    	pthread_mutex_lock(&mutexFinishedList);
+				t_list * filteredList = list_filter(finishedEsis, &isEsiByID);
+				pthread_mutex_unlock(&mutexFinishedList);
+
+				if (list_size(filteredList) == 0) {
+					Esi * esi = getEsiById(esiID);
+					int message = KILLESI;
+					if (sendInt(message, esi->socketConection) == CUSTOM_FAILURE) {
+					   log_error(logger, "Coultn't send message to ESI %d", esiID);
+					} else {
+						log_info(logger, "Send kill message to ESI %d in socket %d", esiID, esi->socketConection);
+					}
+				}else{
+					printf("The entered esiID (%d) have finished, can't kill it.\n", esiID);
+				}
+				list_destroy(filteredList);
+
 		    }
 		break;
 

@@ -12,7 +12,7 @@ fd_set master;
 char* keyRecieved;
 OperationResponse* esiInformation = NULL;
 
-int* esiBlockedCopy;
+
 int* actualEsi;
 
 
@@ -81,7 +81,9 @@ bool mustDislodgeRunningEsi() {
 }
 
 void finishEsi(Esi* esiToFinish) {
+	pthread_mutex_lock(&mutexFinishedList);
 	list_add(finishedEsis, esiToFinish);
+	pthread_mutex_unlock(&mutexFinishedList);
 	freeTakenKeys(esiToFinish);
 	log_info(logger, "Esi (%d) succesfully finished", esiToFinish->id);
 	log_info(logger, "Printing Esi (%d) final values", esiToFinish->id);
@@ -114,7 +116,9 @@ void freeTakenKeys(Esi* esi) {
 }
 
 void addToFinishedList(Esi* finishedEsi) {
+	pthread_mutex_lock(&mutexFinishedList);
 	list_add(finishedEsis, finishedEsi);
+	pthread_mutex_unlock(&mutexFinishedList);
 	log_info(logger, "Esi (%d) added to finished list", finishedEsi->id);
 }
 
@@ -221,7 +225,9 @@ void abortEsi(Esi* esi) {
 
 	freeTakenKeys(esi);
 	deleteEsiFromSystem(esi);
+	pthread_mutex_lock(&mutexFinishedList);
 	t_list * filteredList = list_filter(finishedEsis, &isEsiById);
+	pthread_mutex_unlock(&mutexFinishedList);
 	if (list_size(filteredList) == 0) {
 		list_remove_and_destroy_by_condition(allSystemEsis, &isEsiById,&destroyEsi);
 	}
@@ -255,7 +261,9 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 		runningEsi = NULL;
 	}
 
+	pthread_mutex_lock(&mutexFinishedList);
 	filteredList = list_filter(finishedEsis, &isEsiByID);
+	pthread_mutex_unlock(&mutexFinishedList);
 
 	if (list_size(filteredList) > 0) {
 		//nothing to do, is in finished list
@@ -333,21 +341,29 @@ void sendMessageExecuteToEsi(Esi* nextEsi) {
 }
 
 // General use functions
-void addKeyToGeneralKeys(char* key) {
+bool addKeyToGeneralKeys(char* key) {
 	bool itemIsKey(void* item) {
 		return strcmp(key, (char*) item) == 0;
 	}
 
-	if (!list_any_satisfy(allSystemTakenKeys, &itemIsKey))
+	bool addedToList = false;
+	if (!list_any_satisfy(allSystemTakenKeys, &itemIsKey)){
 		list_add(allSystemTakenKeys, key);
-	if (!list_any_satisfy(allSystemKeys, &itemIsKey))
-			list_add(allSystemKeys, key);
+		addedToList = true;
+	}
+
+	if (!list_any_satisfy(allSystemKeys, &itemIsKey)){
+		list_add(allSystemKeys, key);
+		addedToList = true;
+	}
+	return addedToList;
 }
 
 void blockEsi(char* lockedKey, int esiBlocked) {
 	t_queue* esiQueue;
 
 	char* lockedKeyCopy = strdup(lockedKey);
+	int* esiBlockedCopy;
 	esiBlockedCopy = malloc(sizeof(int));
 	*esiBlockedCopy = esiBlocked;
 	if (!dictionary_has_key(blockedEsiDic, lockedKey)) {
@@ -358,6 +374,7 @@ void blockEsi(char* lockedKey, int esiBlocked) {
 	} else {
 		esiQueue = dictionary_get(blockedEsiDic, lockedKey);
 		queue_push(esiQueue, esiBlockedCopy);
+		free(lockedKeyCopy);
 	}
 	log_info(logger, "Added ESI (%d) to blocked dictionary in key (%s)", *esiBlockedCopy, lockedKey);
 
@@ -372,7 +389,7 @@ void blockEsi(char* lockedKey, int esiBlocked) {
 void lockKey(char* key, int esiID) {
 
 	char* keyCopy = strdup(key);
-	addKeyToGeneralKeys(keyCopy);
+	bool added = addKeyToGeneralKeys(keyCopy);
 
 	if (esiID != CONSOLE_BLOCKED) {
 		addLockedKeyToEsi(&keyCopy, &runningEsi);
@@ -382,9 +399,11 @@ void lockKey(char* key, int esiID) {
 		t_queue* esiQueue = queue_create();
 		dictionary_put(blockedEsiDic, keyCopy, esiQueue);
 		log_info(logger,"Creating an empty key in blockedEsiDic");
+	}else{
+		if(!added)
+			free(keyCopy);
 	}
-
-
+/*
 	if (isLockedKey(key) == NOTBLOCKED) {
 		bool itemIsKey(void* item) {
 			return strcmp(key, (char*) item) == 0;
@@ -392,8 +411,12 @@ void lockKey(char* key, int esiID) {
 		if(!list_any_satisfy(allSystemTakenKeys,&itemIsKey)){
 			list_add(allSystemTakenKeys, keyCopy);
 		}
+	}*/
 
-	}
+
+
+
+
 }
 
 Esi* getEsiById(int id) {
@@ -793,6 +816,7 @@ void initializePlanificador() {
 	pthread_mutex_init(&mutexReadyList,NULL);
 	pthread_mutex_init(&mutexInstruccionsByConsole,NULL);
 	pthread_mutex_init(&mutexPauseState,NULL);
+	pthread_mutex_init(&mutexFinishedList,NULL);
 
 	pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
 	finishedExecutingInstruccion = true;
@@ -810,7 +834,7 @@ void queueDestroyer(void* queue){
 
 void exitPlanificador() {
 
-	free(esiBlockedCopy);
+	//free(esiBlockedCopy);
 	free(actualEsi);
 	free(globalKey);
 	if (allSystemKeys)
@@ -822,8 +846,11 @@ void exitPlanificador() {
 	if (readyEsis)
 		list_destroy(readyEsis);
 
-	if (finishedEsis)
+	if (finishedEsis){
+		pthread_mutex_lock(&mutexFinishedList);
 		list_destroy(finishedEsis);
+		pthread_mutex_unlock(&mutexFinishedList);
+	}
 
 	if (allSystemTakenKeys)
 		list_destroy(allSystemTakenKeys);
@@ -837,6 +864,8 @@ void exitPlanificador() {
 	pthread_cancel(threadConsoleInstructions);
 
 	log_destroy(logger);
+
+
 
 	exit(-1);
 }

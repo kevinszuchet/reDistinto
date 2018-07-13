@@ -68,6 +68,7 @@
 
 	pthread_mutex_t mutexFinishedExecutingInstruccion;
 	pthread_mutex_t mutexReadyList;
+	pthread_mutex_t mutexFinishedList;
 	pthread_mutex_t mutexInstruccionsByConsole;
 	pthread_mutex_t mutexPauseState;
 
@@ -131,7 +132,7 @@
 	// Keys Functions
 	void blockEsi(char* lockedKey, int esiBlocked);
 	char isLockedKey(char* key);
-	void addKeyToGeneralKeys(char* key);
+	bool addKeyToGeneralKeys(char* key);
 	void unlockEsi(char* key,bool isConsoleInstruccion);
 	void freeTakenKeys(Esi* esi);
 	void freeKey(char* key, Esi* esiTaker);
