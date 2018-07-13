@@ -236,8 +236,11 @@ void instanciaExitGracefully(Instancia* instancia){
 
 	instanciaHasFallen(instancia);
 
+	log_info(logger, "Instancia %s actualCommand is %c", instancia->name, instancia->actualCommand);
+
 	switch(instancia->actualCommand){
 		case INSTANCIA_DO_OPERATION:
+			instanciaResponseStatus = INSTANCIA_RESPONSE_FALLEN;
 			sem_post(&instanciaResponse);
 			break;
 
@@ -258,6 +261,7 @@ void instanciaExitGracefully(Instancia* instancia){
 		default:
 
 			//TODO revisar este caso que se usa por ejemplo cuando llegaron y todavia no estan haciendo nada
+			log_info(logger, "Instancia has fallen with no active command");
 
 			break;
 	}

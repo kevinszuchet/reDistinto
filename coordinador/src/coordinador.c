@@ -723,7 +723,10 @@ int handleInstancia(int instanciaSocket){
 				break;
 		}
 
-		actualInstancia->actualCommand = 0;
+		if(instanciaCommandResponse != INSTANCIA_COMPACT_REQUEST){
+
+			actualInstancia->actualCommand = 0;
+		}
 		pthread_mutex_unlock(&instanciasListMutex);
 	}
 
