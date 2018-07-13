@@ -108,7 +108,8 @@ void freeTakenKeys(Esi* esi) {
 			return string_equals_ignore_case((char*) takenKey, key);
 		}
 		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
-
+		if(!dictionary_has_key(blockedEsiDic,key))
+			free(key);
 	}
 
 	list_iterate(esi->lockedKeys,&freeKeyGeneral);
@@ -347,15 +348,20 @@ bool addKeyToGeneralKeys(char* key) {
 	}
 
 	bool addedToList = false;
+	char* keyCopy = strdup(key);
 	if (!list_any_satisfy(allSystemTakenKeys, &itemIsKey)){
-		list_add(allSystemTakenKeys, key);
+		list_add(allSystemTakenKeys, keyCopy);
+		addedToList = true;
+	}else{
+		free(keyCopy);
+	}
+	if (!list_any_satisfy(allSystemKeys, &itemIsKey)){
+		list_add(allSystemKeys, keyCopy);
 		addedToList = true;
 	}
 
-	if (!list_any_satisfy(allSystemKeys, &itemIsKey)){
-		list_add(allSystemKeys, key);
-		addedToList = true;
-	}
+
+
 	return addedToList;
 }
 
@@ -389,10 +395,14 @@ void blockEsi(char* lockedKey, int esiBlocked) {
 void lockKey(char* key, int esiID) {
 
 	char* keyCopy = strdup(key);
-	bool added = addKeyToGeneralKeys(keyCopy);
+
+
+	addKeyToGeneralKeys(key);
+
+
 
 	if (esiID != CONSOLE_BLOCKED) {
-		addLockedKeyToEsi(&keyCopy, &runningEsi);
+		addLockedKeyToEsi(key, &runningEsi);
 	}
 
 	if (!dictionary_has_key(blockedEsiDic, key)) {
@@ -400,9 +410,11 @@ void lockKey(char* key, int esiID) {
 		dictionary_put(blockedEsiDic, keyCopy, esiQueue);
 		log_info(logger,"Creating an empty key in blockedEsiDic");
 	}else{
-		if(!added)
-			free(keyCopy);
+		free(keyCopy);
 	}
+
+	//if(haveToFreeKey)
+		//free(keyCopy);
 /*
 	if (isLockedKey(key) == NOTBLOCKED) {
 		bool itemIsKey(void* item) {
@@ -412,10 +424,6 @@ void lockKey(char* key, int esiID) {
 			list_add(allSystemTakenKeys, keyCopy);
 		}
 	}*/
-
-
-
-
 
 }
 
@@ -452,9 +460,13 @@ void unlockEsi(char* key,bool isConsoleInstruccion) {
 		if(queue_is_empty(blockedEsisQueue)){
 			list_remove_by_condition(allSystemTakenKeys, &keyCompare);
 			log_info(logger, "Key (%s) freed", key);
+			//if(!dictionary_has_key(blockedEsiDic,key))
+				//free(key);
 		}
 	}else{
 		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
+		if(!dictionary_has_key(blockedEsiDic,key))
+						free(key);
 	}
 
 
@@ -522,7 +534,7 @@ void addConfigurationLockedKeys(char** blockedKeys) {
 	while (blockedKeys[i]) {
 		lockKey(blockedKeys[i], CONSOLE_BLOCKED);
 		// REVIEW esto lo hace aca y dentro de la funcion lockKey
-		addKeyToGeneralKeys(blockedKeys[i]);
+		//todo review esto addKeyToGeneralKeys(blockedKeys[i]);
 		i++;
 	}
 

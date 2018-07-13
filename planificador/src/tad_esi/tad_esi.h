@@ -34,7 +34,7 @@ void reduceWaitingTime(Esi** esi);
 Esi *createEsi(int id, double initialEstimation, int socketConection);
 int id(Esi* esi);
 
-void addLockedKeyToEsi(char** key, Esi** esi);
+void addLockedKeyToEsi(char* key, Esi** esi);
 void removeLockedKey(char* key, Esi* esi);
 
 void updateLastBurst(Esi** esi);

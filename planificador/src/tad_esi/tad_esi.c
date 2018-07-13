@@ -40,16 +40,17 @@ int id(Esi* esi) {
 	return esi->id;
 }
 
-void addLockedKeyToEsi(char** key, Esi** esi) {
-	list_add((*esi)->lockedKeys, (void*) *key);
-	printf("Locked key %s in ESI %d \n",*key,(*esi)->id);
+void addLockedKeyToEsi(char* key, Esi** esi) {
+	char* keyCopy = strdup(key);
+	list_add((*esi)->lockedKeys, (void*) keyCopy);
+	printf("Locked key %s in ESI %d \n",keyCopy,(*esi)->id);
 }
 
 void removeLockedKey(char* key, Esi* esi) {
 	bool keyCompare(void* takenKeys) {
 		return string_equals_ignore_case((char*) takenKeys, key);
 	}
-	list_remove_by_condition(esi->lockedKeys, &keyCompare);
+	list_remove_and_destroy_by_condition(esi->lockedKeys, &keyCompare,&destroyKey);
 }
 
 void printEsi(void* esiToPrint) {
