@@ -68,7 +68,9 @@ Esi* getNextEsi() {
 }
 
 bool mustDislodgeRunningEsi() {
+	pthread_mutex_lock(&mutexReadyList);
 	if (list_size(readyEsis) > 0) {
+		pthread_mutex_unlock(&mutexReadyList);
 		Esi* bestPosible = simulateAlgoithm(algorithm, alphaEstimation, readyEsis);
 		printEsi(runningEsi);
 		printEsi(bestPosible);
@@ -76,7 +78,10 @@ bool mustDislodgeRunningEsi() {
 			log_info(logger, "Must dislodge, ESI (%d) has estimation (%f). Lower than (%f) from running ESI", bestPosible->id, getEstimation(bestPosible), (getEstimation(runningEsi)-runningEsi->sentenceCounter));
 			return true;
 		}
+	}else{
+		pthread_mutex_unlock(&mutexReadyList);
 	}
+
 	return false;
 }
 
@@ -103,9 +108,11 @@ void freeTakenKeys(Esi* esi) {
 		bool keyCompare(void* takenKey) {
 			return string_equals_ignore_case((char*) takenKey, key);
 		}
+		log_warning(logger,"Antes de eliminar la clave %s",key);
 		list_remove_by_condition(allSystemTakenKeys, &keyCompare);
-
+		log_warning(logger,"A punto de eliminar la clave %s",key);
 		freeKey(key,esi);
+		log_warning(logger,"Elimine la clave %s",key);
 	}
 
 	list_iterate(esi->lockedKeys,&freeKeyGeneral);
@@ -167,8 +174,9 @@ void handleEsiInformation(OperationResponse* esiExecutionInformation, char* key)
 	if(runningEsi!=NULL){
 		addSentenceCounter(runningEsi);
 	}
+	pthread_mutex_lock(&mutexReadyList);
 	addWaitingTimeToAll(readyEsis);
-
+	pthread_mutex_unlock(&mutexReadyList);
 	switch(esiExecutionInformation->coordinadorResponse) {
 		case SUCCESS:
 
@@ -240,8 +248,9 @@ void deleteEsiFromSystem(Esi* esiToDelete) {
 
 	t_queue* blockedEsis;
 
-
+	pthread_mutex_lock(&mutexReadyList);
 	t_list * filteredList = list_filter(readyEsis, &isEsiByID);
+	pthread_mutex_unlock(&mutexReadyList);
 
 	if (list_size(filteredList) > 0) {
 
@@ -593,11 +602,16 @@ void executeInstruccion(){
 		pthread_mutex_lock(&mutexFinishedExecutingInstruccion);
 		if (finishedExecutingInstruccion) {
 			if (runningEsi == NULL) {
+				pthread_mutex_lock(&mutexReadyList);
 				if (list_size(readyEsis) > 0) {
 					log_info(logger,"Hay (%d) ESIs para ejecutar",list_size(readyEsis));
+					pthread_mutex_unlock(&mutexReadyList);
 					nextEsi = getNextEsi();
 					moveEsiToRunning(nextEsi);
+				}else{
+					pthread_mutex_unlock(&mutexReadyList);
 				}
+
 			} else {
 				if (strcmp(algorithm, "SJF-CD") == 0) {
 					if (mustDislodgeRunningEsi()) {
@@ -743,6 +757,7 @@ int handleConcurrence() {
 						} else {
 							log_warning(logger, "ESI disconnected.");
 							abortEsi(getEsiBySocket(clientSocket));
+							log_info(logger, "Mando a ejecutar.");
 							executeInstruccion();
 
 						}
