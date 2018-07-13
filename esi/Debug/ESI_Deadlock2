@@ -1,6 +1,0 @@
-GET d1
-GET d2
-SET d1 OhYeah
-SET d2 DeadLucas
-STORE d1
-STORE d2

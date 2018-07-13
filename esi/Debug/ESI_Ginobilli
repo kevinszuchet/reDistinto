@@ -1,6 +1,0 @@
-GET futbol:messi
-SET futbol:messi TraemeLaCopa
-GET ginobilli
-SET ginobilli TraemeLaCopa
-STORE futbol:messi
-STORE ginobilli

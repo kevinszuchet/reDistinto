@@ -1,5 +1,0 @@
-GET una:clave
-SET una:clave elValor
-STORE una:clave
-GET una:clave
-SET una:clave 
