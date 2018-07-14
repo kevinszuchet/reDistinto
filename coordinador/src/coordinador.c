@@ -377,8 +377,6 @@ int sendResponseToEsi(EsiRequest* esiRequest, char response){
 		return -1;
 	}
 
-	printf("Se envio send al esi\n");
-
 	return 0;
 }
 
