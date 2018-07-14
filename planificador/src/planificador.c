@@ -108,13 +108,13 @@ void freeTakenKeys(Esi* esi) {
 		bool keyCompare(void* takenKey) {
 			return string_equals_ignore_case((char*) takenKey, key);
 		}
-		log_warning(logger,"Antes de eliminar la clave %s",key); //todo borrar despues
+
 		list_remove_and_destroy_by_condition(allSystemTakenKeys, &keyCompare, &destroyKey);
-		log_warning(logger,"A punto de eliminar la clave %s",key); //todo borrar despues
+
 		freeKey(key,esi);
 	}
 
-	log_warning(logger,"Hay %d claves bloqueadas",list_size(esi->lockedKeys)); //todo borrar despues
+
 	list_iterate(esi->lockedKeys,&freeKeyGeneral);
 	//list_clean(esi->lockedKeys);
 }
@@ -227,7 +227,6 @@ void abortEsi(Esi* esi) {
 	bool isEsiById(void* element) {
 		return ((Esi*) element)->id == esi->id;
 	}
-	log_warning(logger,"Hay %d claves bloqueadas antes de entrar al freeTakenKeys", list_size(esi->lockedKeys)); //todo borrar despues
 
 	freeTakenKeys(esi);
 	deleteEsiFromSystem(esi);
@@ -452,7 +451,7 @@ void unlockEsi(char* key,bool isConsoleInstruccion) {
 		}
 	}else{
 		list_remove_and_destroy_by_condition(allSystemTakenKeys, &keyCompare, &destroyKey);
-		log_warning(logger, "Key (%s) freed", key);
+		log_info(logger, "Key (%s) freed", key);
 		//if(!dictionary_has_key(blockedEsiDic,key))
 						//free(key);
 	}
@@ -666,8 +665,6 @@ int clientMessageHandler(char clientMessage, int clientSocket) {
 			log_info(logger, "I recieved a esi information message");
 			esiInformation = recieveEsiInformation(runningEsi->socketConection);
 			log_info(logger, "Going to handle Esi execution info.CoordinadoResponse = (%s) ,esiStatus = (%s)", getCoordinadorResponseName(esiInformation->coordinadorResponse), getEsiInformationResponseName(esiInformation->esiStatus));
-			log_warning(logger,"Hay %d claves bloqueadas por el esi antes de ejecutar una instruccion", list_size(runningEsi->lockedKeys)); //todo borrar despues
-
 			handleEsiInformation(esiInformation, keyRecieved);
 
 			free(keyRecieved);
@@ -764,7 +761,6 @@ int handleConcurrence() {
 							log_warning(logger, "ESI disconnected.");
 							printEsi(getEsiBySocket(clientSocket));
 							abortEsi(getEsiBySocket(clientSocket));
-							log_info(logger, "Mando a ejecutar.");
 							executeInstruccion();
 
 						}
